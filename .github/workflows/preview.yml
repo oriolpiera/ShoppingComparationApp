@@ -43,6 +43,7 @@ jobs:
         run: flutter build web --release --dart-define=WEB_PREVIEW=true
 
       - name: Deploy to Firebase Hosting preview channel
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' && secrets.FIREBASE_PROJECT_ID != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
