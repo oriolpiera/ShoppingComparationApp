@@ -1,33 +1,35 @@
 # ShoppingComparationApp
 
-App to compare groceries product prices.
+App to compare grocery product prices.
 
-## Current bootstrap (Issues #1, #2, #3)
+## Repository scaffolding conventions
 
-### Flutter base structure
-- `lib/app/` → app shell and routing entry
-- `lib/core/` → shared infrastructure (database, services)
-- `lib/features/` → feature-first modules (supermarkets, products, prices)
+The project follows a **feature-first** structure with separation between UI, domain logic, and data access.
 
-### Isar models
-- `lib/features/supermarkets/data/models/supermarket.dart`
-- `lib/features/products/data/models/product.dart`
-- `lib/features/prices/data/models/price_entry.dart`
+### Top-level Flutter layout
 
-### CI/CD preview workflow
-- `.github/workflows/preview.yml`
+- `lib/main.dart` → process entrypoint (`runApp`)
+- `lib/app/` → app shell (theme, root widget wiring)
+- `lib/core/` → shared cross-feature infrastructure
+- `lib/features/` → isolated feature modules
+- `test/` → automated tests
 
-PR workflow does:
-1. `flutter pub get`
-2. `build_runner` code generation
-3. `flutter test`
-4. `flutter build web --dart-define=WEB_PREVIEW=true`
-5. Deploy preview channel to Firebase Hosting and comment URL on PR
+### Feature module convention
 
-### Required GitHub secrets
-- `FIREBASE_SERVICE_ACCOUNT`
-- `FIREBASE_PROJECT_ID`
+Each feature should keep layers separated:
 
-### Firebase config files
-- `firebase.json`
-- `.firebaserc` (replace project id placeholder)
+- `presentation/` → screens and widgets (UI only)
+- `domain/` → entities and business rules
+- `data/` → repositories, datasources, mappers
+
+Example (current `home` feature):
+
+- `lib/features/home/presentation/home_page.dart`
+- `lib/features/home/domain/entities/home_section.dart`
+- `lib/features/home/data/repositories/home_sections_repository.dart`
+
+## Current status
+
+- App boots through `PriceComparatorApp`
+- Root screen delegated to `HomePage`
+- Base folders are ready for adding new features without mixing UI and business logic
