@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../features/home/presentation/home_page.dart';
+
 class PriceComparatorApp extends StatelessWidget {
   const PriceComparatorApp({super.key});
 
@@ -8,11 +10,7 @@ class PriceComparatorApp extends StatelessWidget {
     return MaterialApp(
       title: 'Price Comparator',
       theme: ThemeData(useMaterial3: true),
-      home: const Scaffold(
-        body: Center(
-          child: Text('Shopping Comparator App'),
-        ),
-      ),
+      home: const HomePage(),
     );
   }
 }

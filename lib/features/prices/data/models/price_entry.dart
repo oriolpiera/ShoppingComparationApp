@@ -7,10 +7,10 @@ class PriceEntry {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late Id productId;
+  late int productId;
 
   @Index()
-  late Id supermarketId;
+  late int supermarketId;
 
   late double price;
   late DateTime capturedAt;

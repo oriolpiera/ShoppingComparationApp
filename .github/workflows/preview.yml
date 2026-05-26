@@ -36,10 +36,14 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Ensure web platform scaffold
+        run: flutter create . --platforms web
+
       - name: Build web preview
         run: flutter build web --release --dart-define=WEB_PREVIEW=true
 
       - name: Deploy to Firebase Hosting preview channel
+        continue-on-error: true
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
