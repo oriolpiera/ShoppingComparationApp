@@ -48,6 +48,10 @@ _Avoid_: overloaded rows with unrelated metadata
 A header summary in Product Family details showing `Current active items count` and `Best unit price` before the comparison rows.
 _Avoid_: burying key comparison context only inside row scanning
 
+**Shopping Need Entry**:
+A shopping-list line that represents demand for one Product Family and a required integer quantity, without pinning a concrete Product Item.
+_Avoid_: item-pinned shopping row, duplicated-family lines
+
 ## Relationships
 
 - A **Supermarket Visit** happens at exactly one **Supermarket**
@@ -81,6 +85,12 @@ _Avoid_: burying key comparison context only inside row scanning
 - If a comparison row references an inactive or missing supermarket, keep row visible and show an `inactive supermarket` badge
 - Family Comparison Summary count includes all current active Product Items even when supermarket reference is inactive or missing
 - Issue #23 includes widget/UI tests for empty-state rendering, comparison sort order, and two-step family inactivation warning flow
+- A **Shopping Need Entry** stores only `ProductFamily` + integer quantity; the concrete best `Product Item` is resolved dynamically
+- Adding a family already present in Shopping List merges into the same entry by increasing quantity (no duplicate lines)
+- Shopping List add flows exist both from Product Family detail and from Shopping List `+`
+- Shopping List family picker includes only active Product Families
+- Shopping List quantity input is integer-only
+- If a Shopping List family becomes inactive, the entry remains visible with inactive visual treatment and is excluded from optimized shopping grouping
 
 ## Example dialogue
 
