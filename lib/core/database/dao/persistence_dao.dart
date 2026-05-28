@@ -73,4 +73,16 @@ class PersistenceDao {
   Future<int> saveShoppingListEntry(ShoppingListTableCompanion companion) {
     return db.into(db.shoppingListTable).insertOnConflictUpdate(companion);
   }
+
+  Future<ShoppingListTableData?> getShoppingListEntryByFamily(int familyId) {
+    return (db.select(db.shoppingListTable)
+          ..where((t) => t.productFamilyId.equals(familyId))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<void> deleteShoppingListEntriesByIds(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await (db.delete(db.shoppingListTable)..where((t) => t.id.isIn(ids))).go();
+  }
 }

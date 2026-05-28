@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../persistence/domain/entities/optimized_shopping.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
@@ -633,6 +632,46 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
     }
   }
 
+  Future<void> _addFamilyToShoppingList() async {
+    final familyId = widget.item.id;
+    if (familyId == null) return;
+
+    final quantityController = TextEditingController(text: '1');
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add to shopping list'),
+        content: TextField(
+          controller: quantityController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Quantity'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    final quantity = int.tryParse(quantityController.text.trim());
+    if (shouldSave == true && quantity != null && quantity > 0) {
+      await widget.repository.addOrIncrementShoppingListEntry(
+        productFamilyId: familyId,
+        quantity: quantity,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Added to shopping list')),
+      );
+    }
+  }
+
   String _formatDateAdded(BuildContext context, DateTime dateTime) {
     final localizations = MaterialLocalizations.of(context);
     final date = localizations.formatShortDate(dateTime);
@@ -769,6 +808,12 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                   );
                 }),
               const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _addFamilyToShoppingList,
+                icon: const Icon(Icons.playlist_add),
+                label: const Text('Add to shopping list'),
+              ),
+              const SizedBox(height: 12),
               FilledButton.tonalIcon(
                 onPressed: () async {
                   final activeCount = data.activeItemCount;
@@ -1376,8 +1421,10 @@ class ShoppingListPage extends StatefulWidget {
 }
 
 class _ShoppingListPageState extends State<ShoppingListPage> {
-  late Future<List<OptimizedShoppingGroup>> _future;
-  final Set<int> _boughtEntries = {};
+  late Future<_ShoppingListViewData> _future;
+  final Set<int> _selectedEntryIds = {};
+
+  bool get _selectionMode => _selectedEntryIds.isNotEmpty;
 
   @override
   void initState() {
@@ -1385,8 +1432,105 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     _future = _load();
   }
 
-  Future<List<OptimizedShoppingGroup>> _load() {
-    return widget.repository.getOptimizedShoppingList();
+  Future<_ShoppingListViewData> _load() async {
+    final entries = await widget.repository.getShoppingList();
+    final families =
+        await widget.repository.getProductFamilies(onlyActive: false);
+    final activeFamilies = await widget.repository.getProductFamilies();
+    final items =
+        await widget.repository.getProductItems(onlyCurrentPrice: true);
+    final supermarkets =
+        await widget.repository.getSupermarkets(onlyActive: true);
+
+    final familyById = {
+      for (final family in families)
+        if (family.id != null) family.id!: family,
+    };
+    final marketNameById = {
+      for (final market in supermarkets)
+        if (market.id != null) market.id!: market.name,
+    };
+
+    final bestByFamily = <int, ProductItem>{};
+    for (final item in items.where((i) => i.isActive && i.isCurrentPrice)) {
+      final current = bestByFamily[item.productFamilyId];
+      if (current == null || _isBetterItem(item, current)) {
+        bestByFamily[item.productFamilyId] = item;
+      }
+    }
+
+    final optimizedGroups = <String, List<_ShoppingRow>>{};
+    final pendingRows = <_ShoppingRow>[];
+
+    for (final entry in entries) {
+      final family = familyById[entry.productFamilyId];
+      if (family == null) continue;
+
+      final bestItem = bestByFamily[entry.productFamilyId];
+      final isInactiveFamily = !family.isActive;
+      if (bestItem == null || isInactiveFamily) {
+        pendingRows.add(
+          _ShoppingRow(
+            entryId: entry.id ?? -1,
+            familyId: entry.productFamilyId,
+            familyName: family.name,
+            quantity: entry.quantity,
+            isInactiveFamily: isInactiveFamily,
+          ),
+        );
+        continue;
+      }
+
+      final marketName = marketNameById[bestItem.supermarketId];
+      if (marketName == null) {
+        pendingRows.add(
+          _ShoppingRow(
+            entryId: entry.id ?? -1,
+            familyId: entry.productFamilyId,
+            familyName: family.name,
+            quantity: entry.quantity,
+          ),
+        );
+        continue;
+      }
+
+      optimizedGroups.putIfAbsent(marketName, () => []).add(
+            _ShoppingRow(
+              entryId: entry.id ?? -1,
+              familyId: entry.productFamilyId,
+              familyName: family.name,
+              quantity: entry.quantity,
+              bestItem: bestItem,
+            ),
+          );
+    }
+
+    final sortedGroups = optimizedGroups.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    final activeFamilyOptions = activeFamilies
+        .where((f) => f.id != null)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    return _ShoppingListViewData(
+      groupedRows: sortedGroups,
+      pendingRows: pendingRows,
+      activeFamilyOptions: activeFamilyOptions,
+    );
+  }
+
+  bool _isBetterItem(ProductItem candidate, ProductItem current) {
+    final byUnit =
+        candidate.pricePerQuantity.compareTo(current.pricePerQuantity);
+    if (byUnit != 0) return byUnit < 0;
+    final byPrice = candidate.price.compareTo(current.price);
+    if (byPrice != 0) return byPrice < 0;
+    final byDate = candidate.dateAdded.compareTo(current.dateAdded);
+    if (byDate != 0) return byDate > 0;
+    final candidateId = candidate.id ?? 1 << 30;
+    final currentId = current.id ?? 1 << 30;
+    return candidateId < currentId;
   }
 
   void _refresh() {
@@ -1395,98 +1539,281 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     });
   }
 
-  Future<void> _updateQuantity(OptimizedShoppingItem item, int delta) async {
-    final currentUnits = item.quantity.round();
-    final nextUnits = (currentUnits + delta).clamp(0, 9999);
+  Future<void> _updateQuantity(_ShoppingRow row, int delta) async {
+    final nextUnits = (row.quantity + delta).clamp(0, 9999);
     await widget.repository.saveShoppingListEntry(
       ShoppingListEntry(
-        id: item.shoppingListEntryId < 0 ? null : item.shoppingListEntryId,
-        productFamilyId: item.productFamilyId,
-        productItemId: item.sourceProductItemId,
-        quantity: nextUnits.toDouble(),
+        id: row.entryId < 0 ? null : row.entryId,
+        productFamilyId: row.familyId,
+        quantity: nextUnits,
       ),
     );
     _refresh();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Shopping list')),
-      body: FutureBuilder<List<OptimizedShoppingGroup>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+  Future<void> _openAddFamilyDialog(_ShoppingListViewData data) async {
+    if (data.activeFamilyOptions.isEmpty) return;
 
-          final groups = snapshot.data ?? const [];
-          if (groups.isEmpty) {
-            return const Center(child: Text('No optimized items yet'));
-          }
+    int selectedFamilyId = data.activeFamilyOptions.first.id!;
+    final quantityController = TextEditingController(text: '1');
 
-          return ListView.builder(
-            itemCount: groups.length,
-            itemBuilder: (context, groupIndex) {
-              final group = groups[groupIndex];
-              return ExpansionTile(
-                initiallyExpanded: true,
-                title: Text(group.supermarketName),
-                subtitle: Text(
-                  'Estimated total: €${group.totalEstimatedCost.toStringAsFixed(2)}',
-                ),
-                children: group.items.map((item) {
-                  final checked =
-                      _boughtEntries.contains(item.shoppingListEntryId);
-                  final units = item.quantity.round();
-                  return ListTile(
-                    dense: true,
-                    leading: Checkbox(
-                      value: checked,
-                      onChanged: (value) {
-                        setState(() {
-                          if (value == true) {
-                            _boughtEntries.add(item.shoppingListEntryId);
-                          } else {
-                            _boughtEntries.remove(item.shoppingListEntryId);
-                          }
-                        });
-                      },
-                    ),
-                    title: Text(item.productFamilyName),
-                    subtitle: Text(
-                      '${item.bestItem.name} · €/u ${item.bestItem.pricePerQuantity.toStringAsFixed(2)} · est. €${item.estimatedCost.toStringAsFixed(2)}',
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: units <= 0
-                              ? null
-                              : () => _updateQuantity(item, -1),
-                          icon: const Icon(Icons.remove),
-                        ),
-                        Text('$units'),
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _updateQuantity(item, 1),
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          );
-        },
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add family to shopping list'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                initialValue: selectedFamilyId,
+                decoration: const InputDecoration(labelText: 'Product family'),
+                items: data.activeFamilyOptions
+                    .map((f) =>
+                        DropdownMenuItem(value: f.id, child: Text(f.name)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => selectedFamilyId = value);
+                  }
+                },
+              ),
+              TextField(
+                controller: quantityController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
+
+    final quantity = int.tryParse(quantityController.text.trim());
+    if (save == true && quantity != null && quantity > 0) {
+      await widget.repository.addOrIncrementShoppingListEntry(
+        productFamilyId: selectedFamilyId,
+        quantity: quantity,
+      );
+      _refresh();
+    }
   }
+
+  Future<void> _deleteSelected() async {
+    final count = _selectedEntryIds.length;
+    if (count == 0) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete items?'),
+        content: Text('Delete $count items from shopping list?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await widget.repository
+          .deleteShoppingListEntries(_selectedEntryIds.toList());
+      setState(() {
+        _selectedEntryIds.clear();
+      });
+      _refresh();
+    }
+  }
+
+  void _onLongPressRow(_ShoppingRow row) {
+    setState(() {
+      _selectedEntryIds.add(row.entryId);
+    });
+  }
+
+  void _onTapRow(_ShoppingRow row) {
+    if (!_selectionMode) return;
+    setState(() {
+      if (_selectedEntryIds.contains(row.entryId)) {
+        _selectedEntryIds.remove(row.entryId);
+      } else {
+        _selectedEntryIds.add(row.entryId);
+      }
+    });
+  }
+
+  Widget _buildRow(_ShoppingRow row) {
+    final isSelected = _selectedEntryIds.contains(row.entryId);
+    final textColor = row.isInactiveFamily ? Colors.grey.shade700 : null;
+    final tileColor = row.isInactiveFamily ? Colors.grey.shade300 : null;
+
+    return ListTile(
+      dense: true,
+      selected: isSelected,
+      tileColor: tileColor,
+      onLongPress: () => _onLongPressRow(row),
+      onTap: () => _onTapRow(row),
+      leading: _selectionMode
+          ? Checkbox(
+              value: isSelected,
+              onChanged: (_) => _onTapRow(row),
+            )
+          : null,
+      title: Text(row.familyName, style: TextStyle(color: textColor)),
+      subtitle: Text(
+        row.bestItem == null
+            ? (row.isInactiveFamily
+                ? 'Inactive family'
+                : 'Pending best product item')
+            : '${row.bestItem!.name} · €/u ${row.bestItem!.pricePerQuantity.toStringAsFixed(2)} · est. €${(row.quantity * row.bestItem!.pricePerQuantity).toStringAsFixed(2)}',
+        style: TextStyle(color: textColor),
+      ),
+      trailing: _selectionMode
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed:
+                      row.quantity <= 0 ? null : () => _updateQuantity(row, -1),
+                  icon: const Icon(Icons.remove),
+                ),
+                Text('${row.quantity}'),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _updateQuantity(row, 1),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_ShoppingListViewData>(
+      future: _future,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_selectionMode
+                ? '${_selectedEntryIds.length} selected'
+                : 'Shopping list'),
+            actions: [
+              if (_selectionMode)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _deleteSelected,
+                ),
+            ],
+          ),
+          floatingActionButton: data == null
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _openAddFamilyDialog(data),
+                  child: const Icon(Icons.add),
+                ),
+          body: Builder(
+            builder: (context) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (data == null) {
+                return const Center(child: Text('No shopping items yet'));
+              }
+
+              final grouped = data.groupedRows;
+              final pending = data.pendingRows;
+              if (grouped.isEmpty && pending.isEmpty) {
+                return const Center(child: Text('No shopping items yet'));
+              }
+
+              return ListView(
+                children: [
+                  ...grouped.map((group) {
+                    final groupTotal = group.value.fold<double>(
+                      0,
+                      (sum, row) =>
+                          sum +
+                          (row.bestItem == null
+                              ? 0
+                              : row.quantity * row.bestItem!.pricePerQuantity),
+                    );
+                    return ExpansionTile(
+                      initiallyExpanded: true,
+                      title: Text(group.key),
+                      subtitle: Text(
+                        'Estimated total: €${groupTotal.toStringAsFixed(2)}',
+                      ),
+                      children: group.value.map(_buildRow).toList(),
+                    );
+                  }),
+                  if (pending.isNotEmpty)
+                    const ListTile(
+                      title: Text('Pending / inactive',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ...pending.map(_buildRow),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ShoppingRow {
+  const _ShoppingRow({
+    required this.entryId,
+    required this.familyId,
+    required this.familyName,
+    required this.quantity,
+    this.bestItem,
+    this.isInactiveFamily = false,
+  });
+
+  final int entryId;
+  final int familyId;
+  final String familyName;
+  final int quantity;
+  final ProductItem? bestItem;
+  final bool isInactiveFamily;
+}
+
+class _ShoppingListViewData {
+  const _ShoppingListViewData({
+    required this.groupedRows,
+    required this.pendingRows,
+    required this.activeFamilyOptions,
+  });
+
+  final List<MapEntry<String, List<_ShoppingRow>>> groupedRows;
+  final List<_ShoppingRow> pendingRows;
+  final List<ProductFamily> activeFamilyOptions;
 }
 
 enum _ProductItemDetailsAction { edit, delete }

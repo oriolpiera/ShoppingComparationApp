@@ -250,8 +250,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
           (row) => ShoppingListEntry(
             id: row.id,
             productFamilyId: row.productFamilyId,
-            quantity: row.quantity,
-            productItemId: row.productItemId,
+            quantity: row.quantity.round(),
           ),
         )
         .toList();
@@ -264,15 +263,44 @@ class DriftPersistenceRepository implements PersistenceRepository {
         id: entry.id == null ? const Value.absent() : Value(entry.id!),
         productFamilyId: Value(entry.productFamilyId),
         quantity: Value(entry.quantity),
-        productItemId: Value(entry.productItemId),
+        productItemId: const Value.absent(),
       ),
     );
   }
 
   @override
+  Future<int> addOrIncrementShoppingListEntry({
+    required int productFamilyId,
+    int quantity = 1,
+  }) async {
+    final existing = await dao.getShoppingListEntryByFamily(productFamilyId);
+    if (existing != null) {
+      return saveShoppingListEntry(
+        ShoppingListEntry(
+          id: existing.id,
+          productFamilyId: existing.productFamilyId,
+          quantity: existing.quantity.round() + quantity,
+        ),
+      );
+    }
+
+    return saveShoppingListEntry(
+      ShoppingListEntry(
+        productFamilyId: productFamilyId,
+        quantity: quantity,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteShoppingListEntries(List<int> entryIds) {
+    return dao.deleteShoppingListEntriesByIds(entryIds);
+  }
+
+  @override
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async {
     final shoppingList = await getShoppingList();
-    final families = await getProductFamilies(onlyActive: true);
+    final families = await getProductFamilies(onlyActive: false);
     final supermarkets = await getSupermarkets(onlyActive: true);
     final items = await getProductItems(onlyCurrentPrice: true);
 
@@ -285,11 +313,20 @@ class DriftPersistenceRepository implements PersistenceRepository {
         if (market.id != null) market.id!: market.name,
     };
 
+    final activeFamilyIds = {
+      for (final family in families)
+        if (family.id != null && family.isActive) family.id!,
+    };
+
     final cheapestByFamily = <int, ProductItem>{};
-    for (final item
-        in items.where((item) => item.isActive && item.isCurrentPrice)) {
+    for (final item in items.where(
+      (item) =>
+          item.isActive &&
+          item.isCurrentPrice &&
+          activeFamilyIds.contains(item.productFamilyId),
+    )) {
       final current = cheapestByFamily[item.productFamilyId];
-      if (current == null || item.pricePerQuantity < current.pricePerQuantity) {
+      if (current == null || _isBetterItem(item, current)) {
         cheapestByFamily[item.productFamilyId] = item;
       }
     }
@@ -298,7 +335,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
     for (final entry in shoppingList) {
       final bestItem = cheapestByFamily[entry.productFamilyId];
-      if (bestItem == null) {
+      if (bestItem == null ||
+          !activeFamilyIds.contains(entry.productFamilyId)) {
         continue;
       }
 
@@ -315,7 +353,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
               productFamilyId: entry.productFamilyId,
               productFamilyName: familyName,
               quantity: entry.quantity,
-              sourceProductItemId: entry.productItemId,
               bestItem: bestItem,
             ),
           );
@@ -333,5 +370,21 @@ class DriftPersistenceRepository implements PersistenceRepository {
       ..sort((a, b) => a.supermarketName.compareTo(b.supermarketName));
 
     return result;
+  }
+
+  bool _isBetterItem(ProductItem candidate, ProductItem current) {
+    final byUnit =
+        candidate.pricePerQuantity.compareTo(current.pricePerQuantity);
+    if (byUnit != 0) return byUnit < 0;
+
+    final byPrice = candidate.price.compareTo(current.price);
+    if (byPrice != 0) return byPrice < 0;
+
+    final byDate = candidate.dateAdded.compareTo(current.dateAdded);
+    if (byDate != 0) return byDate > 0;
+
+    final candidateId = candidate.id ?? 1 << 30;
+    final currentId = current.id ?? 1 << 30;
+    return candidateId < currentId;
   }
 }

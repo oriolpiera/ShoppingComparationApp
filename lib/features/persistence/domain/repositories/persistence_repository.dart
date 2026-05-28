@@ -31,5 +31,10 @@ abstract class PersistenceRepository {
 
   Future<List<ShoppingListEntry>> getShoppingList();
   Future<int> saveShoppingListEntry(ShoppingListEntry entry);
+  Future<int> addOrIncrementShoppingListEntry({
+    required int productFamilyId,
+    int quantity = 1,
+  });
+  Future<void> deleteShoppingListEntries(List<int> entryIds);
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList();
 }
