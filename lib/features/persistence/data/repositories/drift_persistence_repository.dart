@@ -275,21 +275,31 @@ class DriftPersistenceRepository implements PersistenceRepository {
   }) async {
     final existing = await dao.getShoppingListEntryByFamily(productFamilyId);
     if (existing != null) {
-      return saveShoppingListEntry(
+      final updatedId = await saveShoppingListEntry(
         ShoppingListEntry(
           id: existing.id,
           productFamilyId: existing.productFamilyId,
           quantity: existing.quantity.round() + quantity,
         ),
       );
+      final check = await dao.getShoppingListEntryByFamily(productFamilyId);
+      if (check == null) {
+        throw StateError('ShoppingList entry disappeared after update');
+      }
+      return updatedId;
     }
 
-    return saveShoppingListEntry(
+    final insertedId = await saveShoppingListEntry(
       ShoppingListEntry(
         productFamilyId: productFamilyId,
         quantity: quantity,
       ),
     );
+    final check = await dao.getShoppingListEntryByFamily(productFamilyId);
+    if (check == null) {
+      throw StateError('ShoppingList entry not found after insert');
+    }
+    return insertedId;
   }
 
   @override

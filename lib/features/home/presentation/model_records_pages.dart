@@ -661,14 +661,29 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
 
     final quantity = int.tryParse(quantityController.text.trim());
     if (shouldSave == true && quantity != null && quantity > 0) {
-      await widget.repository.addOrIncrementShoppingListEntry(
-        productFamilyId: familyId,
-        quantity: quantity,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Added to shopping list')),
-      );
+      try {
+        await widget.repository.addOrIncrementShoppingListEntry(
+          productFamilyId: familyId,
+          quantity: quantity,
+        );
+        final entries = await widget.repository.getShoppingList();
+        final exists = entries.any((e) => e.productFamilyId == familyId);
+        if (!mounted) return;
+        if (exists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Added to shopping list')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not add to shopping list')),
+          );
+        }
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not add to shopping list')),
+        );
+      }
     }
   }
 
@@ -1423,6 +1438,7 @@ class ShoppingListPage extends StatefulWidget {
 class _ShoppingListPageState extends State<ShoppingListPage> {
   late Future<_ShoppingListViewData> _future;
   final Set<int> _selectedEntryIds = {};
+  final Set<int> _boughtEntries = {};
 
   bool get _selectionMode => _selectedEntryIds.isNotEmpty;
 
@@ -1635,6 +1651,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
       await widget.repository
           .deleteShoppingListEntries(_selectedEntryIds.toList());
       setState(() {
+        _boughtEntries.removeAll(_selectedEntryIds);
         _selectedEntryIds.clear();
       });
       _refresh();
@@ -1658,8 +1675,19 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     });
   }
 
+  void _toggleBought(_ShoppingRow row) {
+    setState(() {
+      if (_boughtEntries.contains(row.entryId)) {
+        _boughtEntries.remove(row.entryId);
+      } else {
+        _boughtEntries.add(row.entryId);
+      }
+    });
+  }
+
   Widget _buildRow(_ShoppingRow row) {
     final isSelected = _selectedEntryIds.contains(row.entryId);
+    final isBought = _boughtEntries.contains(row.entryId);
     final textColor = row.isInactiveFamily ? Colors.grey.shade700 : null;
     final tileColor = row.isInactiveFamily ? Colors.grey.shade300 : null;
 
@@ -1674,8 +1702,17 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
               value: isSelected,
               onChanged: (_) => _onTapRow(row),
             )
-          : null,
-      title: Text(row.familyName, style: TextStyle(color: textColor)),
+          : Checkbox(
+              value: isBought,
+              onChanged: (_) => _toggleBought(row),
+            ),
+      title: Text(
+        row.familyName,
+        style: TextStyle(
+          color: textColor,
+          decoration: isBought ? TextDecoration.lineThrough : null,
+        ),
+      ),
       subtitle: Text(
         row.bestItem == null
             ? (row.isInactiveFamily
