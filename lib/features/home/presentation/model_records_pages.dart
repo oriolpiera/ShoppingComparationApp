@@ -91,31 +91,38 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
                       dense: true,
                       title: Text(item.name),
                       subtitle: Text(item.address ?? '-'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _openForm(item),
+                      onTap: () async {
+                        final action = await Navigator.of(context)
+                            .push<_SupermarketDetailsAction>(
+                          MaterialPageRoute(
+                            builder: (_) => _SupermarketDetailsPage(item: item),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () async {
-                              await widget.repository.saveSupermarket(
-                                Supermarket(
-                                  id: item.id,
-                                  name: item.name,
-                                  address: item.address,
-                                  isActive: false,
-                                ),
-                              );
-                              _refresh();
-                            },
-                          ),
-                        ],
-                      ),
+                        );
+
+                        if (!mounted) return;
+
+                        if (action == _SupermarketDetailsAction.edit) {
+                          await _openForm(item);
+                        } else if (action == _SupermarketDetailsAction.delete) {
+                          await widget.repository.saveSupermarket(
+                            Supermarket(
+                              id: item.id,
+                              name: item.name,
+                              address: item.address,
+                              isActive: false,
+                            ),
+                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Supermarket deleted'),
+                              ),
+                            );
+                          }
+                        }
+
+                        _refresh();
+                      },
                     );
                   },
                 );
@@ -266,31 +273,39 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                     return ListTile(
                       dense: true,
                       title: Text(item.name),
-                      subtitle: Text('ID ${item.id ?? '-'}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _openForm(item),
+                      onTap: () async {
+                        final action = await Navigator.of(context)
+                            .push<_ProductFamilyDetailsAction>(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                _ProductFamilyDetailsPage(item: item),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () async {
-                              await widget.repository.saveProductFamily(
-                                ProductFamily(
-                                  id: item.id,
-                                  name: item.name,
-                                  isActive: false,
-                                ),
-                              );
-                              _refresh();
-                            },
-                          ),
-                        ],
-                      ),
+                        );
+
+                        if (!mounted) return;
+
+                        if (action == _ProductFamilyDetailsAction.edit) {
+                          await _openForm(item);
+                        } else if (action ==
+                            _ProductFamilyDetailsAction.delete) {
+                          await widget.repository.saveProductFamily(
+                            ProductFamily(
+                              id: item.id,
+                              name: item.name,
+                              isActive: false,
+                            ),
+                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Product family deleted'),
+                              ),
+                            );
+                          }
+                        }
+
+                        _refresh();
+                      },
                     );
                   },
                 );
@@ -343,6 +358,129 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
       );
       _refresh();
     }
+  }
+}
+
+enum _SupermarketDetailsAction { edit, delete }
+
+class _SupermarketDetailsPage extends StatelessWidget {
+  const _SupermarketDetailsPage({required this.item});
+
+  final Supermarket item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Supermarket details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () =>
+                Navigator.pop(context, _SupermarketDetailsAction.edit),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _DetailRow(label: 'Name', value: item.name),
+          _DetailRow(
+              label: 'Address',
+              value: item.address?.trim().isEmpty == true
+                  ? '—'
+                  : (item.address ?? '—')),
+          _DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
+          const SizedBox(height: 24),
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final shouldDelete = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete supermarket?'),
+                  content:
+                      const Text('This will mark the supermarket as inactive.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (shouldDelete == true && context.mounted) {
+                Navigator.pop(context, _SupermarketDetailsAction.delete);
+              }
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _ProductFamilyDetailsAction { edit, delete }
+
+class _ProductFamilyDetailsPage extends StatelessWidget {
+  const _ProductFamilyDetailsPage({required this.item});
+
+  final ProductFamily item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Product family details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () =>
+                Navigator.pop(context, _ProductFamilyDetailsAction.edit),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _DetailRow(label: 'Name', value: item.name),
+          _DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
+          const SizedBox(height: 24),
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final shouldDelete = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete product family?'),
+                  content: const Text(
+                      'This will mark the product family as inactive.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (shouldDelete == true && context.mounted) {
+                Navigator.pop(context, _ProductFamilyDetailsAction.delete);
+              }
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -473,6 +611,16 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     );
   }
 
+  String _formatDateAdded(BuildContext context, DateTime dateTime) {
+    final localizations = MaterialLocalizations.of(context);
+    final date = localizations.formatShortDate(dateTime);
+    final time = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime),
+      alwaysUse24HourFormat: true,
+    );
+    return '$date $time';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -511,6 +659,11 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   for (final family in data.families)
                     if (family.id != null) family.id!: family.name,
                 };
+                final supermarketNameById = {
+                  for (final supermarket in data.supermarkets)
+                    if (supermarket.id != null)
+                      supermarket.id!: supermarket.name,
+                };
 
                 final query = _queryController.text.toLowerCase().trim();
                 final filtered = data.items
@@ -545,6 +698,10 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   itemBuilder: (context, index) {
                     final entry = filtered[index];
                     final item = entry.item;
+                    final supermarketName =
+                        supermarketNameById[item.supermarketId] ??
+                            'Unknown supermarket';
+
                     return ListTile(
                       dense: true,
                       title: Text(entry.familyName),
@@ -556,39 +713,50 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                           _buildMetricsText(context, item),
                         ],
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _openForm(item, data),
+                      onTap: () async {
+                        final action = await Navigator.of(context)
+                            .push<_ProductItemDetailsAction>(
+                          MaterialPageRoute(
+                            builder: (_) => _ProductItemDetailsPage(
+                              item: item,
+                              familyName: entry.familyName,
+                              supermarketName: supermarketName,
+                              formattedDateAdded:
+                                  _formatDateAdded(context, item.dateAdded),
+                            ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () async {
-                              await widget.repository.saveProductItem(
-                                ProductItem(
-                                  id: item.id,
-                                  name: item.name,
-                                  isActive: false,
-                                  productFamilyId: item.productFamilyId,
-                                  supermarketId: item.supermarketId,
-                                  price: item.price,
-                                  quantity: item.quantity,
-                                  unitType: item.unitType,
-                                  pricePerQuantity: item.pricePerQuantity,
-                                  dateAdded: item.dateAdded,
-                                  isCurrentPrice: item.isCurrentPrice,
-                                  barcode: item.barcode,
-                                ),
-                              );
-                              _refresh();
-                            },
-                          ),
-                        ],
-                      ),
+                        );
+
+                        if (!mounted) return;
+
+                        if (action == _ProductItemDetailsAction.edit) {
+                          await _openForm(item, data);
+                        } else if (action == _ProductItemDetailsAction.delete) {
+                          await widget.repository.saveProductItem(
+                            ProductItem(
+                              id: item.id,
+                              name: item.name,
+                              isActive: false,
+                              productFamilyId: item.productFamilyId,
+                              supermarketId: item.supermarketId,
+                              price: item.price,
+                              quantity: item.quantity,
+                              unitType: item.unitType,
+                              pricePerQuantity: item.pricePerQuantity,
+                              dateAdded: item.dateAdded,
+                              isCurrentPrice: item.isCurrentPrice,
+                              barcode: item.barcode,
+                            ),
+                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Product deleted')),
+                            );
+                          }
+                        }
+
+                        _refresh();
+                      },
                     );
                   },
                 );
@@ -918,6 +1086,124 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+enum _ProductItemDetailsAction { edit, delete }
+
+class _ProductItemDetailsPage extends StatelessWidget {
+  const _ProductItemDetailsPage({
+    required this.item,
+    required this.familyName,
+    required this.supermarketName,
+    required this.formattedDateAdded,
+  });
+
+  final ProductItem item;
+  final String familyName;
+  final String supermarketName;
+  final String formattedDateAdded;
+
+  String _yesNo(bool value) => value ? 'Yes' : 'No';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Product details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () =>
+                Navigator.pop(context, _ProductItemDetailsAction.edit),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _DetailRow(label: 'Name', value: item.name),
+          _DetailRow(label: 'Family', value: familyName),
+          _DetailRow(label: 'Supermarket', value: supermarketName),
+          _DetailRow(
+              label: 'Price', value: '€${item.price.toStringAsFixed(2)}'),
+          _DetailRow(label: 'Quantity', value: item.quantity.toString()),
+          _DetailRow(label: 'Unit type', value: item.unitType),
+          _DetailRow(
+            label: 'Price per quantity',
+            value: item.pricePerQuantity.toStringAsFixed(2),
+          ),
+          _DetailRow(label: 'Date added', value: formattedDateAdded),
+          _DetailRow(label: 'Active', value: _yesNo(item.isActive)),
+          _DetailRow(
+              label: 'Current price', value: _yesNo(item.isCurrentPrice)),
+          _DetailRow(
+            label: 'Barcode',
+            value: (item.barcode == null || item.barcode!.trim().isEmpty)
+                ? '—'
+                : item.barcode!,
+          ),
+          const SizedBox(height: 24),
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final shouldDelete = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete product?'),
+                  content:
+                      const Text('This will mark the product as inactive.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (shouldDelete == true && context.mounted) {
+                Navigator.pop(context, _ProductItemDetailsAction.delete);
+              }
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }
