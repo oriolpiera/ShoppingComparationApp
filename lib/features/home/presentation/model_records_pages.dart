@@ -709,7 +709,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(item.name),
+                          Text('${item.name} · $supermarketName'),
                           _buildMetricsText(context, item),
                         ],
                       ),
