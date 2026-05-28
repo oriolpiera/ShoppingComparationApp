@@ -58,6 +58,7 @@ Publishing a GitHub Release triggers `.github/workflows/release-android-apk.yml`
 - `flutter create . --platforms android`
 - `flutter build apk --release`
 - Upload `build/app/outputs/flutter-apk/*.apk` as an Actions artifact
+- When triggered by a published GitHub Release, attach the APK to the Release assets
 
 ### Signing strategy
 

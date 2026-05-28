@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: release-android-${{ github.ref }}
@@ -51,3 +51,9 @@ jobs:
           name: android-release-apk
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
+
+      - name: Attach APK to GitHub Release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/*.apk
