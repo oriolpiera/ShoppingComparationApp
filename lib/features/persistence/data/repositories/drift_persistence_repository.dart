@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
+import '../../domain/entities/optimized_shopping.dart';
 import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/shopping_list_entry.dart';
@@ -144,5 +145,71 @@ class DriftPersistenceRepository implements PersistenceRepository {
         productItemId: Value(entry.productItemId),
       ),
     );
+  }
+
+  @override
+  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async {
+    final shoppingList = await getShoppingList();
+    final families = await getProductFamilies(onlyActive: true);
+    final supermarkets = await getSupermarkets(onlyActive: true);
+    final items = await getProductItems(onlyCurrentPrice: true);
+
+    final familyNameById = {
+      for (final family in families)
+        if (family.id != null) family.id!: family.name,
+    };
+    final supermarketNameById = {
+      for (final market in supermarkets)
+        if (market.id != null) market.id!: market.name,
+    };
+
+    final cheapestByFamily = <int, ProductItem>{};
+    for (final item
+        in items.where((item) => item.isActive && item.isCurrentPrice)) {
+      final current = cheapestByFamily[item.productFamilyId];
+      if (current == null || item.pricePerQuantity < current.pricePerQuantity) {
+        cheapestByFamily[item.productFamilyId] = item;
+      }
+    }
+
+    final groups = <int, List<OptimizedShoppingItem>>{};
+
+    for (final entry in shoppingList) {
+      final bestItem = cheapestByFamily[entry.productFamilyId];
+      if (bestItem == null) {
+        continue;
+      }
+
+      final marketId = bestItem.supermarketId;
+      final marketName = supermarketNameById[marketId];
+      final familyName = familyNameById[entry.productFamilyId];
+      if (marketName == null || familyName == null) {
+        continue;
+      }
+
+      groups.putIfAbsent(marketId, () => []).add(
+            OptimizedShoppingItem(
+              shoppingListEntryId: entry.id ?? -1,
+              productFamilyId: entry.productFamilyId,
+              productFamilyName: familyName,
+              quantity: entry.quantity,
+              sourceProductItemId: entry.productItemId,
+              bestItem: bestItem,
+            ),
+          );
+    }
+
+    final result = groups.entries
+        .map(
+          (entry) => OptimizedShoppingGroup(
+            supermarketId: entry.key,
+            supermarketName: supermarketNameById[entry.key]!,
+            items: entry.value,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.supermarketName.compareTo(b.supermarketName));
+
+    return result;
   }
 }

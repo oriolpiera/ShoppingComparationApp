@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../persistence/domain/entities/optimized_shopping.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
@@ -470,18 +471,117 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
   }
 }
 
-class ShoppingListPage extends StatelessWidget {
+class ShoppingListPage extends StatefulWidget {
   const ShoppingListPage({super.key, required this.repository});
 
   final PersistenceRepository repository;
 
   @override
+  State<ShoppingListPage> createState() => _ShoppingListPageState();
+}
+
+class _ShoppingListPageState extends State<ShoppingListPage> {
+  late Future<List<OptimizedShoppingGroup>> _future;
+  final Set<int> _boughtEntries = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<OptimizedShoppingGroup>> _load() {
+    return widget.repository.getOptimizedShoppingList();
+  }
+
+  void _refresh() => setState(() => _future = _load());
+
+  Future<void> _updateQuantity(OptimizedShoppingItem item, double delta) async {
+    final next = (item.quantity + delta).clamp(0, 9999).toDouble();
+    await widget.repository.saveShoppingListEntry(
+      ShoppingListEntry(
+        id: item.shoppingListEntryId < 0 ? null : item.shoppingListEntryId,
+        productFamilyId: item.productFamilyId,
+        productItemId: item.sourceProductItemId,
+        quantity: next,
+      ),
+    );
+    _refresh();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return _RecordsScaffold<ShoppingListEntry>(
-      title: 'Shopping list',
-      future: repository.getShoppingList(),
-      itemBuilder: (item) =>
-          'ID ${item.id ?? '-'} · family ${item.productFamilyId} · item ${item.productItemId} · qty ${item.quantity}',
+    return Scaffold(
+      appBar: AppBar(title: const Text('Shopping list')),
+      body: FutureBuilder<List<OptimizedShoppingGroup>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final groups = snapshot.data ?? const [];
+          if (groups.isEmpty) {
+            return const Center(child: Text('No optimized items yet'));
+          }
+
+          return ListView.builder(
+            itemCount: groups.length,
+            itemBuilder: (context, groupIndex) {
+              final group = groups[groupIndex];
+              return ExpansionTile(
+                initiallyExpanded: true,
+                title: Text(group.supermarketName),
+                subtitle: Text(
+                  'Estimated total: €${group.totalEstimatedCost.toStringAsFixed(2)}',
+                ),
+                children: group.items.map((item) {
+                  final checked =
+                      _boughtEntries.contains(item.shoppingListEntryId);
+                  return ListTile(
+                    dense: true,
+                    leading: Checkbox(
+                      value: checked,
+                      onChanged: (value) {
+                        setState(() {
+                          if (value == true) {
+                            _boughtEntries.add(item.shoppingListEntryId);
+                          } else {
+                            _boughtEntries.remove(item.shoppingListEntryId);
+                          }
+                        });
+                      },
+                    ),
+                    title: Text(item.productFamilyName),
+                    subtitle: Text(
+                      '${item.bestItem.name} · €/u ${item.bestItem.pricePerQuantity.toStringAsFixed(2)} · est. €${item.estimatedCost.toStringAsFixed(2)}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _updateQuantity(item, -1),
+                          icon: const Icon(Icons.remove),
+                        ),
+                        Text(item.quantity.toStringAsFixed(0)),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _updateQuantity(item, 1),
+                          icon: const Icon(Icons.add),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

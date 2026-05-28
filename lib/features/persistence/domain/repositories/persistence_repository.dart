@@ -1,3 +1,4 @@
+import '../entities/optimized_shopping.dart';
 import '../entities/product_family.dart';
 import '../entities/product_item.dart';
 import '../entities/shopping_list_entry.dart';
@@ -19,4 +20,5 @@ abstract class PersistenceRepository {
 
   Future<List<ShoppingListEntry>> getShoppingList();
   Future<int> saveShoppingListEntry(ShoppingListEntry entry);
+  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList();
 }
