@@ -733,6 +733,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         name.isNotEmpty &&
         familyName.isNotEmpty &&
         price != null &&
+        price > 0 &&
         quantity != null &&
         quantity > 0) {
       if (item == null) {
