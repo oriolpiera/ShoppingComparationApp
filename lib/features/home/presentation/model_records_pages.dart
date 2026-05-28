@@ -496,14 +496,15 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   void _refresh() => setState(() => _future = _load());
 
-  Future<void> _updateQuantity(OptimizedShoppingItem item, double delta) async {
-    final next = (item.quantity + delta).clamp(0, 9999).toDouble();
+  Future<void> _updateQuantity(OptimizedShoppingItem item, int delta) async {
+    final currentUnits = item.quantity.round();
+    final nextUnits = (currentUnits + delta).clamp(0, 9999);
     await widget.repository.saveShoppingListEntry(
       ShoppingListEntry(
         id: item.shoppingListEntryId < 0 ? null : item.shoppingListEntryId,
         productFamilyId: item.productFamilyId,
         productItemId: item.sourceProductItemId,
-        quantity: next,
+        quantity: nextUnits.toDouble(),
       ),
     );
     _refresh();
@@ -541,6 +542,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                 children: group.items.map((item) {
                   final checked =
                       _boughtEntries.contains(item.shoppingListEntryId);
+                  final units = item.quantity.round();
                   return ListTile(
                     dense: true,
                     leading: Checkbox(
@@ -564,10 +566,12 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                       children: [
                         IconButton(
                           visualDensity: VisualDensity.compact,
-                          onPressed: () => _updateQuantity(item, -1),
+                          onPressed: units <= 0
+                              ? null
+                              : () => _updateQuantity(item, -1),
                           icon: const Icon(Icons.remove),
                         ),
-                        Text(item.quantity.toStringAsFixed(0)),
+                        Text('$units'),
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           onPressed: () => _updateQuantity(item, 1),
