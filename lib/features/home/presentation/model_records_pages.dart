@@ -36,7 +36,11 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
     return widget.repository.getSupermarkets(onlyActive: true);
   }
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +235,11 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     return _ProductContext(items, families, supermarkets);
   }
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -494,7 +502,11 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     return widget.repository.getOptimizedShoppingList();
   }
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   Future<void> _updateQuantity(OptimizedShoppingItem item, int delta) async {
     final currentUnits = item.quantity.round();
