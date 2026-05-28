@@ -277,8 +277,10 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                         final action = await Navigator.of(context)
                             .push<_ProductFamilyDetailsAction>(
                           MaterialPageRoute(
-                            builder: (_) =>
-                                _ProductFamilyDetailsPage(item: item),
+                            builder: (_) => _ProductFamilyDetailsPage(
+                              item: item,
+                              repository: widget.repository,
+                            ),
                           ),
                         );
 
@@ -287,7 +289,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                         if (action == _ProductFamilyDetailsAction.edit) {
                           await _openForm(item);
                         } else if (action ==
-                            _ProductFamilyDetailsAction.delete) {
+                            _ProductFamilyDetailsAction.deleteKeepItems) {
                           await widget.repository.saveProductFamily(
                             ProductFamily(
                               id: item.id,
@@ -299,6 +301,49 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Product family deleted'),
+                              ),
+                            );
+                          }
+                        } else if (action ==
+                            _ProductFamilyDetailsAction
+                                .deleteAndInactivateItems) {
+                          final allItems =
+                              await widget.repository.getProductItems(
+                            productFamilyId: item.id,
+                            onlyCurrentPrice: false,
+                          );
+                          for (final productItem
+                              in allItems.where((p) => p.isActive)) {
+                            await widget.repository.saveProductItem(
+                              ProductItem(
+                                id: productItem.id,
+                                name: productItem.name,
+                                isActive: false,
+                                productFamilyId: productItem.productFamilyId,
+                                supermarketId: productItem.supermarketId,
+                                price: productItem.price,
+                                quantity: productItem.quantity,
+                                unitType: productItem.unitType,
+                                pricePerQuantity: productItem.pricePerQuantity,
+                                dateAdded: productItem.dateAdded,
+                                isCurrentPrice: productItem.isCurrentPrice,
+                                barcode: productItem.barcode,
+                              ),
+                            );
+                          }
+                          await widget.repository.saveProductFamily(
+                            ProductFamily(
+                              id: item.id,
+                              name: item.name,
+                              isActive: false,
+                            ),
+                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Product family and active Product Items deleted',
+                                ),
                               ),
                             );
                           }
@@ -425,12 +470,178 @@ class _SupermarketDetailsPage extends StatelessWidget {
   }
 }
 
-enum _ProductFamilyDetailsAction { edit, delete }
+enum _ProductFamilyDetailsAction {
+  edit,
+  deleteKeepItems,
+  deleteAndInactivateItems,
+}
 
-class _ProductFamilyDetailsPage extends StatelessWidget {
-  const _ProductFamilyDetailsPage({required this.item});
+class _ProductFamilyDetailsPage extends StatefulWidget {
+  const _ProductFamilyDetailsPage({
+    required this.item,
+    required this.repository,
+  });
 
   final ProductFamily item;
+  final PersistenceRepository repository;
+
+  @override
+  State<_ProductFamilyDetailsPage> createState() =>
+      _ProductFamilyDetailsPageState();
+}
+
+class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
+  late Future<_ProductFamilyDetailsData> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<_ProductFamilyDetailsData> _load() async {
+    final familyId = widget.item.id;
+    if (familyId == null) {
+      return const _ProductFamilyDetailsData([], {}, 0);
+    }
+
+    final items = await widget.repository.getProductItems(
+      productFamilyId: familyId,
+      onlyCurrentPrice: false,
+    );
+    final supermarkets = await widget.repository.getSupermarkets(
+      onlyActive: false,
+    );
+    final supermarketById = {
+      for (final s in supermarkets)
+        if (s.id != null) s.id!: s,
+    };
+
+    final activeItemCount = items.where((i) => i.isActive).length;
+    return _ProductFamilyDetailsData(items, supermarketById, activeItemCount);
+  }
+
+  Future<void> _openItemDetails(
+    ProductItem item,
+    String familyName,
+    String supermarketName,
+  ) async {
+    final action = await Navigator.of(context).push<_ProductItemDetailsAction>(
+      MaterialPageRoute(
+        builder: (_) => _ProductItemDetailsPage(
+          item: item,
+          familyName: familyName,
+          supermarketName: supermarketName,
+          formattedDateAdded: _formatDateAdded(context, item.dateAdded),
+        ),
+      ),
+    );
+
+    if (!mounted || action != _ProductItemDetailsAction.edit) return;
+
+    await _editProductItem(item);
+    setState(() => _future = _load());
+  }
+
+  Future<void> _editProductItem(ProductItem item) async {
+    final nameController = TextEditingController(text: item.name);
+    final priceController = TextEditingController(text: item.price.toString());
+    final quantityController = TextEditingController(
+      text: item.quantity.toString(),
+    );
+    var unitType = item.unitType.trim().toLowerCase() == 'l' ? 'L' : 'kg';
+
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Product Item'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                ),
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Price'),
+                ),
+                TextField(
+                  controller: quantityController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Quantity'),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: unitType,
+                  decoration: const InputDecoration(labelText: 'Unit type'),
+                  items: const [
+                    DropdownMenuItem(value: 'kg', child: Text('kg')),
+                    DropdownMenuItem(value: 'L', child: Text('L')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => unitType = value);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final name = nameController.text.trim();
+    final price = double.tryParse(priceController.text.trim());
+    final quantity = double.tryParse(quantityController.text.trim());
+
+    if (save == true &&
+        name.isNotEmpty &&
+        price != null &&
+        price > 0 &&
+        quantity != null &&
+        quantity > 0) {
+      await widget.repository.saveProductItem(
+        ProductItem(
+          id: item.id,
+          name: name,
+          isActive: item.isActive,
+          productFamilyId: item.productFamilyId,
+          supermarketId: item.supermarketId,
+          price: price,
+          quantity: quantity,
+          unitType: unitType,
+          pricePerQuantity: price / quantity,
+          dateAdded: item.dateAdded,
+          isCurrentPrice: item.isCurrentPrice,
+          barcode: item.barcode,
+        ),
+      );
+    }
+  }
+
+  String _formatDateAdded(BuildContext context, DateTime dateTime) {
+    final localizations = MaterialLocalizations.of(context);
+    final date = localizations.formatShortDate(dateTime);
+    final time = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime),
+      alwaysUse24HourFormat: true,
+    );
+    return '$date $time';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -445,43 +656,230 @@ class _ProductFamilyDetailsPage extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _DetailRow(label: 'Name', value: item.name),
-          _DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
-          const SizedBox(height: 24),
-          FilledButton.tonalIcon(
-            onPressed: () async {
-              final shouldDelete = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete product family?'),
-                  content: const Text(
-                      'This will mark the product family as inactive.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
+      body: FutureBuilder<_ProductFamilyDetailsData>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final data =
+              snapshot.data ?? const _ProductFamilyDetailsData([], {}, 0);
+          final comparisonItems = data.items
+              .where((i) => i.isCurrentPrice && i.isActive)
+              .toList()
+            ..sort((a, b) {
+              final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
+              if (byUnit != 0) return byUnit;
+              final byPrice = a.price.compareTo(b.price);
+              if (byPrice != 0) return byPrice;
+              final marketA = data.supermarketById[a.supermarketId]?.name ?? '';
+              final marketB = data.supermarketById[b.supermarketId]?.name ?? '';
+              return marketA.toLowerCase().compareTo(marketB.toLowerCase());
+            });
+
+          final bestUnitPrice = comparisonItems.isEmpty
+              ? null
+              : comparisonItems.first.pricePerQuantity;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _DetailRow(label: 'Name', value: widget.item.name),
+              _DetailRow(
+                label: 'Active',
+                value: widget.item.isActive ? 'Yes' : 'No',
+              ),
+              _DetailRow(
+                label: 'Current active items count',
+                value: '${comparisonItems.length}',
+              ),
+              _DetailRow(
+                label: 'Best unit price',
+                value: bestUnitPrice == null
+                    ? '—'
+                    : bestUnitPrice.toStringAsFixed(2),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Product Items comparison',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              if (comparisonItems.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('No current active Product Items'),
+                )
+              else
+                ...comparisonItems.map((productItem) {
+                  final supermarket =
+                      data.supermarketById[productItem.supermarketId];
+                  final supermarketName =
+                      supermarket?.name ?? 'Unknown supermarket';
+                  final inactiveSupermarket =
+                      supermarket == null || !supermarket.isActive;
+                  final unitType =
+                      productItem.unitType.trim().toLowerCase() == 'l'
+                          ? 'L'
+                          : 'kg';
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '$supermarketName · ${productItem.name}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (inactiveSupermarket)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                            ),
+                            child: const Text(
+                              'inactive supermarket',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                      ],
                     ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete'),
+                    subtitle: Text(
+                      '€${productItem.price.toStringAsFixed(2)} · ${productItem.quantity} $unitType · ${productItem.pricePerQuantity.toStringAsFixed(2)} €/$unitType',
                     ),
-                  ],
-                ),
-              );
-              if (shouldDelete == true && context.mounted) {
-                Navigator.pop(context, _ProductFamilyDetailsAction.delete);
-              }
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
+                    onTap: () => _openItemDetails(
+                      productItem,
+                      widget.item.name,
+                      supermarketName,
+                    ),
+                  );
+                }),
+              const SizedBox(height: 24),
+              FilledButton.tonalIcon(
+                onPressed: () async {
+                  final activeCount = data.activeItemCount;
+                  if (activeCount > 0) {
+                    final shouldDelete = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete product family?'),
+                        content: Text(
+                          'This family has $activeCount active Product Items. Inactivating it may hide it from active family lists.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldDelete != true || !context.mounted) return;
+
+                    final action =
+                        await showDialog<_ProductFamilyDetailsAction>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Choose Product Items action'),
+                        content: const Text(
+                          'Choose what to do with active Product Items.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () => Navigator.pop(
+                              context,
+                              _ProductFamilyDetailsAction.deleteKeepItems,
+                            ),
+                            child: const Text('Keep active items'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(
+                              context,
+                              _ProductFamilyDetailsAction
+                                  .deleteAndInactivateItems,
+                            ),
+                            child: const Text('Inactivate all active items'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (action == null || !context.mounted) return;
+                    Navigator.pop(context, action);
+                    return;
+                  }
+
+                  final shouldDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete product family?'),
+                      content: const Text(
+                        'This will mark the product family as inactive.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (shouldDelete == true && context.mounted) {
+                    Navigator.pop(
+                      context,
+                      _ProductFamilyDetailsAction.deleteKeepItems,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+}
+
+class _ProductFamilyDetailsData {
+  const _ProductFamilyDetailsData(
+    this.items,
+    this.supermarketById,
+    this.activeItemCount,
+  );
+
+  final List<ProductItem> items;
+  final Map<int, Supermarket> supermarketById;
+  final int activeItemCount;
 }
 
 class ProductItemsPage extends StatefulWidget {
