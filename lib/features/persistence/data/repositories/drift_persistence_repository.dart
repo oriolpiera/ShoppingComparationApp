@@ -22,7 +22,12 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final rows = await dao.getSupermarkets(onlyActive: onlyActive);
     return rows
         .map(
-          (row) => Supermarket(id: row.id, name: row.nom, address: row.adreca),
+          (row) => Supermarket(
+            id: row.id,
+            name: row.nom,
+            address: row.adreca,
+            isActive: row.actiu,
+          ),
         )
         .toList();
   }
@@ -36,6 +41,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
             : Value(supermarket.id!),
         nom: Value(supermarket.name),
         adreca: Value(supermarket.address),
+        actiu: Value(supermarket.isActive),
       ),
     );
   }
