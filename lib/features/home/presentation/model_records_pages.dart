@@ -438,9 +438,39 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     return 'kg';
   }
 
-  String _metricsLine(ProductItem item) {
+  RichText _buildMetricsText(BuildContext context, ProductItem item) {
     final unitType = _normalizedUnitType(item.unitType);
-    return '€${item.price.toStringAsFixed(2)} · ${item.quantity} $unitType · ${item.pricePerQuantity.toStringAsFixed(2)} €/$unitType';
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return RichText(
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '€${item.price.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          TextSpan(
+            text: ' · ${item.quantity} $unitType',
+            style: TextStyle(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          TextSpan(
+            text: ' · ${item.pricePerQuantity.toStringAsFixed(2)} €/$unitType',
+            style: TextStyle(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -523,7 +553,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(item.name),
-                          Text(_metricsLine(item)),
+                          _buildMetricsText(context, item),
                         ],
                       ),
                       trailing: Row(
