@@ -16,6 +16,10 @@ _Avoid_: group, type
 A concrete priced product captured in a supermarket and linked to one Product Family.
 _Avoid_: sku record, row
 
+**Unit Type**:
+The measurement unit used to express quantity and unit price for a Product Item; allowed values are `kg` and `L`.
+_Avoid_: unityType, free-text unit
+
 **On-the-fly Family Creation**:
 Creating a new Product Family during Product Item capture when no matching family exists.
 _Avoid_: preseed-only families
@@ -40,6 +44,7 @@ _Avoid_: session-only UI state
 
 - A **Supermarket Visit** happens at exactly one **Supermarket**
 - A **Product Item** belongs to exactly one **Product Family**
+- A **Product Item** uses exactly one **Unit Type** (`kg` or `L`) for quantity and unit-price display
 - **On-the-fly Family Creation** may occur before saving a **Product Item**
 - A **Product Family** is looked up by **Family Normalized Key** before creation
 - **Reuse-first Family Matching** prevents creating multiple families for the same normalized meaning
@@ -58,3 +63,4 @@ _Avoid_: session-only UI state
 - "anar al supermercat" could mean route optimization or price capture; resolved: here it means **Supermarket Visit** for quick price capture.
 - "family name equality" was ambiguous (raw text vs normalized); resolved: matching uses **Family Normalized Key** and follows **Reuse-first Family Matching**.
 - "quick add location" was open (new page vs existing page); resolved: first iteration lives in existing **Product Items** page.
+- "unityType" vs "unitType" naming was ambiguous; resolved canonical term: **Unit Type**.

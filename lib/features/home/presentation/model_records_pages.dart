@@ -432,6 +432,17 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     });
   }
 
+  String _normalizedUnitType(String unitType) {
+    final value = unitType.trim().toLowerCase();
+    if (value == 'l') return 'L';
+    return 'kg';
+  }
+
+  String _metricsLine(ProductItem item) {
+    final unitType = _normalizedUnitType(item.unitType);
+    return '€${item.price.toStringAsFixed(2)} · ${item.quantity} $unitType · ${item.pricePerQuantity.toStringAsFixed(2)} €/$unitType';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -466,12 +477,33 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   return const Center(child: Text('No data'));
                 }
 
+                final familyNameById = {
+                  for (final family in data.families)
+                    if (family.id != null) family.id!: family.name,
+                };
+
                 final query = _queryController.text.toLowerCase().trim();
                 final filtered = data.items
                     .where((i) => i.isActive)
-                    .where((i) =>
-                        query.isEmpty || i.name.toLowerCase().contains(query))
-                    .toList();
+                    .map((i) => (
+                          item: i,
+                          familyName: familyNameById[i.productFamilyId] ??
+                              'Unknown family',
+                        ))
+                    .where((entry) =>
+                        query.isEmpty ||
+                        entry.item.name.toLowerCase().contains(query) ||
+                        entry.familyName.toLowerCase().contains(query))
+                    .toList()
+                  ..sort((a, b) {
+                    final byFamily = a.familyName.toLowerCase().compareTo(
+                          b.familyName.toLowerCase(),
+                        );
+                    if (byFamily != 0) return byFamily;
+                    return a.item.name.toLowerCase().compareTo(
+                          b.item.name.toLowerCase(),
+                        );
+                  });
 
                 if (filtered.isEmpty) {
                   return const Center(child: Text('No products'));
@@ -481,12 +513,18 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final item = filtered[index];
+                    final entry = filtered[index];
+                    final item = entry.item;
                     return ListTile(
                       dense: true,
-                      title: Text(item.name),
-                      subtitle: Text(
-                        '€${item.price.toStringAsFixed(2)} · ${item.quantity} ${item.unitType} · €/u ${item.pricePerQuantity.toStringAsFixed(2)}',
+                      title: Text(entry.familyName),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(item.name),
+                          Text(_metricsLine(item)),
+                        ],
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -564,8 +602,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     final quantityController = TextEditingController(
       text: item == null ? '' : item.quantity.toString(),
     );
-    final unitTypeController =
-        TextEditingController(text: item?.unitType ?? 'kg');
+    var unitType = _normalizedUnitType(item?.unitType ?? 'kg');
     final familyController = TextEditingController(
       text: item == null ? '' : (familyById[item.productFamilyId]?.name ?? ''),
     );
@@ -658,9 +695,18 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'Quantity'),
                 ),
-                TextField(
-                  controller: unitTypeController,
+                DropdownButtonFormField<String>(
+                  initialValue: unitType,
                   decoration: const InputDecoration(labelText: 'Unit type'),
+                  items: const [
+                    DropdownMenuItem(value: 'kg', child: Text('kg')),
+                    DropdownMenuItem(value: 'L', child: Text('L')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => unitType = value);
+                    }
+                  },
                 ),
               ],
             ),
@@ -683,14 +729,13 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     final familyName = familyController.text.trim();
     final price = double.tryParse(priceController.text.trim());
     final quantity = double.tryParse(quantityController.text.trim());
-    final unitType = unitTypeController.text.trim();
-
     if (save == true &&
         name.isNotEmpty &&
         familyName.isNotEmpty &&
         price != null &&
+        price > 0 &&
         quantity != null &&
-        unitType.isNotEmpty) {
+        quantity > 0) {
       if (item == null) {
         await widget.repository.saveQuickProductItem(
           productName: name,
