@@ -47,7 +47,7 @@ class DemoSeedService {
       const ProductFamily(name: 'Civada'),
     );
 
-    final itemXoco50Lidl = await repository.saveProductItem(
+    await repository.saveProductItem(
       ProductItem(
         name: 'Xocolata 50% 100g',
         productFamilyId: familyXoco50,
@@ -77,7 +77,7 @@ class DemoSeedService {
       ),
     );
 
-    final itemCivadaLidl = await repository.saveProductItem(
+    await repository.saveProductItem(
       ProductItem(
         name: 'Civada 1kg',
         productFamilyId: familiCivada,
@@ -111,14 +111,12 @@ class DemoSeedService {
       ShoppingListEntry(
         productFamilyId: familyXoco50,
         quantity: 2,
-        productItemId: itemXoco50Lidl,
       ),
     );
     await repository.saveShoppingListEntry(
       ShoppingListEntry(
         productFamilyId: familiCivada,
         quantity: 1,
-        productItemId: itemCivadaLidl,
       ),
     );
   }

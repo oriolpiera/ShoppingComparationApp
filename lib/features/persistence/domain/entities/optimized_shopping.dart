@@ -4,8 +4,7 @@ class OptimizedShoppingItem {
   final int shoppingListEntryId;
   final int productFamilyId;
   final String productFamilyName;
-  final double quantity;
-  final int sourceProductItemId;
+  final int quantity;
   final ProductItem bestItem;
 
   const OptimizedShoppingItem({
@@ -13,7 +12,6 @@ class OptimizedShoppingItem {
     required this.productFamilyId,
     required this.productFamilyName,
     required this.quantity,
-    required this.sourceProductItemId,
     required this.bestItem,
   });
 

@@ -421,10 +421,10 @@ static const VerificationMeta _productFamilyIdMeta = const VerificationMeta('pro
 late final GeneratedColumn<int> productFamilyId = GeneratedColumn<int>('product_family_id', aliasedName, false, type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES product_family (id)'));
 static const VerificationMeta _quantityMeta = const VerificationMeta('quantity');
 @override
-late final GeneratedColumn<double> quantity = GeneratedColumn<double>('quantity', aliasedName, false, type: DriftSqlType.double, requiredDuringInsert: true);
+late final GeneratedColumn<int> quantity = GeneratedColumn<int>('quantity', aliasedName, false, type: DriftSqlType.int, requiredDuringInsert: true);
 static const VerificationMeta _productItemIdMeta = const VerificationMeta('productItemId');
 @override
-late final GeneratedColumn<int> productItemId = GeneratedColumn<int>('product_item_id', aliasedName, false, type: DriftSqlType.int, requiredDuringInsert: true, defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES product_item (id)'));
+late final GeneratedColumn<int> productItemId = GeneratedColumn<int>('product_item_id', aliasedName, true, type: DriftSqlType.int, requiredDuringInsert: false, defaultConstraints: GeneratedColumn.constraintIsAlways('REFERENCES product_item (id)'));
 @override
 List<GeneratedColumn> get $columns => [id, productFamilyId, quantity, productItemId];
 @override
@@ -446,15 +446,12 @@ context.handle(_quantityMeta, quantity.isAcceptableOrUnknown(data['quantity']!, 
 context.missing(_quantityMeta);
 }
 if (data.containsKey('product_item_id')) {
-context.handle(_productItemIdMeta, productItemId.isAcceptableOrUnknown(data['product_item_id']!, _productItemIdMeta));} else if (isInserting) {
-context.missing(_productItemIdMeta);
-}
-return context;
+context.handle(_productItemIdMeta, productItemId.isAcceptableOrUnknown(data['product_item_id']!, _productItemIdMeta));}return context;
 }
 @override
 Set<GeneratedColumn> get $primaryKey => {id};
 @override ShoppingListTableData map(Map<String, dynamic> data, {String? tablePrefix})  {
-final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';return ShoppingListTableData(id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!, productFamilyId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}product_family_id'])!, quantity: attachedDatabase.typeMapping.read(DriftSqlType.double, data['${effectivePrefix}quantity'])!, productItemId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}product_item_id'])!, );
+final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';return ShoppingListTableData(id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!, productFamilyId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}product_family_id'])!, quantity: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}quantity'])!, productItemId: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}product_item_id']), );
 }
 @override
 $ShoppingListTableTable createAlias(String alias) {
@@ -462,26 +459,26 @@ return $ShoppingListTableTable(attachedDatabase, alias);}}class ShoppingListTabl
 {
 final int id;
 final int productFamilyId;
-final double quantity;
-final int productItemId;
-const ShoppingListTableData({required this.id, required this.productFamilyId, required this.quantity, required this.productItemId});@override
+final int quantity;
+final int? productItemId;
+const ShoppingListTableData({required this.id, required this.productFamilyId, required this.quantity, this.productItemId});@override
 Map<String, Expression> toColumns(bool nullToAbsent) {
 final map = <String, Expression> {};map['id'] = Variable<int>(id);
 map['product_family_id'] = Variable<int>(productFamilyId);
-map['quantity'] = Variable<double>(quantity);
-map['product_item_id'] = Variable<int>(productItemId);
-return map; 
+map['quantity'] = Variable<int>(quantity);
+if (!nullToAbsent || productItemId != null){map['product_item_id'] = Variable<int>(productItemId);
+}return map; 
 }
 ShoppingListTableCompanion toCompanion(bool nullToAbsent) {
-return ShoppingListTableCompanion(id: Value(id),productFamilyId: Value(productFamilyId),quantity: Value(quantity),productItemId: Value(productItemId),);
+return ShoppingListTableCompanion(id: Value(id),productFamilyId: Value(productFamilyId),quantity: Value(quantity),productItemId: productItemId == null && nullToAbsent ? const Value.absent() : Value(productItemId),);
 }
 factory ShoppingListTableData.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
 serializer ??= driftRuntimeOptions.defaultSerializer;
-return ShoppingListTableData(id: serializer.fromJson<int>(json['id']),productFamilyId: serializer.fromJson<int>(json['productFamilyId']),quantity: serializer.fromJson<double>(json['quantity']),productItemId: serializer.fromJson<int>(json['productItemId']),);}
+return ShoppingListTableData(id: serializer.fromJson<int>(json['id']),productFamilyId: serializer.fromJson<int>(json['productFamilyId']),quantity: serializer.fromJson<int>(json['quantity']),productItemId: serializer.fromJson<int?>(json['productItemId']),);}
 @override Map<String, dynamic> toJson({ValueSerializer? serializer}) {
 serializer ??= driftRuntimeOptions.defaultSerializer;
 return <String, dynamic>{
-'id': serializer.toJson<int>(id),'productFamilyId': serializer.toJson<int>(productFamilyId),'quantity': serializer.toJson<double>(quantity),'productItemId': serializer.toJson<int>(productItemId),};}ShoppingListTableData copyWith({int? id,int? productFamilyId,double? quantity,int? productItemId}) => ShoppingListTableData(id: id ?? this.id,productFamilyId: productFamilyId ?? this.productFamilyId,quantity: quantity ?? this.quantity,productItemId: productItemId ?? this.productItemId,);ShoppingListTableData copyWithCompanion(ShoppingListTableCompanion data) {
+'id': serializer.toJson<int>(id),'productFamilyId': serializer.toJson<int>(productFamilyId),'quantity': serializer.toJson<int>(quantity),'productItemId': serializer.toJson<int?>(productItemId),};}ShoppingListTableData copyWith({int? id,int? productFamilyId,int? quantity,Value<int?> productItemId = const Value.absent()}) => ShoppingListTableData(id: id ?? this.id,productFamilyId: productFamilyId ?? this.productFamilyId,quantity: quantity ?? this.quantity,productItemId: productItemId.present ? productItemId.value : this.productItemId,);ShoppingListTableData copyWithCompanion(ShoppingListTableCompanion data) {
 return ShoppingListTableData(
 id: data.id.present ? data.id.value : this.id,productFamilyId: data.productFamilyId.present ? data.productFamilyId.value : this.productFamilyId,quantity: data.quantity.present ? data.quantity.value : this.quantity,productItemId: data.productItemId.present ? data.productItemId.value : this.productItemId,);
 }
@@ -493,17 +490,17 @@ bool operator ==(Object other) => identical(this, other) || (other is ShoppingLi
 }class ShoppingListTableCompanion extends UpdateCompanion<ShoppingListTableData> {
 final Value<int> id;
 final Value<int> productFamilyId;
-final Value<double> quantity;
-final Value<int> productItemId;
+final Value<int> quantity;
+final Value<int?> productItemId;
 const ShoppingListTableCompanion({this.id = const Value.absent(),this.productFamilyId = const Value.absent(),this.quantity = const Value.absent(),this.productItemId = const Value.absent(),});
-ShoppingListTableCompanion.insert({this.id = const Value.absent(),required int productFamilyId,required double quantity,required int productItemId,}): productFamilyId = Value(productFamilyId), quantity = Value(quantity), productItemId = Value(productItemId);
+ShoppingListTableCompanion.insert({this.id = const Value.absent(),required int productFamilyId,required int quantity,this.productItemId = const Value.absent(),}): productFamilyId = Value(productFamilyId), quantity = Value(quantity);
 static Insertable<ShoppingListTableData> custom({Expression<int>? id, 
 Expression<int>? productFamilyId, 
-Expression<double>? quantity, 
+Expression<int>? quantity, 
 Expression<int>? productItemId, 
 }) {
 return RawValuesInsertable({if (id != null)'id': id,if (productFamilyId != null)'product_family_id': productFamilyId,if (quantity != null)'quantity': quantity,if (productItemId != null)'product_item_id': productItemId,});
-}ShoppingListTableCompanion copyWith({Value<int>? id, Value<int>? productFamilyId, Value<double>? quantity, Value<int>? productItemId}) {
+}ShoppingListTableCompanion copyWith({Value<int>? id, Value<int>? productFamilyId, Value<int>? quantity, Value<int?>? productItemId}) {
 return ShoppingListTableCompanion(id: id ?? this.id,productFamilyId: productFamilyId ?? this.productFamilyId,quantity: quantity ?? this.quantity,productItemId: productItemId ?? this.productItemId,);
 }
 @override
@@ -513,7 +510,7 @@ map['id'] = Variable<int>(id.value);}
 if (productFamilyId.present) {
 map['product_family_id'] = Variable<int>(productFamilyId.value);}
 if (quantity.present) {
-map['quantity'] = Variable<double>(quantity.value);}
+map['quantity'] = Variable<int>(quantity.value);}
 if (productItemId.present) {
 map['product_item_id'] = Variable<int>(productItemId.value);}
 return map; 
@@ -1521,8 +1518,8 @@ GeneratedColumn<String> get barcode => $composableBuilder(
     (ProductItemTableData,$$ProductItemTableTableReferences),
     ProductItemTableData,
     PrefetchHooks Function({bool productFamilyId,bool supermarketId,bool shoppingListTableRefs})
-    >;typedef $$ShoppingListTableTableCreateCompanionBuilder = ShoppingListTableCompanion Function({Value<int> id,required int productFamilyId,required double quantity,required int productItemId,});
-typedef $$ShoppingListTableTableUpdateCompanionBuilder = ShoppingListTableCompanion Function({Value<int> id,Value<int> productFamilyId,Value<double> quantity,Value<int> productItemId,});
+    >;typedef $$ShoppingListTableTableCreateCompanionBuilder = ShoppingListTableCompanion Function({Value<int> id,required int productFamilyId,required int quantity,Value<int?> productItemId,});
+typedef $$ShoppingListTableTableUpdateCompanionBuilder = ShoppingListTableCompanion Function({Value<int> id,Value<int> productFamilyId,Value<int> quantity,Value<int?> productItemId,});
       final class $$ShoppingListTableTableReferences extends BaseReferences<
         _$AppDriftDatabase,
         $ShoppingListTableTable,
@@ -1573,7 +1570,7 @@ typedef $$ShoppingListTableTableUpdateCompanionBuilder = ShoppingListTableCompan
       builder: (column) => 
       ColumnFilters(column));
       
-ColumnFilters<double> get quantity => $composableBuilder(
+ColumnFilters<int> get quantity => $composableBuilder(
       column: $table.quantity,
       builder: (column) => 
       ColumnFilters(column));
@@ -1628,7 +1625,7 @@ ColumnFilters<double> get quantity => $composableBuilder(
       builder: (column) => 
       ColumnOrderings(column));
       
-ColumnOrderings<double> get quantity => $composableBuilder(
+ColumnOrderings<int> get quantity => $composableBuilder(
       column: $table.quantity,
       builder: (column) => 
       ColumnOrderings(column));
@@ -1682,7 +1679,7 @@ ColumnOrderings<double> get quantity => $composableBuilder(
       column: $table.id,
       builder: (column) => column);
       
-GeneratedColumn<double> get quantity => $composableBuilder(
+GeneratedColumn<int> get quantity => $composableBuilder(
       column: $table.quantity,
       builder: (column) => column);
       
@@ -1740,8 +1737,8 @@ GeneratedColumn<double> get quantity => $composableBuilder(
         createFilteringComposer: () => $$ShoppingListTableTableFilterComposer($db: db,$table:table),
         createOrderingComposer: () => $$ShoppingListTableTableOrderingComposer($db: db,$table:table),
         createComputedFieldComposer: () => $$ShoppingListTableTableAnnotationComposer($db: db,$table:table),
-        updateCompanionCallback: ({Value<int> id = const Value.absent(),Value<int> productFamilyId = const Value.absent(),Value<double> quantity = const Value.absent(),Value<int> productItemId = const Value.absent(),})=> ShoppingListTableCompanion(id: id,productFamilyId: productFamilyId,quantity: quantity,productItemId: productItemId,),
-        createCompanionCallback: ({Value<int> id = const Value.absent(),required int productFamilyId,required double quantity,required int productItemId,})=> ShoppingListTableCompanion.insert(id: id,productFamilyId: productFamilyId,quantity: quantity,productItemId: productItemId,),
+        updateCompanionCallback: ({Value<int> id = const Value.absent(),Value<int> productFamilyId = const Value.absent(),Value<int> quantity = const Value.absent(),Value<int?> productItemId = const Value.absent(),})=> ShoppingListTableCompanion(id: id,productFamilyId: productFamilyId,quantity: quantity,productItemId: productItemId,),
+        createCompanionCallback: ({Value<int> id = const Value.absent(),required int productFamilyId,required int quantity,Value<int?> productItemId = const Value.absent(),})=> ShoppingListTableCompanion.insert(id: id,productFamilyId: productFamilyId,quantity: quantity,productItemId: productItemId,),
         withReferenceMapper: (p0) => p0
               .map(
                   (e) =>

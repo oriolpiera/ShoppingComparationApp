@@ -250,5 +250,15 @@ class _FakeRepository implements PersistenceRepository {
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
 
   @override
+  Future<int> addOrIncrementShoppingListEntry({
+    required int productFamilyId,
+    int quantity = 1,
+  }) async =>
+      1;
+
+  @override
+  Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
+
+  @override
   Future<int> saveSupermarket(Supermarket supermarket) async => 1;
 }

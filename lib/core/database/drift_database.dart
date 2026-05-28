@@ -52,8 +52,9 @@ class ShoppingListTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get productFamilyId =>
       integer().references(ProductFamilyTable, #id)();
-  RealColumn get quantity => real()();
-  IntColumn get productItemId => integer().references(ProductItemTable, #id)();
+  IntColumn get quantity => integer()();
+  IntColumn get productItemId =>
+      integer().nullable().references(ProductItemTable, #id)();
 }
 
 @DriftDatabase(
@@ -68,7 +69,31 @@ class AppDriftDatabase extends _$AppDriftDatabase {
   AppDriftDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await customStatement('''
+              CREATE TABLE shopping_list_v2 (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                product_family_id INTEGER NOT NULL REFERENCES product_family (id),
+                quantity INTEGER NOT NULL,
+                product_item_id INTEGER NULL REFERENCES product_item (id)
+              );
+            ''');
+            await customStatement('''
+              INSERT INTO shopping_list_v2 (id, product_family_id, quantity, product_item_id)
+              SELECT id, product_family_id, CAST(quantity AS INTEGER), product_item_id
+              FROM shopping_list;
+            ''');
+            await customStatement('DROP TABLE shopping_list;');
+            await customStatement(
+                'ALTER TABLE shopping_list_v2 RENAME TO shopping_list;');
+          }
+        },
+      );
 }
 
 QueryExecutor _openConnection() {
