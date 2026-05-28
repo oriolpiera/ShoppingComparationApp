@@ -49,3 +49,18 @@ Pull requests trigger `.github/workflows/preview.yml`, which runs:
 Configure these repository secrets for preview deploys:
 - `FIREBASE_SERVICE_ACCOUNT`: service account JSON for Firebase Hosting deploy
 - `FIREBASE_PROJECT_ID`: Firebase project id
+
+## Android release APK workflow
+
+Publishing a GitHub Release triggers `.github/workflows/release-android-apk.yml` (also runnable manually via `workflow_dispatch`), which runs:
+- `flutter pub get`
+- `dart run build_runner build --delete-conflicting-outputs`
+- `flutter create . --platforms android`
+- `flutter build apk --release`
+- Upload `build/app/outputs/flutter-apk/*.apk` as an Actions artifact
+
+### Signing strategy
+
+Current workflow builds a release APK with the default Android signing available in CI (no custom upload keystore configured yet).
+
+If you want Play Store-ready signing, add your own keystore and `key.properties` wiring for the Android project, then provide the required secrets in GitHub Actions.
