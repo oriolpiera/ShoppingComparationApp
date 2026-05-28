@@ -72,5 +72,11 @@ class AppDriftDatabase extends _$AppDriftDatabase {
 }
 
 QueryExecutor _openConnection() {
-  return driftDatabase(name: 'shopping_comparation.sqlite');
+  return driftDatabase(
+    name: 'shopping_comparation',
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.dart.js'),
+    ),
+  );
 }

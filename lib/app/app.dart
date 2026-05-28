@@ -10,7 +10,7 @@ class PriceComparatorApp extends StatelessWidget {
     return MaterialApp(
       title: 'Price Comparator',
       theme: ThemeData(useMaterial3: true),
-      home: const HomePage(),
+      home: HomePage(),
     );
   }
 }
