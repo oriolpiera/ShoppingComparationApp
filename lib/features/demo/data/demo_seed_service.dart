@@ -24,23 +24,23 @@ class DemoSeedService {
     final supermarketLidl = await repository.saveSupermarket(
       Supermarket(name: 'Lidl', address: 'Olot'),
     );
-    final supermarketAldi = await repository.saveSupermarket(
+    await repository.saveSupermarket(
       Supermarket(name: 'Aldi', address: 'Olot'),
     );
-    final supermarketConsum = await repository.saveSupermarket(
+    await repository.saveSupermarket(
       Supermarket(name: 'Consum', address: 'Olot'),
     );
-    final supermarketCaprabo = await repository.saveSupermarket(
+    await repository.saveSupermarket(
       Supermarket(name: 'Caprabo', address: 'Les Preses'),
     );
 
-    final familyXoco80 = await repository.saveProductFamily(
+    await repository.saveProductFamily(
       const ProductFamily(name: 'Xocolata 80%'),
     );
     final familyXoco50 = await repository.saveProductFamily(
       const ProductFamily(name: 'Xocolata 50%'),
     );
-    final familyPlatan = await repository.saveProductFamily(
+    await repository.saveProductFamily(
       const ProductFamily(name: 'Plàtan canàries'),
     );
     final familiCivada = await repository.saveProductFamily(
@@ -62,7 +62,7 @@ class DemoSeedService {
       ),
     );
 
-    final itemXoco50Esclat = await repository.saveProductItem(
+    await repository.saveProductItem(
       ProductItem(
         name: 'Xocolata 50% 200g',
         productFamilyId: familyXoco50,
@@ -92,7 +92,7 @@ class DemoSeedService {
       ),
     );
 
-    final itemCivadaEsclat = await repository.saveProductItem(
+    await repository.saveProductItem(
       ProductItem(
         name: 'Civada 500g',
         productFamilyId: familiCivada,

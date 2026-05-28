@@ -232,7 +232,52 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         await widget.repository.getProductFamilies(onlyActive: true);
     final supermarkets =
         await widget.repository.getSupermarkets(onlyActive: true);
-    return _ProductContext(items, families, supermarkets);
+    final lastUsedSupermarketId =
+        await widget.repository.getLastUsedSupermarketId();
+    return _ProductContext(
+      items,
+      families,
+      supermarkets,
+      lastUsedSupermarketId,
+    );
+  }
+
+  String _normalizeText(String value) {
+    const map = {
+      'à': 'a',
+      'á': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'ã': 'a',
+      'è': 'e',
+      'é': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'ì': 'i',
+      'í': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ò': 'o',
+      'ó': 'o',
+      'ô': 'o',
+      'ö': 'o',
+      'õ': 'o',
+      'ù': 'u',
+      'ú': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
+      'ñ': 'n',
+    };
+
+    final lower = value.toLowerCase().trim();
+    final buffer = StringBuffer();
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      buffer.write(map[char] ?? char);
+    }
+
+    return buffer.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   void _refresh() {
@@ -350,16 +395,21 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
   }
 
   Future<void> _openForm(ProductItem? item, _ProductContext data) async {
-    if (data.families.isEmpty || data.supermarkets.isEmpty) {
+    if (data.supermarkets.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Need at least one family and supermarket first'),
+            content: Text('Need at least one supermarket first'),
           ),
         );
       }
       return;
     }
+
+    final familyById = {
+      for (final family in data.families)
+        if (family.id != null) family.id!: family,
+    };
 
     final nameController = TextEditingController(text: item?.name ?? '');
     final priceController = TextEditingController(
@@ -370,9 +420,18 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     );
     final unitTypeController =
         TextEditingController(text: item?.unitType ?? 'kg');
+    final familyController = TextEditingController(
+      text: item == null ? '' : (familyById[item.productFamilyId]?.name ?? ''),
+    );
 
-    var familyId = item?.productFamilyId ?? data.families.first.id!;
-    var supermarketId = item?.supermarketId ?? data.supermarkets.first.id!;
+    final activeMarketIds =
+        data.supermarkets.where((s) => s.id != null).map((s) => s.id!).toSet();
+    final fallbackMarketId = data.supermarkets.first.id!;
+    var supermarketId = item?.supermarketId ??
+        ((data.lastUsedSupermarketId != null &&
+                activeMarketIds.contains(data.lastUsedSupermarketId))
+            ? data.lastUsedSupermarketId!
+            : fallbackMarketId);
 
     final save = await showDialog<bool>(
       context: context,
@@ -387,19 +446,45 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Name'),
                 ),
-                DropdownButtonFormField<int>(
-                  initialValue: familyId,
-                  decoration: const InputDecoration(labelText: 'Family'),
-                  items: data.families
-                      .map((f) => DropdownMenuItem<int>(
-                            value: f.id,
-                            child: Text(f.name),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setDialogState(() => familyId = value);
+                Autocomplete<String>(
+                  optionsBuilder: (textEditingValue) {
+                    final query = textEditingValue.text.trim();
+                    if (query.length < 3) {
+                      return const Iterable<String>.empty();
                     }
+                    final normalizedQuery = _normalizeText(query);
+                    final names = data.families
+                        .map((f) => f.name)
+                        .toSet()
+                        .toList()
+                      ..sort();
+                    return names
+                        .where((name) =>
+                            _normalizeText(name).contains(normalizedQuery))
+                        .take(8);
+                  },
+                  onSelected: (selection) {
+                    familyController.text = selection;
+                  },
+                  fieldViewBuilder:
+                      (context, textController, focusNode, onFieldSubmitted) {
+                    if (textController.text != familyController.text) {
+                      textController.value = TextEditingValue(
+                        text: familyController.text,
+                        selection: TextSelection.collapsed(
+                          offset: familyController.text.length,
+                        ),
+                      );
+                    }
+                    return TextField(
+                      controller: textController,
+                      focusNode: focusNode,
+                      onChanged: (value) => familyController.text = value,
+                      decoration: const InputDecoration(
+                        labelText: 'Family',
+                        helperText: 'Suggestions from 3 chars',
+                      ),
+                    );
                   },
                 ),
                 DropdownButtonFormField<int>(
@@ -449,31 +534,46 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     );
 
     final name = nameController.text.trim();
+    final familyName = familyController.text.trim();
     final price = double.tryParse(priceController.text.trim());
     final quantity = double.tryParse(quantityController.text.trim());
     final unitType = unitTypeController.text.trim();
 
     if (save == true &&
         name.isNotEmpty &&
+        familyName.isNotEmpty &&
         price != null &&
         quantity != null &&
         unitType.isNotEmpty) {
-      await widget.repository.saveProductItem(
-        ProductItem(
-          id: item?.id,
-          name: name,
-          isActive: true,
-          productFamilyId: familyId,
+      if (item == null) {
+        await widget.repository.saveQuickProductItem(
+          productName: name,
+          familyName: familyName,
           supermarketId: supermarketId,
           price: price,
           quantity: quantity,
           unitType: unitType,
-          pricePerQuantity: quantity == 0 ? 0 : price / quantity,
-          dateAdded: item?.dateAdded ?? DateTime.now(),
-          isCurrentPrice: true,
-          barcode: item?.barcode,
-        ),
-      );
+        );
+      } else {
+        final resolvedFamilyId =
+            await widget.repository.resolveProductFamilyIdByName(familyName);
+        await widget.repository.saveProductItem(
+          ProductItem(
+            id: item.id,
+            name: name,
+            isActive: true,
+            productFamilyId: resolvedFamilyId,
+            supermarketId: supermarketId,
+            price: price,
+            quantity: quantity,
+            unitType: unitType,
+            pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+            dateAdded: item.dateAdded,
+            isCurrentPrice: true,
+            barcode: item.barcode,
+          ),
+        );
+      }
       _refresh();
     }
   }
@@ -603,11 +703,17 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 }
 
 class _ProductContext {
-  const _ProductContext(this.items, this.families, this.supermarkets);
+  const _ProductContext(
+    this.items,
+    this.families,
+    this.supermarkets,
+    this.lastUsedSupermarketId,
+  );
 
   final List<ProductItem> items;
   final List<ProductFamily> families;
   final List<Supermarket> supermarkets;
+  final int? lastUsedSupermarketId;
 }
 
 class _RecordsScaffold<T> extends StatelessWidget {

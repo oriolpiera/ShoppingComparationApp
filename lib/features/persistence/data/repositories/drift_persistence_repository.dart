@@ -12,6 +12,33 @@ import '../../domain/repositories/persistence_repository.dart';
 class DriftPersistenceRepository implements PersistenceRepository {
   final PersistenceDao dao;
 
+  static final _diacriticsMap = <String, String>{
+    'à': 'a',
+    'á': 'a',
+    'â': 'a',
+    'ä': 'a',
+    'ã': 'a',
+    'è': 'e',
+    'é': 'e',
+    'ê': 'e',
+    'ë': 'e',
+    'ì': 'i',
+    'í': 'i',
+    'î': 'i',
+    'ï': 'i',
+    'ò': 'o',
+    'ó': 'o',
+    'ô': 'o',
+    'ö': 'o',
+    'õ': 'o',
+    'ù': 'u',
+    'ú': 'u',
+    'û': 'u',
+    'ü': 'u',
+    'ç': 'c',
+    'ñ': 'n',
+  };
+
   DriftPersistenceRepository(this.dao);
 
   factory DriftPersistenceRepository.fromDatabase(AppDriftDatabase db) {
@@ -69,6 +96,20 @@ class DriftPersistenceRepository implements PersistenceRepository {
   }
 
   @override
+  Future<int> resolveProductFamilyIdByName(String familyName) async {
+    final normalizedTarget = _normalizeKey(familyName);
+    final families = await getProductFamilies(onlyActive: true);
+    for (final family in families) {
+      if (family.id != null && _normalizeKey(family.name) == normalizedTarget) {
+        return family.id!;
+      }
+    }
+
+    return saveProductFamily(
+        ProductFamily(name: familyName.trim(), isActive: true));
+  }
+
+  @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
@@ -118,6 +159,87 @@ class DriftPersistenceRepository implements PersistenceRepository {
         barcode: Value(item.barcode),
       ),
     );
+  }
+
+  @override
+  Future<int?> getLastUsedSupermarketId() async {
+    final rows = await dao.getProductItems(onlyCurrentPrice: false);
+    if (rows.isEmpty) return null;
+    return rows.first.supermarketId;
+  }
+
+  @override
+  Future<int> saveQuickProductItem({
+    required String productName,
+    required String familyName,
+    required int supermarketId,
+    required double price,
+    required double quantity,
+    required String unitType,
+    String? barcode,
+  }) async {
+    final trimmedName = productName.trim();
+    final familyId = await resolveProductFamilyIdByName(familyName);
+
+    final currentRows = await dao.getProductItems(
+      productFamilyId: familyId,
+      supermarketId: supermarketId,
+      onlyCurrentPrice: true,
+    );
+
+    final normalizedProduct = _normalizeKey(trimmedName);
+    for (final row in currentRows) {
+      if (_normalizeKey(row.nom) == normalizedProduct) {
+        await dao.saveProductItem(
+          ProductItemTableCompanion(
+            id: Value(row.id),
+            nom: Value(row.nom),
+            actiu: Value(row.actiu),
+            productFamilyId: Value(row.productFamilyId),
+            supermarketId: Value(row.supermarketId),
+            price: Value(row.price),
+            quantity: Value(row.quantity),
+            unitType: Value(row.unitType),
+            pricePerQuantity: Value(row.pricePerQuantity),
+            dateAdded: Value(row.dateAdded),
+            isCurrentPrice: const Value(false),
+            barcode: Value(row.barcode),
+          ),
+        );
+      }
+    }
+
+    return saveProductItem(
+      ProductItem(
+        name: trimmedName,
+        isActive: true,
+        productFamilyId: familyId,
+        supermarketId: supermarketId,
+        price: price,
+        quantity: quantity,
+        unitType: unitType.trim(),
+        pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+        dateAdded: DateTime.now(),
+        isCurrentPrice: true,
+        barcode: barcode,
+      ),
+    );
+  }
+
+  String _normalizeKey(String value) {
+    final lower = value.toLowerCase().trim();
+    final buffer = StringBuffer();
+
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      buffer.write(_diacriticsMap[char] ?? char);
+    }
+
+    return buffer
+        .toString()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   @override
