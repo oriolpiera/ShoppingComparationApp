@@ -184,19 +184,165 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
   }
 }
 
-class ProductFamiliesPage extends StatelessWidget {
+class ProductFamiliesPage extends StatefulWidget {
   const ProductFamiliesPage({super.key, required this.repository});
 
   final PersistenceRepository repository;
 
   @override
+  State<ProductFamiliesPage> createState() => _ProductFamiliesPageState();
+}
+
+class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
+  final _queryController = TextEditingController();
+  late Future<List<ProductFamily>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  Future<List<ProductFamily>> _load() {
+    return widget.repository.getProductFamilies(onlyActive: true);
+  }
+
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return _RecordsScaffold<ProductFamily>(
-      title: 'Product families',
-      future: repository.getProductFamilies(onlyActive: false),
-      itemBuilder: (item) =>
-          'ID ${item.id ?? '-'} · ${item.name} · active: ${item.isActive}',
+    return Scaffold(
+      appBar: AppBar(title: const Text('Product families')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: TextField(
+              controller: _queryController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                isDense: true,
+                labelText: 'Search',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<ProductFamily>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                final query = _queryController.text.toLowerCase().trim();
+                final families = (snapshot.data ?? const []).where((f) {
+                  if (query.isEmpty) return true;
+                  return f.name.toLowerCase().contains(query);
+                }).toList();
+
+                if (families.isEmpty) {
+                  return const Center(child: Text('No product families'));
+                }
+
+                return ListView.separated(
+                  itemCount: families.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final item = families[index];
+                    return ListTile(
+                      dense: true,
+                      title: Text(item.name),
+                      subtitle: Text('ID ${item.id ?? '-'}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _openForm(item),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () async {
+                              await widget.repository.saveProductFamily(
+                                ProductFamily(
+                                  id: item.id,
+                                  name: item.name,
+                                  isActive: false,
+                                ),
+                              );
+                              _refresh();
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(null),
+        child: const Icon(Icons.add),
+      ),
     );
+  }
+
+  Future<void> _openForm(ProductFamily? family) async {
+    final nameController = TextEditingController(text: family?.name ?? '');
+
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title:
+            Text(family == null ? 'Add product family' : 'Edit product family'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(labelText: 'Name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    final nextName = nameController.text.trim();
+    if (save == true && nextName.isNotEmpty) {
+      await widget.repository.saveProductFamily(
+        ProductFamily(
+          id: family?.id,
+          name: nextName,
+          isActive: true,
+        ),
+      );
+      _refresh();
+    }
   }
 }
 
@@ -714,49 +860,4 @@ class _ProductContext {
   final List<ProductFamily> families;
   final List<Supermarket> supermarkets;
   final int? lastUsedSupermarketId;
-}
-
-class _RecordsScaffold<T> extends StatelessWidget {
-  const _RecordsScaffold({
-    required this.title,
-    required this.future,
-    required this.itemBuilder,
-  });
-
-  final String title;
-  final Future<List<T>> future;
-  final String Function(T item) itemBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: FutureBuilder<List<T>>(
-        future: future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          final data = snapshot.data ?? const [];
-          if (data.isEmpty) {
-            return const Center(child: Text('No records yet'));
-          }
-
-          return ListView.separated(
-            itemCount: data.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) => ListTile(
-              dense: true,
-              title: Text(itemBuilder(data[index])),
-            ),
-          );
-        },
-      ),
-    );
-  }
 }
