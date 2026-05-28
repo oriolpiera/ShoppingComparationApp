@@ -33,3 +33,19 @@ Example (current `home` feature):
 - App boots through `PriceComparatorApp`
 - Root screen delegated to `HomePage`
 - Base folders are ready for adding new features without mixing UI and business logic
+
+## PR web preview workflow
+
+Pull requests trigger `.github/workflows/preview.yml`, which runs:
+- `flutter pub get`
+- `dart run build_runner build --delete-conflicting-outputs`
+- `flutter test`
+- `flutter build web --release --dart-define=WEB_PREVIEW=true`
+- Firebase Hosting preview deploy
+- PR comment with the preview URL
+
+### Required GitHub secrets
+
+Configure these repository secrets for preview deploys:
+- `FIREBASE_SERVICE_ACCOUNT`: service account JSON for Firebase Hosting deploy
+- `FIREBASE_PROJECT_ID`: Firebase project id
