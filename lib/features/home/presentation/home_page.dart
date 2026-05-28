@@ -13,12 +13,24 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const _isWebPreview = bool.fromEnvironment('WEB_PREVIEW');
+
   final repository = DriftPersistenceRepository.fromDatabase(
     AppDatabaseProvider.instance,
   );
 
   late final DemoSeedService _seedService = DemoSeedService(repository);
   bool _isSeeding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isWebPreview) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _seedDemoData(showSnackBar: false);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,14 +78,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _seedDemoData() async {
+  Future<void> _seedDemoData({bool showSnackBar = true}) async {
     setState(() => _isSeeding = true);
     try {
       await _seedService.seed();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Demo data ready')),
-      );
+      if (showSnackBar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Demo data ready')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isSeeding = false);
