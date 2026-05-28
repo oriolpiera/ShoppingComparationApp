@@ -1,13 +1,7 @@
-import 'package:isar/isar.dart';
-
-part 'supermarket.g.dart';
-
-@collection
 class Supermarket {
-  Id id = Isar.autoIncrement;
-
-  @Index(unique: true, replace: true)
-  late String name;
-
+  int? id;
+  String name;
   String? address;
+
+  Supermarket({this.id, this.name = '', this.address});
 }

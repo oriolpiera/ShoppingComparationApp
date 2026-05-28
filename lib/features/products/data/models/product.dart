@@ -1,16 +1,8 @@
-import 'package:isar/isar.dart';
-
-part 'product.g.dart';
-
-@collection
 class Product {
-  Id id = Isar.autoIncrement;
-
-  @Index(unique: true, replace: true)
-  late String barcode;
-
-  @Index(caseSensitive: false)
-  late String name;
-
+  int? id;
+  String barcode;
+  String name;
   String? brand;
+
+  Product({this.id, this.barcode = '', this.name = '', this.brand});
 }

@@ -1,17 +1,15 @@
-import 'package:isar/isar.dart';
-
-part 'price_entry.g.dart';
-
-@collection
 class PriceEntry {
-  Id id = Isar.autoIncrement;
+  int? id;
+  int productId;
+  int supermarketId;
+  double price;
+  DateTime capturedAt;
 
-  @Index()
-  late int productId;
-
-  @Index()
-  late int supermarketId;
-
-  late double price;
-  late DateTime capturedAt;
+  PriceEntry({
+    this.id,
+    this.productId = 0,
+    this.supermarketId = 0,
+    this.price = 0,
+    DateTime? capturedAt,
+  }) : capturedAt = capturedAt ?? DateTime.now();
 }
