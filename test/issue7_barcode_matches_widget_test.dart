@@ -9,6 +9,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/pr
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
+import 'package:shopping_comparation_app/features/products/data/open_food_facts_name_prefill_service.dart';
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
 void main() {
@@ -30,6 +31,38 @@ void main() {
 
     expect(find.text('Create Product Item'), findsOneWidget);
     expect(find.text('Re-scan'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('scan flow no-match pre-fills name from Open Food Facts',
+      (tester) async {
+    final repository = _FakeRepo();
+    final prefillService = OpenFoodFactsNamePrefillService(
+      getRequest: (_) async =>
+          '{"status":1,"product":{"product_name":"Greek Yogurt"}}',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProductItemsPage(
+          repository: repository,
+          namePrefillService: prefillService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tag));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Barcode'), 'X-NEW');
+    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+    expect(find.text('Greek Yogurt'), findsOneWidget);
   });
 }
 
