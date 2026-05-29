@@ -1,5 +1,3 @@
-# docs/testing.md
-
 # Testing Strategy
 
 ## Goals
