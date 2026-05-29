@@ -39,10 +39,9 @@ Avoid testing:
 Preferred distribution:
 
 ```text
-           Integration tests
-              Widget tests
                  Unit tests
-```
+              Widget tests
+           Integration tests
 
 Most tests should be unit tests.
 
