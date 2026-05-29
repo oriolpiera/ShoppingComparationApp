@@ -35,7 +35,7 @@ class OpenFoodFactsNamePrefillService {
     if (decoded is! Map<String, dynamic>) return null;
 
     final status = decoded['status'];
-    if (status is int && status != 1) return null;
+    if (status != 1) return null;
 
     final product = decoded['product'];
     if (product is! Map<String, dynamic>) return null;
@@ -68,7 +68,11 @@ class OpenFoodFactsNamePrefillService {
         return null;
       }
 
-      return await utf8.decoder.bind(response).join();
+      return await utf8
+          .decoder
+          .bind(response)
+          .join()
+          .timeout(const Duration(seconds: 4));
     } finally {
       client.close(force: true);
     }
