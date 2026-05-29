@@ -118,4 +118,46 @@ void main() {
     expect(result.created, false);
     expect(matches.length, 1);
   });
+
+  test('registerScannedPrice rolls over previous current item on change',
+      () async {
+    final marketId = await repository.saveSupermarket(
+      Supermarket(name: 'A', isActive: true),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Olive Oil',
+      familyName: 'Olive Oil',
+      supermarketId: marketId,
+      price: 5.0,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'ROLLOVER-1',
+    );
+
+    final result = await repository.registerScannedPrice(
+      barcode: 'ROLLOVER-1',
+      productName: 'Olive Oil',
+      familyName: 'Olive Oil',
+      supermarketId: marketId,
+      price: 6.0,
+      quantity: 1,
+      unitType: 'L',
+    );
+
+    final currentMatches =
+        await repository.findCurrentActiveByBarcode('ROLLOVER-1');
+    final allRows = await repository.getProductItems(
+      supermarketId: marketId,
+      onlyCurrentPrice: false,
+    );
+    final barcodeRows =
+        allRows.where((row) => row.barcode == 'ROLLOVER-1').toList();
+
+    expect(result.created, true);
+    expect(currentMatches.length, 1);
+    expect(currentMatches.first.productItem.price, 6.0);
+    expect(barcodeRows.length, 2);
+    expect(barcodeRows.where((row) => row.isCurrentPrice).length, 1);
+  });
 }

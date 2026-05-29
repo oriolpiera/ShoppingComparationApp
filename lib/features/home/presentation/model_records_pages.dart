@@ -1555,6 +1555,15 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
     final data = await _loadCreateData();
     if (!mounted) return;
 
+    if (data.supermarkets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Need at least one active supermarket first.'),
+        ),
+      );
+      return;
+    }
+
     final result = await showModalBottomSheet<ScannedPriceRegistrationResult>(
       context: context,
       isScrollControlled: true,
@@ -1722,6 +1731,11 @@ class _RegisterScannedPriceSheetState
     _priceController = TextEditingController();
     _quantityController = TextEditingController(text: '1');
 
+    if (widget.supermarkets.isEmpty) {
+      _supermarketId = 0;
+      return;
+    }
+
     final fallbackId = widget.supermarkets.first.id ?? 0;
     final allowedIds = widget.supermarkets
         .where((s) => s.id != null)
@@ -1749,6 +1763,11 @@ class _RegisterScannedPriceSheetState
     final quantity = double.tryParse(_quantityController.text.trim());
 
     if (name.isEmpty || family.isEmpty || price == null || quantity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all required fields.'),
+        ),
+      );
       return;
     }
 

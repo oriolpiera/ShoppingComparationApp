@@ -40,6 +40,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
     'ç': 'c',
     'ñ': 'n',
   };
+  static const double _priceEpsilon = 1e-9;
 
   DriftPersistenceRepository(this.dao);
 
@@ -320,12 +321,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
         .where((row) => row.supermarketId == supermarketId)
         .toList();
 
-    final sameTupleExists = currentSameMarket.any(
-      (row) =>
-          row.price == price &&
-          row.quantity == quantity &&
-          row.unitType.trim().toLowerCase() == unit.toLowerCase(),
-    );
+    final sameTupleExists = currentSameMarket.any((row) {
+      return (row.price - price).abs() < _priceEpsilon &&
+          (row.quantity - quantity).abs() < _priceEpsilon &&
+          row.unitType.trim().toLowerCase() == unit.toLowerCase();
+    });
 
     if (sameTupleExists) {
       return const ScannedPriceRegistrationResult(
@@ -335,41 +335,43 @@ class DriftPersistenceRepository implements PersistenceRepository {
       );
     }
 
-    for (final row in currentSameMarket) {
-      await dao.saveProductItem(
-        ProductItemTableCompanion(
-          id: Value(row.id),
-          nom: Value(row.nom),
-          actiu: Value(row.actiu),
-          productFamilyId: Value(row.productFamilyId),
-          supermarketId: Value(row.supermarketId),
-          price: Value(row.price),
-          quantity: Value(row.quantity),
-          unitType: Value(row.unitType),
-          pricePerQuantity: Value(row.pricePerQuantity),
-          dateAdded: Value(row.dateAdded),
-          isCurrentPrice: const Value(false),
-          barcode: Value(row.barcode),
+    await dao.db.transaction(() async {
+      for (final row in currentSameMarket) {
+        await dao.saveProductItem(
+          ProductItemTableCompanion(
+            id: Value(row.id),
+            nom: Value(row.nom),
+            actiu: Value(row.actiu),
+            productFamilyId: Value(row.productFamilyId),
+            supermarketId: Value(row.supermarketId),
+            price: Value(row.price),
+            quantity: Value(row.quantity),
+            unitType: Value(row.unitType),
+            pricePerQuantity: Value(row.pricePerQuantity),
+            dateAdded: Value(row.dateAdded),
+            isCurrentPrice: const Value(false),
+            barcode: Value(row.barcode),
+          ),
+        );
+      }
+
+      final familyId = await resolveProductFamilyIdByName(familyName);
+      await saveProductItem(
+        ProductItem(
+          name: productName.trim(),
+          isActive: true,
+          productFamilyId: familyId,
+          supermarketId: supermarketId,
+          price: price,
+          quantity: quantity,
+          unitType: unit,
+          pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+          dateAdded: DateTime.now(),
+          isCurrentPrice: true,
+          barcode: normalizedBarcode,
         ),
       );
-    }
-
-    final familyId = await resolveProductFamilyIdByName(familyName);
-    await saveProductItem(
-      ProductItem(
-        name: productName.trim(),
-        isActive: true,
-        productFamilyId: familyId,
-        supermarketId: supermarketId,
-        price: price,
-        quantity: quantity,
-        unitType: unit,
-        pricePerQuantity: quantity == 0 ? 0 : price / quantity,
-        dateAdded: DateTime.now(),
-        isCurrentPrice: true,
-        barcode: normalizedBarcode,
-      ),
-    );
+    });
 
     return const ScannedPriceRegistrationResult(
       created: true,
