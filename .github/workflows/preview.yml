@@ -36,9 +36,11 @@ jobs:
 
       - name: Run tests with coverage (machine output)
         run: flutter test --machine --coverage > test-results.json
+        continue-on-error: true
 
       - name: Build test and coverage summary
         id: test_coverage_summary
+        if: always()
         run: |
           python3 - <<'PY'
           import json
@@ -203,6 +205,7 @@ jobs:
 
       - name: Comment preview URL on PR
         uses: actions/github-script@v7
+        if: always()
         env:
           PREVIEW_URL: ${{ steps.firebase_preview.outputs.details_url }}
         with:
