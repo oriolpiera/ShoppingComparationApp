@@ -78,7 +78,7 @@ Benefits:
 
 # Layer responsibilities
 
-# Presentation layer
+## Presentation layer
 
 Contains:
 
