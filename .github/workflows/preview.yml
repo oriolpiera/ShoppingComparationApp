@@ -96,7 +96,7 @@ jobs:
               coverage = (lh / lf) * 100.0
 
           total = passed + failed + skipped
-          status = 'OK' if failed == 0 else 'RED'
+          status = 'OK' if failed == 0 and passed > 0 else 'RED'
           summary = (
             f"Tests: {status} | total={total} passed={passed} failed={failed} "
             f"skipped={skipped} | coverage={coverage:.2f}%"
