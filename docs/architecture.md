@@ -1,5 +1,3 @@
-# docs/architecture.md
-
 # Architecture
 
 ## Goals
