@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/scanner/mobile_scanner_port.dart';
+import '../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
 import '../../persistence/domain/entities/scanned_price_registration_result.dart';
 
@@ -947,9 +948,15 @@ class _ProductFamilyDetailsData {
 }
 
 class ProductItemsPage extends StatefulWidget {
-  const ProductItemsPage({super.key, required this.repository});
+  ProductItemsPage({
+    super.key,
+    required this.repository,
+    OpenFoodFactsNamePrefillService? namePrefillService,
+  }) : namePrefillService =
+            namePrefillService ?? OpenFoodFactsNamePrefillService();
 
   final PersistenceRepository repository;
+  final OpenFoodFactsNamePrefillService namePrefillService;
 
   @override
   State<ProductItemsPage> createState() => _ProductItemsPageState();
@@ -1078,6 +1085,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         builder: (_) => _BarcodeMatchesPage(
           repository: widget.repository,
           barcode: barcode,
+          namePrefillService: widget.namePrefillService,
         ),
       ),
     );
@@ -1526,31 +1534,49 @@ class _BarcodeMatchesPage extends StatefulWidget {
   const _BarcodeMatchesPage({
     required this.repository,
     required this.barcode,
+    required this.namePrefillService,
   });
 
   final PersistenceRepository repository;
   final String barcode;
+  final OpenFoodFactsNamePrefillService namePrefillService;
 
   @override
   State<_BarcodeMatchesPage> createState() => _BarcodeMatchesPageState();
 }
 
 class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
-  late Future<List<BarcodeMatchResult>> _future;
+  late Future<_BarcodeLookupData> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.repository.findCurrentActiveByBarcode(widget.barcode);
+    _future = _load();
+  }
+
+  Future<_BarcodeLookupData> _load() async {
+    final matches =
+        await widget.repository.findCurrentActiveByBarcode(widget.barcode);
+
+    if (matches.isNotEmpty) {
+      return _BarcodeLookupData(matches: matches, prefilledName: null);
+    }
+
+    final prefilledName =
+        await widget.namePrefillService.tryGetProductNameByBarcode(
+      widget.barcode,
+    );
+    return _BarcodeLookupData(matches: matches, prefilledName: prefilledName);
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _future = widget.repository.findCurrentActiveByBarcode(widget.barcode);
+      _future = _load();
     });
   }
 
-  Future<void> _createProductItem(List<BarcodeMatchResult> matches) async {
+  Future<void> _createProductItem(_BarcodeLookupData lookupData) async {
+    final matches = lookupData.matches;
     final latest = matches.isEmpty ? null : matches.first;
     final data = await _loadCreateData();
     if (!mounted) return;
@@ -1572,7 +1598,7 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
         barcode: widget.barcode,
         supermarkets: data.supermarkets,
         lastUsedSupermarketId: data.lastUsedSupermarketId,
-        prefilledName: latest?.productItem.name,
+        prefilledName: latest?.productItem.name ?? lookupData.prefilledName,
         prefilledFamily: latest?.familyName,
       ),
     );
@@ -1605,7 +1631,7 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Barcode matches: ${widget.barcode}')),
-      body: FutureBuilder<List<BarcodeMatchResult>>(
+      body: FutureBuilder<_BarcodeLookupData>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1616,7 +1642,9 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final matches = snapshot.data ?? const [];
+          final lookupData =
+              snapshot.data ?? const _BarcodeLookupData(matches: []);
+          final matches = lookupData.matches;
           if (matches.isEmpty) {
             return Center(
               child: Padding(
@@ -1628,7 +1656,7 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
                         'No current active Product Items for this barcode.'),
                     const SizedBox(height: 12),
                     FilledButton(
-                      onPressed: () => _createProductItem(matches),
+                      onPressed: () => _createProductItem(lookupData),
                       child: const Text('Create Product Item'),
                     ),
                     const SizedBox(height: 8),
@@ -1675,7 +1703,7 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: FilledButton(
-                          onPressed: () => _createProductItem(matches),
+                          onPressed: () => _createProductItem(lookupData),
                           child: const Text('Create Product Item'),
                         ),
                       ),
@@ -1689,6 +1717,16 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
       ),
     );
   }
+}
+
+class _BarcodeLookupData {
+  const _BarcodeLookupData({
+    required this.matches,
+    this.prefilledName,
+  });
+
+  final List<BarcodeMatchResult> matches;
+  final String? prefilledName;
 }
 
 class _RegisterScannedPriceSheet extends StatefulWidget {
