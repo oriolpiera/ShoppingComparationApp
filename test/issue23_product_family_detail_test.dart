@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/features/home/presentation/model_records_pages.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
@@ -258,6 +260,24 @@ class _FakeRepository implements PersistenceRepository {
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
+
+  @override
+  Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
+    String barcode,
+  ) async =>
+      [];
+
+  @override
+  Future<ScannedPriceRegistrationResult> registerScannedPrice({
+    required String barcode,
+    required String productName,
+    required String familyName,
+    required int supermarketId,
+    required double price,
+    required double quantity,
+    required String unitType,
+  }) async =>
+      const ScannedPriceRegistrationResult(created: false);
 
   @override
   Future<int> saveSupermarket(Supermarket supermarket) async => 1;

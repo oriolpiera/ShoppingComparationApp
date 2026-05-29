@@ -4,8 +4,10 @@ import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
+import '../../domain/entities/barcode_match_result.dart';
 import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
+import '../../domain/entities/scanned_price_registration_result.dart';
 import '../../domain/entities/shopping_list_entry.dart';
 import '../../domain/repositories/persistence_repository.dart';
 
@@ -38,6 +40,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
     'ç': 'c',
     'ñ': 'n',
   };
+  static const double _priceEpsilon = 1e-9;
 
   DriftPersistenceRepository(this.dao);
 
@@ -223,6 +226,156 @@ class DriftPersistenceRepository implements PersistenceRepository {
         isCurrentPrice: true,
         barcode: barcode,
       ),
+    );
+  }
+
+  @override
+  Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
+      String barcode) async {
+    final normalized = barcode.trim();
+    if (normalized.isEmpty) return const [];
+
+    final rows = await dao.getCurrentActiveItemsByBarcode(normalized);
+    if (rows.isEmpty) return const [];
+
+    final families = await getProductFamilies(onlyActive: false);
+    final supermarkets = await getSupermarkets(onlyActive: false);
+
+    final familyNameById = {
+      for (final family in families)
+        if (family.id != null) family.id!: family.name,
+    };
+    final supermarketNameById = {
+      for (final market in supermarkets)
+        if (market.id != null) market.id!: market.name,
+    };
+
+    final items = rows
+        .map(
+          (row) => ProductItem(
+            id: row.id,
+            name: row.nom,
+            isActive: row.actiu,
+            productFamilyId: row.productFamilyId,
+            supermarketId: row.supermarketId,
+            price: row.price,
+            quantity: row.quantity,
+            unitType: row.unitType,
+            pricePerQuantity: row.pricePerQuantity,
+            dateAdded: row.dateAdded,
+            isCurrentPrice: row.isCurrentPrice,
+            barcode: row.barcode,
+          ),
+        )
+        .toList()
+      ..sort((a, b) {
+        final byCurrent =
+            (b.isCurrentPrice ? 1 : 0) - (a.isCurrentPrice ? 1 : 0);
+        if (byCurrent != 0) return byCurrent;
+
+        final byDate = b.dateAdded.compareTo(a.dateAdded);
+        if (byDate != 0) return byDate;
+
+        final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
+        if (byUnit != 0) return byUnit;
+
+        return a.price.compareTo(b.price);
+      });
+
+    return items
+        .map(
+          (item) => BarcodeMatchResult(
+            productItem: item,
+            familyName:
+                familyNameById[item.productFamilyId] ?? 'Unknown family',
+            supermarketName: supermarketNameById[item.supermarketId] ??
+                'Unknown supermarket',
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<ScannedPriceRegistrationResult> registerScannedPrice({
+    required String barcode,
+    required String productName,
+    required String familyName,
+    required int supermarketId,
+    required double price,
+    required double quantity,
+    required String unitType,
+  }) async {
+    final normalizedBarcode = barcode.trim();
+    if (normalizedBarcode.isEmpty) {
+      return const ScannedPriceRegistrationResult(
+        created: false,
+        message: 'Barcode is required.',
+      );
+    }
+
+    final currentMatches =
+        await dao.getCurrentActiveItemsByBarcode(normalizedBarcode);
+    final unit = unitType.trim();
+
+    final currentSameMarket = currentMatches
+        .where((row) => row.supermarketId == supermarketId)
+        .toList();
+
+    final sameTupleExists = currentSameMarket.any((row) {
+      return (row.price - price).abs() < _priceEpsilon &&
+          (row.quantity - quantity).abs() < _priceEpsilon &&
+          row.unitType.trim().toLowerCase() == unit.toLowerCase();
+    });
+
+    if (sameTupleExists) {
+      return const ScannedPriceRegistrationResult(
+        created: false,
+        message:
+            'Price already current in this supermarket. No new Product Item created.',
+      );
+    }
+
+    await dao.db.transaction(() async {
+      for (final row in currentSameMarket) {
+        await dao.saveProductItem(
+          ProductItemTableCompanion(
+            id: Value(row.id),
+            nom: Value(row.nom),
+            actiu: Value(row.actiu),
+            productFamilyId: Value(row.productFamilyId),
+            supermarketId: Value(row.supermarketId),
+            price: Value(row.price),
+            quantity: Value(row.quantity),
+            unitType: Value(row.unitType),
+            pricePerQuantity: Value(row.pricePerQuantity),
+            dateAdded: Value(row.dateAdded),
+            isCurrentPrice: const Value(false),
+            barcode: Value(row.barcode),
+          ),
+        );
+      }
+
+      final familyId = await resolveProductFamilyIdByName(familyName);
+      await saveProductItem(
+        ProductItem(
+          name: productName.trim(),
+          isActive: true,
+          productFamilyId: familyId,
+          supermarketId: supermarketId,
+          price: price,
+          quantity: quantity,
+          unitType: unit,
+          pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+          dateAdded: DateTime.now(),
+          isCurrentPrice: true,
+          barcode: normalizedBarcode,
+        ),
+      );
+    });
+
+    return const ScannedPriceRegistrationResult(
+      created: true,
+      message: 'New current price registered.',
     );
   }
 

@@ -52,6 +52,14 @@ _Avoid_: burying key comparison context only inside row scanning
 A shopping-list line that represents demand for one Product Family and a required integer quantity, without pinning a concrete Product Item.
 _Avoid_: item-pinned shopping row, duplicated-family lines
 
+**Barcode Matches View**:
+A Product Items scan-result view that lists current active Product Items matching a scanned barcode before any new capture.
+_Avoid_: auto-pick without visibility, immediate edit-only flow
+
+**Scanned Price Registration**:
+Registering a scanned barcode price for a supermarket by creating a new current Product Item only when `price + quantity + unitType` changed.
+_Avoid_: unconditional duplicate creation, in-place overwrite without historical rollover
+
 ## Relationships
 
 - A **Supermarket Visit** happens at exactly one **Supermarket**
@@ -91,6 +99,10 @@ _Avoid_: item-pinned shopping row, duplicated-family lines
 - Shopping List family picker includes only active Product Families
 - Shopping List quantity input is integer-only
 - If a Shopping List family becomes inactive, the entry remains visible with inactive visual treatment and is excluded from optimized shopping grouping
+- **Barcode Matches View** includes only Product Items where `isCurrentPrice = true` and `isActive = true`
+- Scanned barcode lookup uses exact match after trimming surrounding whitespace
+- **Scanned Price Registration** compares `price + quantity + unitType` in the selected supermarket to decide no-op vs new current Product Item
+- If scanned registration is a no-op, UI feedback is explicit: "Price already current in this supermarket. No new Product Item created."
 
 ## Example dialogue
 
