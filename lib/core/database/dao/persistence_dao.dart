@@ -66,6 +66,19 @@ class PersistenceDao {
     return db.into(db.productItemTable).insertOnConflictUpdate(companion);
   }
 
+  Future<List<ProductItemTableData>> getCurrentActiveItemsByBarcode(
+      String barcode) {
+    final query = db.select(db.productItemTable)
+      ..where(
+        (t) =>
+            t.barcode.equals(barcode) &
+            t.isCurrentPrice.equals(true) &
+            t.actiu.equals(true),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(t.dateAdded)]);
+    return query.get();
+  }
+
   Future<List<ShoppingListTableData>> getShoppingList() {
     return db.select(db.shoppingListTable).get();
   }

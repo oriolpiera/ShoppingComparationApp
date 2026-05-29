@@ -1,6 +1,8 @@
 import '../entities/optimized_shopping.dart';
+import '../entities/barcode_match_result.dart';
 import '../entities/product_family.dart';
 import '../entities/product_item.dart';
+import '../entities/scanned_price_registration_result.dart';
 import '../entities/shopping_list_entry.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 
@@ -27,6 +29,16 @@ abstract class PersistenceRepository {
     required double quantity,
     required String unitType,
     String? barcode,
+  });
+  Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(String barcode);
+  Future<ScannedPriceRegistrationResult> registerScannedPrice({
+    required String barcode,
+    required String productName,
+    required String familyName,
+    required int supermarketId,
+    required double price,
+    required double quantity,
+    required String unitType,
   });
 
   Future<List<ShoppingListEntry>> getShoppingList();
