@@ -53,6 +53,26 @@ jobs:
           sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
           echo "Using app version ${NEW_VERSION}"
 
+      - name: Validate Android signing secrets
+        run: |
+          missing=false
+          for secret_name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD ANDROID_KEY_ALIAS; do
+            if [ -z "${!secret_name}" ]; then
+              echo "Missing required secret: ${secret_name}"
+              missing=true
+            fi
+          done
+
+          if [ "${missing}" = "true" ]; then
+            echo "Configure all Android signing secrets before running this workflow."
+            exit 1
+          fi
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+
       - name: Configure Android signing
         run: |
           mkdir -p android
@@ -61,7 +81,7 @@ jobs:
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=release.keystore
+          storeFile=../release.keystore
           EOF
 
       - name: Generate Isar code
