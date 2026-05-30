@@ -5,6 +5,11 @@ on:
     types:
       - published
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version (e.g. 1.2.3). If empty, latest git tag vX.Y.Z is used"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -38,8 +43,7 @@ jobs:
 
       - name: Update app version for this build
         run: |
-          CURRENT_VERSION=$(awk '/^version:/ {print $2}' pubspec.yaml)
-          BASE_VERSION="${CURRENT_VERSION%%+*}"
+          BASE_VERSION=""
           BUILD_NUMBER=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
 
           if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
@@ -47,6 +51,25 @@ jobs:
             if printf '%s' "${TAG_VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
               BASE_VERSION="${TAG_VERSION}"
             fi
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            INPUT_VERSION="${{ github.event.inputs.version }}"
+            if printf '%s' "${INPUT_VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              BASE_VERSION="${INPUT_VERSION}"
+            else
+              echo "Invalid workflow input version: '${INPUT_VERSION}'. Use semantic version X.Y.Z"
+              exit 1
+            fi
+          else
+            LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p')
+            if [ -n "${LATEST_TAG}" ]; then
+              BASE_VERSION="${LATEST_TAG#v}"
+            fi
+          fi
+
+          if [ -z "${BASE_VERSION}" ]; then
+            echo "Could not determine semantic version from release tag, workflow input, or git tags."
+            echo "Expected: vX.Y.Z tag or workflow input 'version' with X.Y.Z."
+            exit 1
           fi
 
           NEW_VERSION="${BASE_VERSION}+${BUILD_NUMBER}"
