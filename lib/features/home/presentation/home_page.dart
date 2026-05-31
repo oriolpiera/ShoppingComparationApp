@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/database/isar_database.dart';
+import '../../../core/database/drift_database_provider.dart';
 import '../../demo/data/demo_seed_service.dart';
 import '../../persistence/data/repositories/drift_persistence_repository.dart';
 import 'model_records_pages.dart';
@@ -16,7 +16,7 @@ class _HomePageState extends State<HomePage> {
   static const _isWebPreview = bool.fromEnvironment('WEB_PREVIEW');
 
   final repository = DriftPersistenceRepository.fromDatabase(
-    AppDatabaseProvider.instance,
+    AppDriftDatabaseProvider.instance,
   );
 
   late final DemoSeedService _seedService = DemoSeedService(repository);
