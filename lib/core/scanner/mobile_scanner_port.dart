@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 
 import 'barcode_scanner_port.dart';
 
@@ -29,25 +29,16 @@ class _ScannerPage extends StatefulWidget {
 }
 
 class _ScannerPageState extends State<_ScannerPage> {
-  final MobileScannerController _controller = MobileScannerController();
   DateTime? _lastScanAt;
   bool _processing = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Scan barcode')),
-      body: MobileScanner(
-        controller: _controller,
-        onDetect: (capture) {
-          if (capture.barcodes.isEmpty) return;
-          final barcode = capture.barcodes.first.rawValue?.trim();
+      body: ReaderWidget(
+        onScan: (result) {
+          final barcode = result.text?.trim();
           if (barcode == null || barcode.isEmpty) return;
 
           final now = DateTime.now();
@@ -61,6 +52,17 @@ class _ScannerPageState extends State<_ScannerPage> {
           _processing = true;
           _lastScanAt = now;
           Navigator.of(context).pop(barcode);
+        },
+        onScanFailure: (result) {
+          if (!mounted || _processing) {
+            return;
+          }
+          final error = result.error;
+          if (error == null || error.isEmpty) {
+            return;
+          }
+          _processing = true;
+          Navigator.of(context).pop();
         },
       ),
     );
