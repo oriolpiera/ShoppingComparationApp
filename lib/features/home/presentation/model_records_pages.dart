@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/normalization/family_unit_normalization.dart';
 import '../../../core/scanner/mobile_scanner_port.dart';
 import '../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
@@ -553,7 +554,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
     final quantityController = TextEditingController(
       text: item.quantity.toString(),
     );
-    var unitType = item.unitType.trim().toLowerCase() == 'l' ? 'L' : 'kg';
+    var unitType = normalizeUnitTypeForDisplay(item.unitType);
 
     final save = await showDialog<bool>(
       context: context,
@@ -782,9 +783,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                   final inactiveSupermarket =
                       supermarket == null || !supermarket.isActive;
                   final unitType =
-                      productItem.unitType.trim().toLowerCase() == 'l'
-                          ? 'L'
-                          : 'kg';
+                      normalizeUnitTypeForDisplay(productItem.unitType);
 
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -995,44 +994,6 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     );
   }
 
-  String _normalizeText(String value) {
-    const map = {
-      'à': 'a',
-      'á': 'a',
-      'â': 'a',
-      'ä': 'a',
-      'ã': 'a',
-      'è': 'e',
-      'é': 'e',
-      'ê': 'e',
-      'ë': 'e',
-      'ì': 'i',
-      'í': 'i',
-      'î': 'i',
-      'ï': 'i',
-      'ò': 'o',
-      'ó': 'o',
-      'ô': 'o',
-      'ö': 'o',
-      'õ': 'o',
-      'ù': 'u',
-      'ú': 'u',
-      'û': 'u',
-      'ü': 'u',
-      'ç': 'c',
-      'ñ': 'n',
-    };
-
-    final lower = value.toLowerCase().trim();
-    final buffer = StringBuffer();
-    for (final rune in lower.runes) {
-      final char = String.fromCharCode(rune);
-      buffer.write(map[char] ?? char);
-    }
-
-    return buffer.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
-
   void _refresh() {
     setState(() {
       _future = _load();
@@ -1094,14 +1055,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     }
   }
 
-  String _normalizedUnitType(String unitType) {
-    final value = unitType.trim().toLowerCase();
-    if (value == 'l') return 'L';
-    return 'kg';
-  }
-
   RichText _buildMetricsText(BuildContext context, ProductItem item) {
-    final unitType = _normalizedUnitType(item.unitType);
+    final unitType = normalizeUnitTypeForDisplay(item.unitType);
     final colorScheme = Theme.of(context).colorScheme;
 
     return RichText(
@@ -1353,7 +1308,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     final quantityController = TextEditingController(
       text: item == null ? '' : item.quantity.toString(),
     );
-    var unitType = _normalizedUnitType(item?.unitType ?? 'kg');
+    var unitType = normalizeUnitTypeForDisplay(item?.unitType ?? 'kg');
     final familyController = TextEditingController(
       text: item == null ? '' : (familyById[item.productFamilyId]?.name ?? ''),
     );
@@ -1386,15 +1341,17 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                     if (query.length < 3) {
                       return const Iterable<String>.empty();
                     }
-                    final normalizedQuery = _normalizeText(query);
+                    final normalizedQuery = normalizeFamilySearchText(query);
                     final names = data.families
                         .map((f) => f.name)
                         .toSet()
                         .toList()
                       ..sort();
                     return names
-                        .where((name) =>
-                            _normalizeText(name).contains(normalizedQuery))
+                        .where(
+                            (name) => normalizeFamilySearchText(name).contains(
+                                  normalizedQuery,
+                                ))
                         .take(8);
                   },
                   onSelected: (selection) {
