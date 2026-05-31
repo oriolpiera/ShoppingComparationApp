@@ -54,7 +54,11 @@ class _ScannerPageState extends State<_ScannerPage> {
           Navigator.of(context).pop(barcode);
         },
         onScanFailure: (result) {
-          if (!mounted || _processing || result.error?.isEmpty == true) {
+          if (!mounted || _processing) {
+            return;
+          }
+          final error = result.error;
+          if (error == null || error.isEmpty) {
             return;
           }
           _processing = true;
