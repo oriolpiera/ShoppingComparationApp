@@ -31,47 +31,47 @@ class OpenFoodFactsNamePrefillService {
   }
 
   String? parseProductNameFromResponse(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is! Map<String, dynamic>) return null;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
 
-    final status = decoded['status'];
-    if (status != 1) return null;
+      final status = decoded['status'];
+      if (status != 1) return null;
 
-    final product = decoded['product'];
-    if (product is! Map<String, dynamic>) return null;
+      final product = decoded['product'];
+      if (product is! Map<String, dynamic>) return null;
 
-    final productName = product['product_name'];
-    if (productName is! String) return null;
+      final productName = product['product_name'];
+      if (productName is! String) return null;
 
-    final normalizedName = productName.trim();
-    if (normalizedName.isEmpty) return null;
+      final normalizedName = productName.trim();
+      if (normalizedName.isEmpty) return null;
 
-    return normalizedName;
+      return normalizedName;
+    } on FormatException {
+      return null;
+    }
   }
 
   static Future<String?> _defaultGetRequest(Uri uri) async {
+    const requestTimeout = Duration(seconds: 4);
     final client = HttpClient();
-    client.connectionTimeout = const Duration(seconds: 4);
+    client.connectionTimeout = requestTimeout;
     try {
-      final request = await client.getUrl(uri).timeout(
-            const Duration(seconds: 4),
-          );
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      request.headers.set(HttpHeaders.userAgentHeader,
-          'ShoppingComparationApp/1.0 (barcode name prefill)');
+      return await (() async {
+        final request = await client.getUrl(uri);
+        request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+        request.headers.set(HttpHeaders.userAgentHeader,
+            'ShoppingComparationApp/1.0 (barcode name prefill)');
 
-      final response = await request.close().timeout(
-            const Duration(seconds: 4),
-          );
+        final response = await request.close();
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          return null;
+        }
 
-      return await utf8.decoder
-          .bind(response)
-          .join()
-          .timeout(const Duration(seconds: 4));
+        return utf8.decoder.bind(response).join();
+      })().timeout(requestTimeout);
     } finally {
       client.close(force: true);
     }
