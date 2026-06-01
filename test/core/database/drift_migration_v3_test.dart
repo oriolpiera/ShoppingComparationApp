@@ -13,6 +13,14 @@ void main() {
       file.deleteSync();
     }
 
+    AppDriftDatabase? db;
+    addTearDown(() async {
+      await db?.close();
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+    });
+
     final setupDb = sqlite3.open(file.path);
     setupDb.execute('''
       CREATE TABLE product_family (
@@ -64,7 +72,7 @@ void main() {
     setupDb.execute('PRAGMA user_version = 2;');
     setupDb.dispose();
 
-    final db = AppDriftDatabase.forTesting(NativeDatabase(file));
+    db = AppDriftDatabase.forTesting(NativeDatabase(file));
 
     final familyColumns =
         await db.customSelect('PRAGMA table_info(product_family);').get();
@@ -118,10 +126,5 @@ void main() {
     expect(item.data['package_quantity_amount'], isNull);
     expect(item.data['package_quantity_unit'], isNull);
     expect(item.data['normalized_measurement_unit'], isNull);
-
-    await db.close();
-    if (file.existsSync()) {
-      file.deleteSync();
-    }
   });
 }
