@@ -174,4 +174,92 @@ void main() {
     expect(optimized.single.items, hasLength(1));
     expect(optimized.single.items.single.sourceTag, 'OpenPrices');
   });
+
+  test('confirming discarded observation does not create orphan product item',
+      () async {
+    final supermarketId = await repository.saveSupermarket(
+      Supermarket(name: 'Local Market'),
+    );
+    await repository.saveExternalStoreMapping(
+      ExternalStoreMapping(
+        externalStoreId: 'store-1',
+        externalStoreName: 'Open Store',
+        supermarketId: supermarketId,
+      ),
+    );
+
+    final observationId = await repository.saveExternalPriceObservation(
+      ExternalPriceObservation(
+        openPricesId: 'op-5',
+        productName: 'Discarded Milk',
+        familyName: 'Milk',
+        externalStoreId: 'store-1',
+        externalStoreName: 'Open Store',
+        price: 1.6,
+        quantity: 1,
+        unitType: 'l',
+        pricePerQuantity: 1.6,
+        observedAt: DateTime(2026, 1, 5),
+        reviewStatus: ExternalObservationReviewStatus.discardedForComparison,
+      ),
+    );
+
+    expect(
+      () => repository.confirmExternalObservationLocally(
+        observationId: observationId,
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    final currentItems =
+        await repository.getProductItems(onlyCurrentPrice: true);
+    expect(
+      currentItems.where((item) => item.externalObservationId == observationId),
+      isEmpty,
+    );
+  });
+
+  test(
+      'saving same openPricesId updates existing observation instead of duplicating',
+      () async {
+    final firstId = await repository.saveExternalPriceObservation(
+      ExternalPriceObservation(
+        openPricesId: 'op-dup-1',
+        productName: 'Milk A',
+        familyName: 'Milk',
+        externalStoreId: 'store-1',
+        externalStoreName: 'Open Store',
+        price: 1.1,
+        quantity: 1,
+        unitType: 'l',
+        pricePerQuantity: 1.1,
+        observedAt: DateTime(2026, 1, 1),
+      ),
+    );
+
+    final secondId = await repository.saveExternalPriceObservation(
+      ExternalPriceObservation(
+        openPricesId: 'op-dup-1',
+        productName: 'Milk B',
+        familyName: 'Milk',
+        externalStoreId: 'store-1',
+        externalStoreName: 'Open Store',
+        price: 1.3,
+        quantity: 1,
+        unitType: 'l',
+        pricePerQuantity: 1.3,
+        observedAt: DateTime(2026, 1, 2),
+      ),
+    );
+
+    expect(secondId, firstId);
+
+    final observations = await repository.getExternalPriceObservations();
+    expect(
+        observations.where((o) => o.openPricesId == 'op-dup-1'), hasLength(1));
+    expect(
+      observations.singleWhere((o) => o.openPricesId == 'op-dup-1').productName,
+      'Milk B',
+    );
+  });
 }

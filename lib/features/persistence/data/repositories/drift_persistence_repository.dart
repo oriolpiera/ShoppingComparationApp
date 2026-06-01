@@ -450,12 +450,20 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
   @override
   Future<int> saveExternalPriceObservation(
-      ExternalPriceObservation observation) {
+      ExternalPriceObservation observation) async {
+    final existing = observation.id == null
+        ? await dao.getExternalPriceObservationByOpenPricesId(
+            observation.openPricesId,
+          )
+        : null;
+
     return dao.saveExternalPriceObservation(
       ExternalPriceObservationTableCompanion(
-        id: observation.id == null
-            ? const Value.absent()
-            : Value(observation.id!),
+        id: observation.id != null
+            ? Value(observation.id!)
+            : existing == null
+                ? const Value.absent()
+                : Value(existing.id),
         openPricesId: Value(observation.openPricesId),
         productName: Value(observation.productName),
         familyName: Value(observation.familyName),
@@ -511,66 +519,75 @@ class DriftPersistenceRepository implements PersistenceRepository {
   Future<int> confirmExternalObservationLocally({
     required int observationId,
   }) async {
-    final observation =
-        await dao.getExternalPriceObservationById(observationId);
-    if (observation == null) {
-      throw StateError('External observation not found: $observationId');
-    }
+    return dao.db.transaction(() async {
+      final observation =
+          await dao.getExternalPriceObservationById(observationId);
+      if (observation == null) {
+        throw StateError('External observation not found: $observationId');
+      }
 
-    final mapping = await dao
-        .getExternalStoreMappingByExternalId(observation.externalStoreId);
-    if (mapping == null) {
-      throw StateError(
-          'Missing external store mapping for ${observation.externalStoreId}');
-    }
+      final currentStatus =
+          ExternalObservationReviewStatusCodec.fromStorageValue(
+              observation.reviewStatus);
+      if (!canTransitionReviewStatus(
+        from: currentStatus,
+        to: ExternalObservationReviewStatus.acceptedForComparison,
+      )) {
+        throw StateError(
+          'Invalid review status transition: $currentStatus -> ${ExternalObservationReviewStatus.acceptedForComparison}',
+        );
+      }
 
-    final familyId = await resolveProductFamilyIdByName(observation.familyName);
-    final productItemId = await saveProductItem(
-      ProductItem(
-        name: observation.productName,
-        productFamilyId: familyId,
-        supermarketId: mapping.supermarketId,
-        price: observation.price,
-        quantity: observation.quantity,
-        unitType: observation.unitType,
-        pricePerQuantity: observation.pricePerQuantity,
-        packageQuantityAmount: observation.quantity,
-        packageQuantityUnit: observation.unitType,
-        normalizedMeasurementUnit:
-            normalizeUnitTypeForComparison(observation.unitType),
-        dateAdded: DateTime.now(),
-        isCurrentPrice: true,
-        externalObservationId: observation.id,
-      ),
-    );
+      final mapping = await dao
+          .getExternalStoreMappingByExternalId(observation.externalStoreId);
+      if (mapping == null) {
+        throw StateError(
+            'Missing external store mapping for ${observation.externalStoreId}');
+      }
 
-    await updateExternalObservationReviewStatus(
-      observationId: observationId,
-      newStatus: ExternalObservationReviewStatus.acceptedForComparison,
-    );
+      final familyId =
+          await resolveProductFamilyIdByName(observation.familyName);
+      final productItemId = await saveProductItem(
+        ProductItem(
+          name: observation.productName,
+          productFamilyId: familyId,
+          supermarketId: mapping.supermarketId,
+          price: observation.price,
+          quantity: observation.quantity,
+          unitType: observation.unitType,
+          pricePerQuantity: observation.pricePerQuantity,
+          packageQuantityAmount: observation.quantity,
+          packageQuantityUnit: observation.unitType,
+          normalizedMeasurementUnit:
+              normalizeUnitTypeForComparison(observation.unitType),
+          dateAdded: DateTime.now(),
+          isCurrentPrice: true,
+          externalObservationId: observation.id,
+        ),
+      );
 
-    final refreshed = await dao.getExternalPriceObservationById(observationId);
-    if (refreshed != null) {
       await dao.saveExternalPriceObservation(
         ExternalPriceObservationTableCompanion(
-          id: Value(refreshed.id),
-          openPricesId: Value(refreshed.openPricesId),
-          productName: Value(refreshed.productName),
-          familyName: Value(refreshed.familyName),
-          externalStoreId: Value(refreshed.externalStoreId),
-          externalStoreName: Value(refreshed.externalStoreName),
-          price: Value(refreshed.price),
-          quantity: Value(refreshed.quantity),
-          unitType: Value(refreshed.unitType),
-          pricePerQuantity: Value(refreshed.pricePerQuantity),
-          observedAt: Value(refreshed.observedAt),
-          reviewStatus: Value(refreshed.reviewStatus),
+          id: Value(observation.id),
+          openPricesId: Value(observation.openPricesId),
+          productName: Value(observation.productName),
+          familyName: Value(observation.familyName),
+          externalStoreId: Value(observation.externalStoreId),
+          externalStoreName: Value(observation.externalStoreName),
+          price: Value(observation.price),
+          quantity: Value(observation.quantity),
+          unitType: Value(observation.unitType),
+          pricePerQuantity: Value(observation.pricePerQuantity),
+          observedAt: Value(observation.observedAt),
+          reviewStatus: Value(
+            ExternalObservationReviewStatus.acceptedForComparison.storageValue,
+          ),
           localProductItemId: Value(productItemId),
         ),
       );
-    }
 
-    return productItemId;
+      return productItemId;
+    });
   }
 
   @override

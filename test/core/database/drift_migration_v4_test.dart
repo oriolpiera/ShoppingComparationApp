@@ -80,5 +80,15 @@ void main() {
     final tableNames = tables.map((t) => t.data['name']).toSet();
     expect(tableNames, contains('external_store_mapping'));
     expect(tableNames, contains('external_price_observation'));
+
+    final openPricesIndexes = await db
+        .customSelect("PRAGMA index_list('external_price_observation');")
+        .get();
+    final hasUniqueOpenPricesIndex = openPricesIndexes.any(
+      (row) =>
+          (row.data['name']?.toString() ?? '').contains('open_prices_id') &&
+          row.data['unique'] == 1,
+    );
+    expect(hasUniqueOpenPricesIndex, isTrue);
   });
 }

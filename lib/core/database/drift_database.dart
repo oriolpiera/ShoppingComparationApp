@@ -86,6 +86,11 @@ class ExternalPriceObservationTable extends Table {
       text().withDefault(const Constant('unreviewed'))();
   IntColumn get localProductItemId =>
       integer().nullable().references(ProductItemTable, #id)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {openPricesId},
+      ];
 }
 
 class ShoppingListTable extends Table {
@@ -158,16 +163,6 @@ class AppDriftDatabase extends _$AppDriftDatabase {
           }
 
           if (from < 4) {
-            final productItemColumns =
-                await customSelect('PRAGMA table_info(product_item);').get();
-            final hasExternalObservationColumn = productItemColumns
-                .any((row) => row.data['name'] == 'external_observation_id');
-            if (!hasExternalObservationColumn) {
-              await customStatement(
-                'ALTER TABLE product_item ADD COLUMN external_observation_id INTEGER NULL REFERENCES external_price_observation(id);',
-              );
-            }
-
             await customStatement('''
               CREATE TABLE IF NOT EXISTS external_store_mapping (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -179,7 +174,7 @@ class AppDriftDatabase extends _$AppDriftDatabase {
             await customStatement('''
               CREATE TABLE IF NOT EXISTS external_price_observation (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                open_prices_id TEXT NOT NULL,
+                open_prices_id TEXT NOT NULL UNIQUE,
                 product_name TEXT NOT NULL,
                 family_name TEXT NOT NULL,
                 external_store_id TEXT NOT NULL,
@@ -193,6 +188,19 @@ class AppDriftDatabase extends _$AppDriftDatabase {
                 local_product_item_id INTEGER NULL REFERENCES product_item (id)
               );
             ''');
+            await customStatement(
+              'CREATE UNIQUE INDEX IF NOT EXISTS idx_external_price_observation_open_prices_id ON external_price_observation(open_prices_id);',
+            );
+
+            final productItemColumns =
+                await customSelect('PRAGMA table_info(product_item);').get();
+            final hasExternalObservationColumn = productItemColumns
+                .any((row) => row.data['name'] == 'external_observation_id');
+            if (!hasExternalObservationColumn) {
+              await customStatement(
+                'ALTER TABLE product_item ADD COLUMN external_observation_id INTEGER NULL REFERENCES external_price_observation(id);',
+              );
+            }
           }
         },
       );

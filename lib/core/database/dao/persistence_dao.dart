@@ -105,6 +105,16 @@ class PersistenceDao {
         .getSingleOrNull();
   }
 
+  Future<ExternalPriceObservationTableData?>
+      getExternalPriceObservationByOpenPricesId(
+    String openPricesId,
+  ) {
+    return (db.select(db.externalPriceObservationTable)
+          ..where((t) => t.openPricesId.equals(openPricesId))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   Future<int> saveExternalPriceObservation(
     ExternalPriceObservationTableCompanion companion,
   ) {
