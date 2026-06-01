@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../../../core/scanner/mobile_scanner_port.dart';
 import '../../products/data/open_food_facts_name_prefill_service.dart';
+import '../application/product_family_comparison_module.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
 import '../../persistence/domain/entities/scanned_price_registration_result.dart';
 
@@ -728,22 +729,10 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
 
           final data =
               snapshot.data ?? const _ProductFamilyDetailsData([], {}, 0);
-          final comparisonItems = data.items
-              .where((i) => i.isCurrentPrice && i.isActive)
-              .toList()
-            ..sort((a, b) {
-              final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
-              if (byUnit != 0) return byUnit;
-              final byPrice = a.price.compareTo(b.price);
-              if (byPrice != 0) return byPrice;
-              final marketA = data.supermarketById[a.supermarketId]?.name ?? '';
-              final marketB = data.supermarketById[b.supermarketId]?.name ?? '';
-              return marketA.toLowerCase().compareTo(marketB.toLowerCase());
-            });
-
-          final bestUnitPrice = comparisonItems.isEmpty
-              ? null
-              : comparisonItems.first.pricePerQuantity;
+          final comparisonView = buildProductFamilyComparisonView(
+            items: data.items,
+            supermarketById: data.supermarketById,
+          );
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -755,13 +744,13 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
               ),
               _DetailRow(
                 label: 'Current active items count',
-                value: '${comparisonItems.length}',
+                value: '${comparisonView.items.length}',
               ),
               _DetailRow(
                 label: 'Best unit price',
-                value: bestUnitPrice == null
+                value: comparisonView.bestUnitPrice == null
                     ? '—'
-                    : bestUnitPrice.toStringAsFixed(2),
+                    : comparisonView.bestUnitPrice!.toStringAsFixed(2),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -769,19 +758,15 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              if (comparisonItems.isEmpty)
+              if (comparisonView.items.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text('No current active Product Items'),
                 )
               else
-                ...comparisonItems.map((productItem) {
-                  final supermarket =
-                      data.supermarketById[productItem.supermarketId];
-                  final supermarketName =
-                      supermarket?.name ?? 'Unknown supermarket';
-                  final inactiveSupermarket =
-                      supermarket == null || !supermarket.isActive;
+                ...comparisonView.items.map((comparisonItem) {
+                  final productItem = comparisonItem.productItem;
+                  final supermarketName = comparisonItem.supermarketName;
                   final unitType =
                       normalizeUnitTypeForDisplay(productItem.unitType);
 
@@ -797,7 +782,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (inactiveSupermarket)
+                        if (comparisonItem.hasInactiveSupermarket)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
@@ -822,7 +807,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                     onTap: () => _openItemDetails(
                       productItem,
                       widget.item.name,
-                      supermarketName,
+                      comparisonItem.supermarketName,
                     ),
                   );
                 }),
