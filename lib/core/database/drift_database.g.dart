@@ -290,8 +290,21 @@ class $ProductFamilyTableTable extends ProductFamilyTable
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("actiu" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _shoppingUnitMeta =
+      const VerificationMeta('shoppingUnit');
   @override
-  List<GeneratedColumn> get $columns => [id, nom, actiu];
+  late final GeneratedColumn<String> shoppingUnit = GeneratedColumn<String>(
+      'shopping_unit', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _purchaseModeMeta =
+      const VerificationMeta('purchaseMode');
+  @override
+  late final GeneratedColumn<String> purchaseMode = GeneratedColumn<String>(
+      'purchase_mode', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, nom, actiu, shoppingUnit, purchaseMode];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -316,6 +329,18 @@ class $ProductFamilyTableTable extends ProductFamilyTable
       context.handle(
           _actiuMeta, actiu.isAcceptableOrUnknown(data['actiu']!, _actiuMeta));
     }
+    if (data.containsKey('shopping_unit')) {
+      context.handle(
+          _shoppingUnitMeta,
+          shoppingUnit.isAcceptableOrUnknown(
+              data['shopping_unit']!, _shoppingUnitMeta));
+    }
+    if (data.containsKey('purchase_mode')) {
+      context.handle(
+          _purchaseModeMeta,
+          purchaseMode.isAcceptableOrUnknown(
+              data['purchase_mode']!, _purchaseModeMeta));
+    }
     return context;
   }
 
@@ -331,6 +356,10 @@ class $ProductFamilyTableTable extends ProductFamilyTable
           .read(DriftSqlType.string, data['${effectivePrefix}nom'])!,
       actiu: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}actiu'])!,
+      shoppingUnit: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}shopping_unit']),
+      purchaseMode: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}purchase_mode']),
     );
   }
 
@@ -345,14 +374,26 @@ class ProductFamilyTableData extends DataClass
   final int id;
   final String nom;
   final bool actiu;
+  final String? shoppingUnit;
+  final String? purchaseMode;
   const ProductFamilyTableData(
-      {required this.id, required this.nom, required this.actiu});
+      {required this.id,
+      required this.nom,
+      required this.actiu,
+      this.shoppingUnit,
+      this.purchaseMode});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['nom'] = Variable<String>(nom);
     map['actiu'] = Variable<bool>(actiu);
+    if (!nullToAbsent || shoppingUnit != null) {
+      map['shopping_unit'] = Variable<String>(shoppingUnit);
+    }
+    if (!nullToAbsent || purchaseMode != null) {
+      map['purchase_mode'] = Variable<String>(purchaseMode);
+    }
     return map;
   }
 
@@ -361,6 +402,12 @@ class ProductFamilyTableData extends DataClass
       id: Value(id),
       nom: Value(nom),
       actiu: Value(actiu),
+      shoppingUnit: shoppingUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shoppingUnit),
+      purchaseMode: purchaseMode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(purchaseMode),
     );
   }
 
@@ -371,6 +418,8 @@ class ProductFamilyTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       nom: serializer.fromJson<String>(json['nom']),
       actiu: serializer.fromJson<bool>(json['actiu']),
+      shoppingUnit: serializer.fromJson<String?>(json['shoppingUnit']),
+      purchaseMode: serializer.fromJson<String?>(json['purchaseMode']),
     );
   }
   @override
@@ -380,20 +429,37 @@ class ProductFamilyTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'nom': serializer.toJson<String>(nom),
       'actiu': serializer.toJson<bool>(actiu),
+      'shoppingUnit': serializer.toJson<String?>(shoppingUnit),
+      'purchaseMode': serializer.toJson<String?>(purchaseMode),
     };
   }
 
-  ProductFamilyTableData copyWith({int? id, String? nom, bool? actiu}) =>
+  ProductFamilyTableData copyWith(
+          {int? id,
+          String? nom,
+          bool? actiu,
+          Value<String?> shoppingUnit = const Value.absent(),
+          Value<String?> purchaseMode = const Value.absent()}) =>
       ProductFamilyTableData(
         id: id ?? this.id,
         nom: nom ?? this.nom,
         actiu: actiu ?? this.actiu,
+        shoppingUnit:
+            shoppingUnit.present ? shoppingUnit.value : this.shoppingUnit,
+        purchaseMode:
+            purchaseMode.present ? purchaseMode.value : this.purchaseMode,
       );
   ProductFamilyTableData copyWithCompanion(ProductFamilyTableCompanion data) {
     return ProductFamilyTableData(
       id: data.id.present ? data.id.value : this.id,
       nom: data.nom.present ? data.nom.value : this.nom,
       actiu: data.actiu.present ? data.actiu.value : this.actiu,
+      shoppingUnit: data.shoppingUnit.present
+          ? data.shoppingUnit.value
+          : this.shoppingUnit,
+      purchaseMode: data.purchaseMode.present
+          ? data.purchaseMode.value
+          : this.purchaseMode,
     );
   }
 
@@ -402,20 +468,24 @@ class ProductFamilyTableData extends DataClass
     return (StringBuffer('ProductFamilyTableData(')
           ..write('id: $id, ')
           ..write('nom: $nom, ')
-          ..write('actiu: $actiu')
+          ..write('actiu: $actiu, ')
+          ..write('shoppingUnit: $shoppingUnit, ')
+          ..write('purchaseMode: $purchaseMode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, nom, actiu);
+  int get hashCode => Object.hash(id, nom, actiu, shoppingUnit, purchaseMode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ProductFamilyTableData &&
           other.id == this.id &&
           other.nom == this.nom &&
-          other.actiu == this.actiu);
+          other.actiu == this.actiu &&
+          other.shoppingUnit == this.shoppingUnit &&
+          other.purchaseMode == this.purchaseMode);
 }
 
 class ProductFamilyTableCompanion
@@ -423,34 +493,50 @@ class ProductFamilyTableCompanion
   final Value<int> id;
   final Value<String> nom;
   final Value<bool> actiu;
+  final Value<String?> shoppingUnit;
+  final Value<String?> purchaseMode;
   const ProductFamilyTableCompanion({
     this.id = const Value.absent(),
     this.nom = const Value.absent(),
     this.actiu = const Value.absent(),
+    this.shoppingUnit = const Value.absent(),
+    this.purchaseMode = const Value.absent(),
   });
   ProductFamilyTableCompanion.insert({
     this.id = const Value.absent(),
     required String nom,
     this.actiu = const Value.absent(),
+    this.shoppingUnit = const Value.absent(),
+    this.purchaseMode = const Value.absent(),
   }) : nom = Value(nom);
   static Insertable<ProductFamilyTableData> custom({
     Expression<int>? id,
     Expression<String>? nom,
     Expression<bool>? actiu,
+    Expression<String>? shoppingUnit,
+    Expression<String>? purchaseMode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (nom != null) 'nom': nom,
       if (actiu != null) 'actiu': actiu,
+      if (shoppingUnit != null) 'shopping_unit': shoppingUnit,
+      if (purchaseMode != null) 'purchase_mode': purchaseMode,
     });
   }
 
   ProductFamilyTableCompanion copyWith(
-      {Value<int>? id, Value<String>? nom, Value<bool>? actiu}) {
+      {Value<int>? id,
+      Value<String>? nom,
+      Value<bool>? actiu,
+      Value<String?>? shoppingUnit,
+      Value<String?>? purchaseMode}) {
     return ProductFamilyTableCompanion(
       id: id ?? this.id,
       nom: nom ?? this.nom,
       actiu: actiu ?? this.actiu,
+      shoppingUnit: shoppingUnit ?? this.shoppingUnit,
+      purchaseMode: purchaseMode ?? this.purchaseMode,
     );
   }
 
@@ -466,6 +552,12 @@ class ProductFamilyTableCompanion
     if (actiu.present) {
       map['actiu'] = Variable<bool>(actiu.value);
     }
+    if (shoppingUnit.present) {
+      map['shopping_unit'] = Variable<String>(shoppingUnit.value);
+    }
+    if (purchaseMode.present) {
+      map['purchase_mode'] = Variable<String>(purchaseMode.value);
+    }
     return map;
   }
 
@@ -474,7 +566,9 @@ class ProductFamilyTableCompanion
     return (StringBuffer('ProductFamilyTableCompanion(')
           ..write('id: $id, ')
           ..write('nom: $nom, ')
-          ..write('actiu: $actiu')
+          ..write('actiu: $actiu, ')
+          ..write('shoppingUnit: $shoppingUnit, ')
+          ..write('purchaseMode: $purchaseMode')
           ..write(')'))
         .toString();
   }
@@ -550,6 +644,24 @@ class $ProductItemTableTable extends ProductItemTable
   late final GeneratedColumn<double> pricePerQuantity = GeneratedColumn<double>(
       'price_per_quantity', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _packageQuantityAmountMeta =
+      const VerificationMeta('packageQuantityAmount');
+  @override
+  late final GeneratedColumn<double> packageQuantityAmount =
+      GeneratedColumn<double>('package_quantity_amount', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _packageQuantityUnitMeta =
+      const VerificationMeta('packageQuantityUnit');
+  @override
+  late final GeneratedColumn<String> packageQuantityUnit =
+      GeneratedColumn<String>('package_quantity_unit', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _normalizedMeasurementUnitMeta =
+      const VerificationMeta('normalizedMeasurementUnit');
+  @override
+  late final GeneratedColumn<String> normalizedMeasurementUnit =
+      GeneratedColumn<String>('normalized_measurement_unit', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _dateAddedMeta =
       const VerificationMeta('dateAdded');
   @override
@@ -585,6 +697,9 @@ class $ProductItemTableTable extends ProductItemTable
         quantity,
         unitType,
         pricePerQuantity,
+        packageQuantityAmount,
+        packageQuantityUnit,
+        normalizedMeasurementUnit,
         dateAdded,
         isCurrentPrice,
         barcode
@@ -655,6 +770,25 @@ class $ProductItemTableTable extends ProductItemTable
     } else if (isInserting) {
       context.missing(_pricePerQuantityMeta);
     }
+    if (data.containsKey('package_quantity_amount')) {
+      context.handle(
+          _packageQuantityAmountMeta,
+          packageQuantityAmount.isAcceptableOrUnknown(
+              data['package_quantity_amount']!, _packageQuantityAmountMeta));
+    }
+    if (data.containsKey('package_quantity_unit')) {
+      context.handle(
+          _packageQuantityUnitMeta,
+          packageQuantityUnit.isAcceptableOrUnknown(
+              data['package_quantity_unit']!, _packageQuantityUnitMeta));
+    }
+    if (data.containsKey('normalized_measurement_unit')) {
+      context.handle(
+          _normalizedMeasurementUnitMeta,
+          normalizedMeasurementUnit.isAcceptableOrUnknown(
+              data['normalized_measurement_unit']!,
+              _normalizedMeasurementUnitMeta));
+    }
     if (data.containsKey('date_added')) {
       context.handle(_dateAddedMeta,
           dateAdded.isAcceptableOrUnknown(data['date_added']!, _dateAddedMeta));
@@ -696,6 +830,14 @@ class $ProductItemTableTable extends ProductItemTable
           .read(DriftSqlType.string, data['${effectivePrefix}unit_type'])!,
       pricePerQuantity: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}price_per_quantity'])!,
+      packageQuantityAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}package_quantity_amount']),
+      packageQuantityUnit: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}package_quantity_unit']),
+      normalizedMeasurementUnit: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}normalized_measurement_unit']),
       dateAdded: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date_added'])!,
       isCurrentPrice: attachedDatabase.typeMapping
@@ -722,6 +864,9 @@ class ProductItemTableData extends DataClass
   final double quantity;
   final String unitType;
   final double pricePerQuantity;
+  final double? packageQuantityAmount;
+  final String? packageQuantityUnit;
+  final String? normalizedMeasurementUnit;
   final DateTime dateAdded;
   final bool isCurrentPrice;
   final String? barcode;
@@ -735,6 +880,9 @@ class ProductItemTableData extends DataClass
       required this.quantity,
       required this.unitType,
       required this.pricePerQuantity,
+      this.packageQuantityAmount,
+      this.packageQuantityUnit,
+      this.normalizedMeasurementUnit,
       required this.dateAdded,
       required this.isCurrentPrice,
       this.barcode});
@@ -750,6 +898,16 @@ class ProductItemTableData extends DataClass
     map['quantity'] = Variable<double>(quantity);
     map['unit_type'] = Variable<String>(unitType);
     map['price_per_quantity'] = Variable<double>(pricePerQuantity);
+    if (!nullToAbsent || packageQuantityAmount != null) {
+      map['package_quantity_amount'] = Variable<double>(packageQuantityAmount);
+    }
+    if (!nullToAbsent || packageQuantityUnit != null) {
+      map['package_quantity_unit'] = Variable<String>(packageQuantityUnit);
+    }
+    if (!nullToAbsent || normalizedMeasurementUnit != null) {
+      map['normalized_measurement_unit'] =
+          Variable<String>(normalizedMeasurementUnit);
+    }
     map['date_added'] = Variable<DateTime>(dateAdded);
     map['is_current_price'] = Variable<bool>(isCurrentPrice);
     if (!nullToAbsent || barcode != null) {
@@ -769,6 +927,16 @@ class ProductItemTableData extends DataClass
       quantity: Value(quantity),
       unitType: Value(unitType),
       pricePerQuantity: Value(pricePerQuantity),
+      packageQuantityAmount: packageQuantityAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(packageQuantityAmount),
+      packageQuantityUnit: packageQuantityUnit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(packageQuantityUnit),
+      normalizedMeasurementUnit:
+          normalizedMeasurementUnit == null && nullToAbsent
+              ? const Value.absent()
+              : Value(normalizedMeasurementUnit),
       dateAdded: Value(dateAdded),
       isCurrentPrice: Value(isCurrentPrice),
       barcode: barcode == null && nullToAbsent
@@ -790,6 +958,12 @@ class ProductItemTableData extends DataClass
       quantity: serializer.fromJson<double>(json['quantity']),
       unitType: serializer.fromJson<String>(json['unitType']),
       pricePerQuantity: serializer.fromJson<double>(json['pricePerQuantity']),
+      packageQuantityAmount:
+          serializer.fromJson<double?>(json['packageQuantityAmount']),
+      packageQuantityUnit:
+          serializer.fromJson<String?>(json['packageQuantityUnit']),
+      normalizedMeasurementUnit:
+          serializer.fromJson<String?>(json['normalizedMeasurementUnit']),
       dateAdded: serializer.fromJson<DateTime>(json['dateAdded']),
       isCurrentPrice: serializer.fromJson<bool>(json['isCurrentPrice']),
       barcode: serializer.fromJson<String?>(json['barcode']),
@@ -808,6 +982,11 @@ class ProductItemTableData extends DataClass
       'quantity': serializer.toJson<double>(quantity),
       'unitType': serializer.toJson<String>(unitType),
       'pricePerQuantity': serializer.toJson<double>(pricePerQuantity),
+      'packageQuantityAmount':
+          serializer.toJson<double?>(packageQuantityAmount),
+      'packageQuantityUnit': serializer.toJson<String?>(packageQuantityUnit),
+      'normalizedMeasurementUnit':
+          serializer.toJson<String?>(normalizedMeasurementUnit),
       'dateAdded': serializer.toJson<DateTime>(dateAdded),
       'isCurrentPrice': serializer.toJson<bool>(isCurrentPrice),
       'barcode': serializer.toJson<String?>(barcode),
@@ -824,6 +1003,9 @@ class ProductItemTableData extends DataClass
           double? quantity,
           String? unitType,
           double? pricePerQuantity,
+          Value<double?> packageQuantityAmount = const Value.absent(),
+          Value<String?> packageQuantityUnit = const Value.absent(),
+          Value<String?> normalizedMeasurementUnit = const Value.absent(),
           DateTime? dateAdded,
           bool? isCurrentPrice,
           Value<String?> barcode = const Value.absent()}) =>
@@ -837,6 +1019,15 @@ class ProductItemTableData extends DataClass
         quantity: quantity ?? this.quantity,
         unitType: unitType ?? this.unitType,
         pricePerQuantity: pricePerQuantity ?? this.pricePerQuantity,
+        packageQuantityAmount: packageQuantityAmount.present
+            ? packageQuantityAmount.value
+            : this.packageQuantityAmount,
+        packageQuantityUnit: packageQuantityUnit.present
+            ? packageQuantityUnit.value
+            : this.packageQuantityUnit,
+        normalizedMeasurementUnit: normalizedMeasurementUnit.present
+            ? normalizedMeasurementUnit.value
+            : this.normalizedMeasurementUnit,
         dateAdded: dateAdded ?? this.dateAdded,
         isCurrentPrice: isCurrentPrice ?? this.isCurrentPrice,
         barcode: barcode.present ? barcode.value : this.barcode,
@@ -858,6 +1049,15 @@ class ProductItemTableData extends DataClass
       pricePerQuantity: data.pricePerQuantity.present
           ? data.pricePerQuantity.value
           : this.pricePerQuantity,
+      packageQuantityAmount: data.packageQuantityAmount.present
+          ? data.packageQuantityAmount.value
+          : this.packageQuantityAmount,
+      packageQuantityUnit: data.packageQuantityUnit.present
+          ? data.packageQuantityUnit.value
+          : this.packageQuantityUnit,
+      normalizedMeasurementUnit: data.normalizedMeasurementUnit.present
+          ? data.normalizedMeasurementUnit.value
+          : this.normalizedMeasurementUnit,
       dateAdded: data.dateAdded.present ? data.dateAdded.value : this.dateAdded,
       isCurrentPrice: data.isCurrentPrice.present
           ? data.isCurrentPrice.value
@@ -878,6 +1078,9 @@ class ProductItemTableData extends DataClass
           ..write('quantity: $quantity, ')
           ..write('unitType: $unitType, ')
           ..write('pricePerQuantity: $pricePerQuantity, ')
+          ..write('packageQuantityAmount: $packageQuantityAmount, ')
+          ..write('packageQuantityUnit: $packageQuantityUnit, ')
+          ..write('normalizedMeasurementUnit: $normalizedMeasurementUnit, ')
           ..write('dateAdded: $dateAdded, ')
           ..write('isCurrentPrice: $isCurrentPrice, ')
           ..write('barcode: $barcode')
@@ -896,6 +1099,9 @@ class ProductItemTableData extends DataClass
       quantity,
       unitType,
       pricePerQuantity,
+      packageQuantityAmount,
+      packageQuantityUnit,
+      normalizedMeasurementUnit,
       dateAdded,
       isCurrentPrice,
       barcode);
@@ -912,6 +1118,9 @@ class ProductItemTableData extends DataClass
           other.quantity == this.quantity &&
           other.unitType == this.unitType &&
           other.pricePerQuantity == this.pricePerQuantity &&
+          other.packageQuantityAmount == this.packageQuantityAmount &&
+          other.packageQuantityUnit == this.packageQuantityUnit &&
+          other.normalizedMeasurementUnit == this.normalizedMeasurementUnit &&
           other.dateAdded == this.dateAdded &&
           other.isCurrentPrice == this.isCurrentPrice &&
           other.barcode == this.barcode);
@@ -927,6 +1136,9 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
   final Value<double> quantity;
   final Value<String> unitType;
   final Value<double> pricePerQuantity;
+  final Value<double?> packageQuantityAmount;
+  final Value<String?> packageQuantityUnit;
+  final Value<String?> normalizedMeasurementUnit;
   final Value<DateTime> dateAdded;
   final Value<bool> isCurrentPrice;
   final Value<String?> barcode;
@@ -940,6 +1152,9 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     this.quantity = const Value.absent(),
     this.unitType = const Value.absent(),
     this.pricePerQuantity = const Value.absent(),
+    this.packageQuantityAmount = const Value.absent(),
+    this.packageQuantityUnit = const Value.absent(),
+    this.normalizedMeasurementUnit = const Value.absent(),
     this.dateAdded = const Value.absent(),
     this.isCurrentPrice = const Value.absent(),
     this.barcode = const Value.absent(),
@@ -954,6 +1169,9 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     required double quantity,
     required String unitType,
     required double pricePerQuantity,
+    this.packageQuantityAmount = const Value.absent(),
+    this.packageQuantityUnit = const Value.absent(),
+    this.normalizedMeasurementUnit = const Value.absent(),
     this.dateAdded = const Value.absent(),
     this.isCurrentPrice = const Value.absent(),
     this.barcode = const Value.absent(),
@@ -974,6 +1192,9 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     Expression<double>? quantity,
     Expression<String>? unitType,
     Expression<double>? pricePerQuantity,
+    Expression<double>? packageQuantityAmount,
+    Expression<String>? packageQuantityUnit,
+    Expression<String>? normalizedMeasurementUnit,
     Expression<DateTime>? dateAdded,
     Expression<bool>? isCurrentPrice,
     Expression<String>? barcode,
@@ -988,6 +1209,12 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
       if (quantity != null) 'quantity': quantity,
       if (unitType != null) 'unit_type': unitType,
       if (pricePerQuantity != null) 'price_per_quantity': pricePerQuantity,
+      if (packageQuantityAmount != null)
+        'package_quantity_amount': packageQuantityAmount,
+      if (packageQuantityUnit != null)
+        'package_quantity_unit': packageQuantityUnit,
+      if (normalizedMeasurementUnit != null)
+        'normalized_measurement_unit': normalizedMeasurementUnit,
       if (dateAdded != null) 'date_added': dateAdded,
       if (isCurrentPrice != null) 'is_current_price': isCurrentPrice,
       if (barcode != null) 'barcode': barcode,
@@ -1004,6 +1231,9 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
       Value<double>? quantity,
       Value<String>? unitType,
       Value<double>? pricePerQuantity,
+      Value<double?>? packageQuantityAmount,
+      Value<String?>? packageQuantityUnit,
+      Value<String?>? normalizedMeasurementUnit,
       Value<DateTime>? dateAdded,
       Value<bool>? isCurrentPrice,
       Value<String?>? barcode}) {
@@ -1017,6 +1247,11 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
       quantity: quantity ?? this.quantity,
       unitType: unitType ?? this.unitType,
       pricePerQuantity: pricePerQuantity ?? this.pricePerQuantity,
+      packageQuantityAmount:
+          packageQuantityAmount ?? this.packageQuantityAmount,
+      packageQuantityUnit: packageQuantityUnit ?? this.packageQuantityUnit,
+      normalizedMeasurementUnit:
+          normalizedMeasurementUnit ?? this.normalizedMeasurementUnit,
       dateAdded: dateAdded ?? this.dateAdded,
       isCurrentPrice: isCurrentPrice ?? this.isCurrentPrice,
       barcode: barcode ?? this.barcode,
@@ -1053,6 +1288,18 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     if (pricePerQuantity.present) {
       map['price_per_quantity'] = Variable<double>(pricePerQuantity.value);
     }
+    if (packageQuantityAmount.present) {
+      map['package_quantity_amount'] =
+          Variable<double>(packageQuantityAmount.value);
+    }
+    if (packageQuantityUnit.present) {
+      map['package_quantity_unit'] =
+          Variable<String>(packageQuantityUnit.value);
+    }
+    if (normalizedMeasurementUnit.present) {
+      map['normalized_measurement_unit'] =
+          Variable<String>(normalizedMeasurementUnit.value);
+    }
     if (dateAdded.present) {
       map['date_added'] = Variable<DateTime>(dateAdded.value);
     }
@@ -1077,6 +1324,9 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
           ..write('quantity: $quantity, ')
           ..write('unitType: $unitType, ')
           ..write('pricePerQuantity: $pricePerQuantity, ')
+          ..write('packageQuantityAmount: $packageQuantityAmount, ')
+          ..write('packageQuantityUnit: $packageQuantityUnit, ')
+          ..write('normalizedMeasurementUnit: $normalizedMeasurementUnit, ')
           ..write('dateAdded: $dateAdded, ')
           ..write('isCurrentPrice: $isCurrentPrice, ')
           ..write('barcode: $barcode')
@@ -1416,9 +1666,9 @@ final class $$SupermarketTableTableReferences extends BaseReferences<
                   db.supermarketTable.id, db.productItemTable.supermarketId));
 
   $$ProductItemTableTableProcessedTableManager get productItemTableRefs {
-    final manager =
-        $$ProductItemTableTableTableManager($_db, $_db.productItemTable)
-            .filter((f) => f.supermarketId.id($_item.id));
+    final manager = $$ProductItemTableTableTableManager(
+            $_db, $_db.productItemTable)
+        .filter((f) => f.supermarketId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_productItemTableRefsTable($_db));
@@ -1598,7 +1848,8 @@ class $$SupermarketTableTableTableManager extends RootTableManager<
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (productItemTableRefs)
-                    await $_getPrefetchedData(
+                    await $_getPrefetchedData<SupermarketTableData,
+                            $SupermarketTableTable, ProductItemTableData>(
                         currentTable: table,
                         referencedTable: $$SupermarketTableTableReferences
                             ._productItemTableRefsTable(db),
@@ -1633,12 +1884,16 @@ typedef $$ProductFamilyTableTableCreateCompanionBuilder
   Value<int> id,
   required String nom,
   Value<bool> actiu,
+  Value<String?> shoppingUnit,
+  Value<String?> purchaseMode,
 });
 typedef $$ProductFamilyTableTableUpdateCompanionBuilder
     = ProductFamilyTableCompanion Function({
   Value<int> id,
   Value<String> nom,
   Value<bool> actiu,
+  Value<String?> shoppingUnit,
+  Value<String?> purchaseMode,
 });
 
 final class $$ProductFamilyTableTableReferences extends BaseReferences<
@@ -1654,8 +1909,8 @@ final class $$ProductFamilyTableTableReferences extends BaseReferences<
 
   $$ProductItemTableTableProcessedTableManager get productItemTableRefs {
     final manager =
-        $$ProductItemTableTableTableManager($_db, $_db.productItemTable)
-            .filter((f) => f.productFamilyId.id($_item.id));
+        $$ProductItemTableTableTableManager($_db, $_db.productItemTable).filter(
+            (f) => f.productFamilyId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_productItemTableRefsTable($_db));
@@ -1671,9 +1926,10 @@ final class $$ProductFamilyTableTableReferences extends BaseReferences<
               db.productFamilyTable.id, db.shoppingListTable.productFamilyId));
 
   $$ShoppingListTableTableProcessedTableManager get shoppingListTableRefs {
-    final manager =
-        $$ShoppingListTableTableTableManager($_db, $_db.shoppingListTable)
-            .filter((f) => f.productFamilyId.id($_item.id));
+    final manager = $$ShoppingListTableTableTableManager(
+            $_db, $_db.shoppingListTable)
+        .filter(
+            (f) => f.productFamilyId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_shoppingListTableRefsTable($_db));
@@ -1699,6 +1955,12 @@ class $$ProductFamilyTableTableFilterComposer
 
   ColumnFilters<bool> get actiu => $composableBuilder(
       column: $table.actiu, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get shoppingUnit => $composableBuilder(
+      column: $table.shoppingUnit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get purchaseMode => $composableBuilder(
+      column: $table.purchaseMode, builder: (column) => ColumnFilters(column));
 
   Expression<bool> productItemTableRefs(
       Expression<bool> Function($$ProductItemTableTableFilterComposer f) f) {
@@ -1760,6 +2022,14 @@ class $$ProductFamilyTableTableOrderingComposer
 
   ColumnOrderings<bool> get actiu => $composableBuilder(
       column: $table.actiu, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get shoppingUnit => $composableBuilder(
+      column: $table.shoppingUnit,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get purchaseMode => $composableBuilder(
+      column: $table.purchaseMode,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$ProductFamilyTableTableAnnotationComposer
@@ -1779,6 +2049,12 @@ class $$ProductFamilyTableTableAnnotationComposer
 
   GeneratedColumn<bool> get actiu =>
       $composableBuilder(column: $table.actiu, builder: (column) => column);
+
+  GeneratedColumn<String> get shoppingUnit => $composableBuilder(
+      column: $table.shoppingUnit, builder: (column) => column);
+
+  GeneratedColumn<String> get purchaseMode => $composableBuilder(
+      column: $table.purchaseMode, builder: (column) => column);
 
   Expression<T> productItemTableRefs<T extends Object>(
       Expression<T> Function($$ProductItemTableTableAnnotationComposer a) f) {
@@ -1853,21 +2129,29 @@ class $$ProductFamilyTableTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<String> nom = const Value.absent(),
             Value<bool> actiu = const Value.absent(),
+            Value<String?> shoppingUnit = const Value.absent(),
+            Value<String?> purchaseMode = const Value.absent(),
           }) =>
               ProductFamilyTableCompanion(
             id: id,
             nom: nom,
             actiu: actiu,
+            shoppingUnit: shoppingUnit,
+            purchaseMode: purchaseMode,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String nom,
             Value<bool> actiu = const Value.absent(),
+            Value<String?> shoppingUnit = const Value.absent(),
+            Value<String?> purchaseMode = const Value.absent(),
           }) =>
               ProductFamilyTableCompanion.insert(
             id: id,
             nom: nom,
             actiu: actiu,
+            shoppingUnit: shoppingUnit,
+            purchaseMode: purchaseMode,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -1887,7 +2171,8 @@ class $$ProductFamilyTableTableTableManager extends RootTableManager<
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (productItemTableRefs)
-                    await $_getPrefetchedData(
+                    await $_getPrefetchedData<ProductFamilyTableData,
+                            $ProductFamilyTableTable, ProductItemTableData>(
                         currentTable: table,
                         referencedTable: $$ProductFamilyTableTableReferences
                             ._productItemTableRefsTable(db),
@@ -1899,7 +2184,8 @@ class $$ProductFamilyTableTableTableManager extends RootTableManager<
                                 .where((e) => e.productFamilyId == item.id),
                         typedResults: items),
                   if (shoppingListTableRefs)
-                    await $_getPrefetchedData(
+                    await $_getPrefetchedData<ProductFamilyTableData,
+                            $ProductFamilyTableTable, ShoppingListTableData>(
                         currentTable: table,
                         referencedTable: $$ProductFamilyTableTableReferences
                             ._shoppingListTableRefsTable(db),
@@ -1941,6 +2227,9 @@ typedef $$ProductItemTableTableCreateCompanionBuilder
   required double quantity,
   required String unitType,
   required double pricePerQuantity,
+  Value<double?> packageQuantityAmount,
+  Value<String?> packageQuantityUnit,
+  Value<String?> normalizedMeasurementUnit,
   Value<DateTime> dateAdded,
   Value<bool> isCurrentPrice,
   Value<String?> barcode,
@@ -1956,6 +2245,9 @@ typedef $$ProductItemTableTableUpdateCompanionBuilder
   Value<double> quantity,
   Value<String> unitType,
   Value<double> pricePerQuantity,
+  Value<double?> packageQuantityAmount,
+  Value<String?> packageQuantityUnit,
+  Value<String?> normalizedMeasurementUnit,
   Value<DateTime> dateAdded,
   Value<bool> isCurrentPrice,
   Value<String?> barcode,
@@ -1971,11 +2263,12 @@ final class $$ProductItemTableTableReferences extends BaseReferences<
       db.productFamilyTable.createAlias($_aliasNameGenerator(
           db.productItemTable.productFamilyId, db.productFamilyTable.id));
 
-  $$ProductFamilyTableTableProcessedTableManager? get productFamilyId {
-    if ($_item.productFamilyId == null) return null;
+  $$ProductFamilyTableTableProcessedTableManager get productFamilyId {
+    final $_column = $_itemColumn<int>('product_family_id')!;
+
     final manager =
         $$ProductFamilyTableTableTableManager($_db, $_db.productFamilyTable)
-            .filter((f) => f.id($_item.productFamilyId!));
+            .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_productFamilyIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -1986,11 +2279,12 @@ final class $$ProductItemTableTableReferences extends BaseReferences<
       db.supermarketTable.createAlias($_aliasNameGenerator(
           db.productItemTable.supermarketId, db.supermarketTable.id));
 
-  $$SupermarketTableTableProcessedTableManager? get supermarketId {
-    if ($_item.supermarketId == null) return null;
+  $$SupermarketTableTableProcessedTableManager get supermarketId {
+    final $_column = $_itemColumn<int>('supermarket_id')!;
+
     final manager =
         $$SupermarketTableTableTableManager($_db, $_db.supermarketTable)
-            .filter((f) => f.id($_item.supermarketId!));
+            .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_supermarketIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -2005,9 +2299,9 @@ final class $$ProductItemTableTableReferences extends BaseReferences<
               db.productItemTable.id, db.shoppingListTable.productItemId));
 
   $$ShoppingListTableTableProcessedTableManager get shoppingListTableRefs {
-    final manager =
-        $$ShoppingListTableTableTableManager($_db, $_db.shoppingListTable)
-            .filter((f) => f.productItemId.id($_item.id));
+    final manager = $$ShoppingListTableTableTableManager(
+            $_db, $_db.shoppingListTable)
+        .filter((f) => f.productItemId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_shoppingListTableRefsTable($_db));
@@ -2045,6 +2339,18 @@ class $$ProductItemTableTableFilterComposer
 
   ColumnFilters<double> get pricePerQuantity => $composableBuilder(
       column: $table.pricePerQuantity,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get packageQuantityAmount => $composableBuilder(
+      column: $table.packageQuantityAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get packageQuantityUnit => $composableBuilder(
+      column: $table.packageQuantityUnit,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get normalizedMeasurementUnit => $composableBuilder(
+      column: $table.normalizedMeasurementUnit,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get dateAdded => $composableBuilder(
@@ -2150,6 +2456,18 @@ class $$ProductItemTableTableOrderingComposer
       column: $table.pricePerQuantity,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get packageQuantityAmount => $composableBuilder(
+      column: $table.packageQuantityAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get packageQuantityUnit => $composableBuilder(
+      column: $table.packageQuantityUnit,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get normalizedMeasurementUnit => $composableBuilder(
+      column: $table.normalizedMeasurementUnit,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get dateAdded => $composableBuilder(
       column: $table.dateAdded, builder: (column) => ColumnOrderings(column));
 
@@ -2230,6 +2548,15 @@ class $$ProductItemTableTableAnnotationComposer
 
   GeneratedColumn<double> get pricePerQuantity => $composableBuilder(
       column: $table.pricePerQuantity, builder: (column) => column);
+
+  GeneratedColumn<double> get packageQuantityAmount => $composableBuilder(
+      column: $table.packageQuantityAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get packageQuantityUnit => $composableBuilder(
+      column: $table.packageQuantityUnit, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedMeasurementUnit => $composableBuilder(
+      column: $table.normalizedMeasurementUnit, builder: (column) => column);
 
   GeneratedColumn<DateTime> get dateAdded =>
       $composableBuilder(column: $table.dateAdded, builder: (column) => column);
@@ -2340,6 +2667,9 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             Value<double> quantity = const Value.absent(),
             Value<String> unitType = const Value.absent(),
             Value<double> pricePerQuantity = const Value.absent(),
+            Value<double?> packageQuantityAmount = const Value.absent(),
+            Value<String?> packageQuantityUnit = const Value.absent(),
+            Value<String?> normalizedMeasurementUnit = const Value.absent(),
             Value<DateTime> dateAdded = const Value.absent(),
             Value<bool> isCurrentPrice = const Value.absent(),
             Value<String?> barcode = const Value.absent(),
@@ -2354,6 +2684,9 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             quantity: quantity,
             unitType: unitType,
             pricePerQuantity: pricePerQuantity,
+            packageQuantityAmount: packageQuantityAmount,
+            packageQuantityUnit: packageQuantityUnit,
+            normalizedMeasurementUnit: normalizedMeasurementUnit,
             dateAdded: dateAdded,
             isCurrentPrice: isCurrentPrice,
             barcode: barcode,
@@ -2368,6 +2701,9 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             required double quantity,
             required String unitType,
             required double pricePerQuantity,
+            Value<double?> packageQuantityAmount = const Value.absent(),
+            Value<String?> packageQuantityUnit = const Value.absent(),
+            Value<String?> normalizedMeasurementUnit = const Value.absent(),
             Value<DateTime> dateAdded = const Value.absent(),
             Value<bool> isCurrentPrice = const Value.absent(),
             Value<String?> barcode = const Value.absent(),
@@ -2382,6 +2718,9 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             quantity: quantity,
             unitType: unitType,
             pricePerQuantity: pricePerQuantity,
+            packageQuantityAmount: packageQuantityAmount,
+            packageQuantityUnit: packageQuantityUnit,
+            normalizedMeasurementUnit: normalizedMeasurementUnit,
             dateAdded: dateAdded,
             isCurrentPrice: isCurrentPrice,
             barcode: barcode,
@@ -2442,7 +2781,8 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (shoppingListTableRefs)
-                    await $_getPrefetchedData(
+                    await $_getPrefetchedData<ProductItemTableData,
+                            $ProductItemTableTable, ShoppingListTableData>(
                         currentTable: table,
                         referencedTable: $$ProductItemTableTableReferences
                             ._shoppingListTableRefsTable(db),
@@ -2500,11 +2840,12 @@ final class $$ShoppingListTableTableReferences extends BaseReferences<
       db.productFamilyTable.createAlias($_aliasNameGenerator(
           db.shoppingListTable.productFamilyId, db.productFamilyTable.id));
 
-  $$ProductFamilyTableTableProcessedTableManager? get productFamilyId {
-    if ($_item.productFamilyId == null) return null;
+  $$ProductFamilyTableTableProcessedTableManager get productFamilyId {
+    final $_column = $_itemColumn<int>('product_family_id')!;
+
     final manager =
         $$ProductFamilyTableTableTableManager($_db, $_db.productFamilyTable)
-            .filter((f) => f.id($_item.productFamilyId!));
+            .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_productFamilyIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -2516,10 +2857,11 @@ final class $$ShoppingListTableTableReferences extends BaseReferences<
           db.shoppingListTable.productItemId, db.productItemTable.id));
 
   $$ProductItemTableTableProcessedTableManager? get productItemId {
-    if ($_item.productItemId == null) return null;
+    final $_column = $_itemColumn<int>('product_item_id');
+    if ($_column == null) return null;
     final manager =
         $$ProductItemTableTableTableManager($_db, $_db.productItemTable)
-            .filter((f) => f.id($_item.productItemId!));
+            .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_productItemIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(

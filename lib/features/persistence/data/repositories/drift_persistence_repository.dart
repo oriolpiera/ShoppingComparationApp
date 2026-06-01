@@ -57,8 +57,15 @@ class DriftPersistenceRepository implements PersistenceRepository {
       {bool onlyActive = true}) async {
     final rows = await dao.getProductFamilies(onlyActive: onlyActive);
     return rows
-        .map((row) =>
-            ProductFamily(id: row.id, name: row.nom, isActive: row.actiu))
+        .map(
+          (row) => ProductFamily(
+            id: row.id,
+            name: row.nom,
+            isActive: row.actiu,
+            shoppingUnit: row.shoppingUnit,
+            purchaseMode: row.purchaseMode,
+          ),
+        )
         .toList();
   }
 
@@ -69,6 +76,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
         id: family.id == null ? const Value.absent() : Value(family.id!),
         nom: Value(family.name),
         actiu: Value(family.isActive),
+        shoppingUnit: Value(family.shoppingUnit),
+        purchaseMode: Value(family.purchaseMode),
       ),
     );
   }
@@ -115,6 +124,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
             dateAdded: row.dateAdded,
             isCurrentPrice: row.isCurrentPrice,
             barcode: row.barcode,
+            packageQuantityAmount: row.packageQuantityAmount,
+            packageQuantityUnit: row.packageQuantityUnit,
+            normalizedMeasurementUnit: row.normalizedMeasurementUnit,
           ),
         )
         .toList();
@@ -133,6 +145,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
         quantity: Value(item.quantity),
         unitType: Value(item.unitType),
         pricePerQuantity: Value(item.pricePerQuantity),
+        packageQuantityAmount: Value(item.packageQuantityAmount),
+        packageQuantityUnit: Value(item.packageQuantityUnit),
+        normalizedMeasurementUnit: Value(item.normalizedMeasurementUnit),
         dateAdded: Value(item.dateAdded),
         isCurrentPrice: Value(item.isCurrentPrice),
         barcode: Value(item.barcode),
@@ -180,6 +195,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
             quantity: Value(row.quantity),
             unitType: Value(row.unitType),
             pricePerQuantity: Value(row.pricePerQuantity),
+            packageQuantityAmount: Value(row.packageQuantityAmount),
+            packageQuantityUnit: Value(row.packageQuantityUnit),
+            normalizedMeasurementUnit: Value(row.normalizedMeasurementUnit),
             dateAdded: Value(row.dateAdded),
             isCurrentPrice: const Value(false),
             barcode: Value(row.barcode),
@@ -198,6 +216,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
         quantity: quantity,
         unitType: normalizeUnitTypeForStorage(unitType),
         pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+        packageQuantityAmount: quantity,
+        packageQuantityUnit: normalizeUnitTypeForStorage(unitType),
+        normalizedMeasurementUnit: normalizeUnitTypeForComparison(unitType),
         dateAdded: DateTime.now(),
         isCurrentPrice: true,
         barcode: barcode,
@@ -241,6 +262,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
             dateAdded: row.dateAdded,
             isCurrentPrice: row.isCurrentPrice,
             barcode: row.barcode,
+            packageQuantityAmount: row.packageQuantityAmount,
+            packageQuantityUnit: row.packageQuantityUnit,
+            normalizedMeasurementUnit: row.normalizedMeasurementUnit,
           ),
         )
         .toList()
@@ -325,6 +349,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
             quantity: Value(row.quantity),
             unitType: Value(row.unitType),
             pricePerQuantity: Value(row.pricePerQuantity),
+            packageQuantityAmount: Value(row.packageQuantityAmount),
+            packageQuantityUnit: Value(row.packageQuantityUnit),
+            normalizedMeasurementUnit: Value(row.normalizedMeasurementUnit),
             dateAdded: Value(row.dateAdded),
             isCurrentPrice: const Value(false),
             barcode: Value(row.barcode),
@@ -343,6 +370,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
           quantity: quantity,
           unitType: unit,
           pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+          packageQuantityAmount: quantity,
+          packageQuantityUnit: unit,
+          normalizedMeasurementUnit: normalizeUnitTypeForComparison(unit),
           dateAdded: DateTime.now(),
           isCurrentPrice: true,
           barcode: normalizedBarcode,
