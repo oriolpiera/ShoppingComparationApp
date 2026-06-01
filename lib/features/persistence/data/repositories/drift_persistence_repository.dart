@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
+import '../../../../core/normalization/family_unit_normalization.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
 import '../../domain/entities/barcode_match_result.dart';
@@ -13,33 +14,6 @@ import '../../domain/repositories/persistence_repository.dart';
 
 class DriftPersistenceRepository implements PersistenceRepository {
   final PersistenceDao dao;
-
-  static final _diacriticsMap = <String, String>{
-    'à': 'a',
-    'á': 'a',
-    'â': 'a',
-    'ä': 'a',
-    'ã': 'a',
-    'è': 'e',
-    'é': 'e',
-    'ê': 'e',
-    'ë': 'e',
-    'ì': 'i',
-    'í': 'i',
-    'î': 'i',
-    'ï': 'i',
-    'ò': 'o',
-    'ó': 'o',
-    'ô': 'o',
-    'ö': 'o',
-    'õ': 'o',
-    'ù': 'u',
-    'ú': 'u',
-    'û': 'u',
-    'ü': 'u',
-    'ç': 'c',
-    'ñ': 'n',
-  };
   static const double _priceEpsilon = 1e-9;
 
   DriftPersistenceRepository(this.dao);
@@ -100,10 +74,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async {
-    final normalizedTarget = _normalizeKey(familyName);
+    final normalizedTarget = normalizeFamilyKey(familyName);
     final families = await getProductFamilies(onlyActive: true);
     for (final family in families) {
-      if (family.id != null && _normalizeKey(family.name) == normalizedTarget) {
+      if (family.id != null &&
+          normalizeFamilyKey(family.name) == normalizedTarget) {
         return family.id!;
       }
     }
@@ -190,9 +165,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
       onlyCurrentPrice: true,
     );
 
-    final normalizedProduct = _normalizeKey(trimmedName);
+    final normalizedProduct = normalizeFamilyKey(trimmedName);
     for (final row in currentRows) {
-      if (_normalizeKey(row.nom) == normalizedProduct) {
+      if (normalizeFamilyKey(row.nom) == normalizedProduct) {
         await dao.saveProductItem(
           ProductItemTableCompanion(
             id: Value(row.id),
@@ -220,7 +195,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         supermarketId: supermarketId,
         price: price,
         quantity: quantity,
-        unitType: unitType.trim(),
+        unitType: normalizeUnitTypeForStorage(unitType),
         pricePerQuantity: quantity == 0 ? 0 : price / quantity,
         dateAdded: DateTime.now(),
         isCurrentPrice: true,
@@ -315,7 +290,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
     final currentMatches =
         await dao.getCurrentActiveItemsByBarcode(normalizedBarcode);
-    final unit = unitType.trim();
+    final unit = normalizeUnitTypeForStorage(unitType);
 
     final currentSameMarket = currentMatches
         .where((row) => row.supermarketId == supermarketId)
@@ -324,7 +299,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final sameTupleExists = currentSameMarket.any((row) {
       return (row.price - price).abs() < _priceEpsilon &&
           (row.quantity - quantity).abs() < _priceEpsilon &&
-          row.unitType.trim().toLowerCase() == unit.toLowerCase();
+          normalizeUnitTypeForComparison(row.unitType) ==
+              normalizeUnitTypeForComparison(unit);
     });
 
     if (sameTupleExists) {
@@ -377,22 +353,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
       created: true,
       message: 'New current price registered.',
     );
-  }
-
-  String _normalizeKey(String value) {
-    final lower = value.toLowerCase().trim();
-    final buffer = StringBuffer();
-
-    for (final rune in lower.runes) {
-      final char = String.fromCharCode(rune);
-      buffer.write(_diacriticsMap[char] ?? char);
-    }
-
-    return buffer
-        .toString()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
   }
 
   @override
