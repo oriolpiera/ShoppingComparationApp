@@ -1,0 +1,3 @@
+# Use normalized measurement units for shopping optimization
+
+Shopping comparison must support fresh products, packaged products, and external metadata from OpenFoodFacts/OpenPrices without assuming every product is expressed only as kg or L. We decided to model quantities with normalized measurement units internally, using comparable base units for mass, volume, and count while keeping UI display flexible (`kg`, `g`, `L`, `ml`, units). This keeps Product Family shopping needs separate from concrete Product Item package sizes and allows the optimizer to reason about whole packages, divisible weighted goods, and discrete pieces consistently.
