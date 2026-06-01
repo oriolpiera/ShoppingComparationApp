@@ -60,6 +60,69 @@ void main() {
     });
   });
 
+  group('FamilyOffer total cost', () {
+    test('packaged mode never buys fractional packages', () {
+      final offer = FamilyOffer(
+        id: 'pack300',
+        price: 1,
+        purchaseMode: PurchaseMode.packaged,
+        packageQuantity:
+            PackageQuantity(amount: 300, unit: MeasurementUnit.milliliter),
+      );
+
+      final total = offer
+          .totalCostFor(FamilyNeedQuantity(amount: 1, unit: ShoppingUnit.liter));
+
+      expect(total, 4);
+    });
+
+    test('weighted mode allows divisible quantities', () {
+      final offer = FamilyOffer(
+        id: 'bulk',
+        price: 10,
+        purchaseMode: PurchaseMode.weighted,
+        packageQuantity:
+            PackageQuantity(amount: 1, unit: MeasurementUnit.kilogram),
+      );
+
+      final total = offer.totalCostFor(
+        FamilyNeedQuantity(amount: 0.25, unit: ShoppingUnit.kilogram),
+      );
+
+      expect(total, 2.5);
+    });
+
+    test('piece mode uses discrete counts', () {
+      final offer = FamilyOffer(
+        id: 'piece',
+        price: 2,
+        purchaseMode: PurchaseMode.piece,
+        packageQuantity: PackageQuantity(amount: 1, unit: MeasurementUnit.unit),
+      );
+
+      final total =
+          offer.totalCostFor(FamilyNeedQuantity(amount: 3, unit: ShoppingUnit.piece));
+
+      expect(total, 6);
+    });
+
+    test('throws when need and offer units are incompatible', () {
+      final need = FamilyNeedQuantity(amount: 1, unit: ShoppingUnit.kilogram);
+      final offer = FamilyOffer(
+        id: 'vol',
+        price: 1,
+        purchaseMode: PurchaseMode.packaged,
+        packageQuantity:
+            PackageQuantity(amount: 1, unit: MeasurementUnit.liter),
+      );
+
+      expect(
+        () => offer.totalCostFor(need),
+        throwsA(isA<UnitCompatibilityException>()),
+      );
+    });
+  });
+
   group('Family winner selection', () {
     test('uses family need independent from package size', () {
       final need = FamilyNeedQuantity(amount: 1.5, unit: ShoppingUnit.kilogram);
@@ -85,6 +148,39 @@ void main() {
       );
 
       expect(winner?.id, 'pack500');
+    });
+
+    test('selects cheapest packaged offer for 1L need (250ml/300ml/1L)', () {
+      final need = FamilyNeedQuantity(amount: 1, unit: ShoppingUnit.liter);
+
+      final winner = selectFamilyWinner(
+        need: need,
+        offers: [
+          FamilyOffer(
+            id: '250ml',
+            price: 0.7,
+            purchaseMode: PurchaseMode.packaged,
+            packageQuantity:
+                PackageQuantity(amount: 250, unit: MeasurementUnit.milliliter),
+          ),
+          FamilyOffer(
+            id: '300ml',
+            price: 0.65,
+            purchaseMode: PurchaseMode.packaged,
+            packageQuantity:
+                PackageQuantity(amount: 300, unit: MeasurementUnit.milliliter),
+          ),
+          FamilyOffer(
+            id: '1l',
+            price: 2.7,
+            purchaseMode: PurchaseMode.packaged,
+            packageQuantity:
+                PackageQuantity(amount: 1, unit: MeasurementUnit.liter),
+          ),
+        ],
+      );
+
+      expect(winner?.id, '300ml');
     });
 
     test('uses lexicographic id as tie-breaker for equal costs', () {
@@ -113,20 +209,5 @@ void main() {
       expect(winner?.id, 'a-offer');
     });
 
-    test('throws when need and offer units are incompatible', () {
-      final need = FamilyNeedQuantity(amount: 1, unit: ShoppingUnit.kilogram);
-      final offer = FamilyOffer(
-        id: 'vol',
-        price: 1,
-        purchaseMode: PurchaseMode.packaged,
-        packageQuantity:
-            PackageQuantity(amount: 1, unit: MeasurementUnit.liter),
-      );
-
-      expect(
-        () => offer.totalCostFor(need),
-        throwsA(isA<UnitCompatibilityException>()),
-      );
-    });
   });
 }
