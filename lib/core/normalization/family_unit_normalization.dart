@@ -17,6 +17,10 @@ String normalizeFamilyKey(String value) {
       .trim();
 }
 
+/// Returns the canonical display label for a unit type.
+/// Only two values are recognised: `'l'` (case-insensitive) → `'L'`,
+/// and everything else → `'kg'`. If new unit types are added in the
+/// future, extend this function rather than adding local overrides.
 String normalizeUnitTypeForDisplay(String unitType) {
   if (isLiterUnit(unitType)) return 'L';
   return 'kg';
