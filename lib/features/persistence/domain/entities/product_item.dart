@@ -14,6 +14,7 @@ class ProductItem {
   final double? packageQuantityAmount;
   final String? packageQuantityUnit;
   final String? normalizedMeasurementUnit;
+  final int? externalObservationId;
 
   const ProductItem({
     this.id,
@@ -31,5 +32,8 @@ class ProductItem {
     this.packageQuantityAmount,
     this.packageQuantityUnit,
     this.normalizedMeasurementUnit,
+    this.externalObservationId,
   });
+
+  bool get isOpenPricesSource => externalObservationId != null;
 }

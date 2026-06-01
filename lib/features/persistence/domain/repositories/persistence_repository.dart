@@ -1,5 +1,7 @@
 import '../entities/optimized_shopping.dart';
 import '../entities/barcode_match_result.dart';
+import '../entities/external_price_observation.dart';
+import '../entities/external_store_mapping.dart';
 import '../entities/product_family.dart';
 import '../entities/product_item.dart';
 import '../entities/scanned_price_registration_result.dart';
@@ -39,6 +41,19 @@ abstract class PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+  });
+
+  Future<List<ExternalStoreMapping>> getExternalStoreMappings();
+  Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping);
+  Future<List<ExternalPriceObservation>> getExternalPriceObservations();
+  Future<int> saveExternalPriceObservation(
+      ExternalPriceObservation observation);
+  Future<void> updateExternalObservationReviewStatus({
+    required int observationId,
+    required ExternalObservationReviewStatus newStatus,
+  });
+  Future<int> confirmExternalObservationLocally({
+    required int observationId,
   });
 
   Future<List<ShoppingListEntry>> getShoppingList();

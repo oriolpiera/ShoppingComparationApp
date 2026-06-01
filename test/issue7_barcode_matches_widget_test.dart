@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/features/home/presentation/model_records_pages.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/external_store_mapping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
@@ -165,6 +167,34 @@ class _FakeRepo implements PersistenceRepository {
     bool onlyCurrentPrice = true,
   }) async =>
       [];
+
+  @override
+  Future<List<ExternalStoreMapping>> getExternalStoreMappings() async => [];
+
+  @override
+  Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping) async => 1;
+
+  @override
+  Future<List<ExternalPriceObservation>> getExternalPriceObservations() async =>
+      [];
+
+  @override
+  Future<int> saveExternalPriceObservation(
+    ExternalPriceObservation observation,
+  ) async =>
+      1;
+
+  @override
+  Future<void> updateExternalObservationReviewStatus({
+    required int observationId,
+    required ExternalObservationReviewStatus newStatus,
+  }) async {}
+
+  @override
+  Future<int> confirmExternalObservationLocally({
+    required int observationId,
+  }) async =>
+      1;
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];

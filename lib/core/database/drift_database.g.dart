@@ -608,19 +608,13 @@ class $ProductItemTableTable extends ProductItemTable
   @override
   late final GeneratedColumn<int> productFamilyId = GeneratedColumn<int>(
       'product_family_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES product_family (id)'));
+      type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _supermarketIdMeta =
       const VerificationMeta('supermarketId');
   @override
   late final GeneratedColumn<int> supermarketId = GeneratedColumn<int>(
       'supermarket_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES supermarket (id)'));
+      type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _priceMeta = const VerificationMeta('price');
   @override
   late final GeneratedColumn<double> price = GeneratedColumn<double>(
@@ -686,6 +680,12 @@ class $ProductItemTableTable extends ProductItemTable
   late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
       'barcode', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _externalObservationIdMeta =
+      const VerificationMeta('externalObservationId');
+  @override
+  late final GeneratedColumn<int> externalObservationId = GeneratedColumn<int>(
+      'external_observation_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -702,7 +702,8 @@ class $ProductItemTableTable extends ProductItemTable
         normalizedMeasurementUnit,
         dateAdded,
         isCurrentPrice,
-        barcode
+        barcode,
+        externalObservationId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -803,6 +804,12 @@ class $ProductItemTableTable extends ProductItemTable
       context.handle(_barcodeMeta,
           barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta));
     }
+    if (data.containsKey('external_observation_id')) {
+      context.handle(
+          _externalObservationIdMeta,
+          externalObservationId.isAcceptableOrUnknown(
+              data['external_observation_id']!, _externalObservationIdMeta));
+    }
     return context;
   }
 
@@ -844,6 +851,8 @@ class $ProductItemTableTable extends ProductItemTable
           .read(DriftSqlType.bool, data['${effectivePrefix}is_current_price'])!,
       barcode: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}barcode']),
+      externalObservationId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}external_observation_id']),
     );
   }
 
@@ -870,6 +879,7 @@ class ProductItemTableData extends DataClass
   final DateTime dateAdded;
   final bool isCurrentPrice;
   final String? barcode;
+  final int? externalObservationId;
   const ProductItemTableData(
       {required this.id,
       required this.nom,
@@ -885,7 +895,8 @@ class ProductItemTableData extends DataClass
       this.normalizedMeasurementUnit,
       required this.dateAdded,
       required this.isCurrentPrice,
-      this.barcode});
+      this.barcode,
+      this.externalObservationId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -912,6 +923,9 @@ class ProductItemTableData extends DataClass
     map['is_current_price'] = Variable<bool>(isCurrentPrice);
     if (!nullToAbsent || barcode != null) {
       map['barcode'] = Variable<String>(barcode);
+    }
+    if (!nullToAbsent || externalObservationId != null) {
+      map['external_observation_id'] = Variable<int>(externalObservationId);
     }
     return map;
   }
@@ -942,6 +956,9 @@ class ProductItemTableData extends DataClass
       barcode: barcode == null && nullToAbsent
           ? const Value.absent()
           : Value(barcode),
+      externalObservationId: externalObservationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(externalObservationId),
     );
   }
 
@@ -967,6 +984,8 @@ class ProductItemTableData extends DataClass
       dateAdded: serializer.fromJson<DateTime>(json['dateAdded']),
       isCurrentPrice: serializer.fromJson<bool>(json['isCurrentPrice']),
       barcode: serializer.fromJson<String?>(json['barcode']),
+      externalObservationId:
+          serializer.fromJson<int?>(json['externalObservationId']),
     );
   }
   @override
@@ -990,6 +1009,7 @@ class ProductItemTableData extends DataClass
       'dateAdded': serializer.toJson<DateTime>(dateAdded),
       'isCurrentPrice': serializer.toJson<bool>(isCurrentPrice),
       'barcode': serializer.toJson<String?>(barcode),
+      'externalObservationId': serializer.toJson<int?>(externalObservationId),
     };
   }
 
@@ -1008,7 +1028,8 @@ class ProductItemTableData extends DataClass
           Value<String?> normalizedMeasurementUnit = const Value.absent(),
           DateTime? dateAdded,
           bool? isCurrentPrice,
-          Value<String?> barcode = const Value.absent()}) =>
+          Value<String?> barcode = const Value.absent(),
+          Value<int?> externalObservationId = const Value.absent()}) =>
       ProductItemTableData(
         id: id ?? this.id,
         nom: nom ?? this.nom,
@@ -1031,6 +1052,9 @@ class ProductItemTableData extends DataClass
         dateAdded: dateAdded ?? this.dateAdded,
         isCurrentPrice: isCurrentPrice ?? this.isCurrentPrice,
         barcode: barcode.present ? barcode.value : this.barcode,
+        externalObservationId: externalObservationId.present
+            ? externalObservationId.value
+            : this.externalObservationId,
       );
   ProductItemTableData copyWithCompanion(ProductItemTableCompanion data) {
     return ProductItemTableData(
@@ -1063,6 +1087,9 @@ class ProductItemTableData extends DataClass
           ? data.isCurrentPrice.value
           : this.isCurrentPrice,
       barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      externalObservationId: data.externalObservationId.present
+          ? data.externalObservationId.value
+          : this.externalObservationId,
     );
   }
 
@@ -1083,7 +1110,8 @@ class ProductItemTableData extends DataClass
           ..write('normalizedMeasurementUnit: $normalizedMeasurementUnit, ')
           ..write('dateAdded: $dateAdded, ')
           ..write('isCurrentPrice: $isCurrentPrice, ')
-          ..write('barcode: $barcode')
+          ..write('barcode: $barcode, ')
+          ..write('externalObservationId: $externalObservationId')
           ..write(')'))
         .toString();
   }
@@ -1104,7 +1132,8 @@ class ProductItemTableData extends DataClass
       normalizedMeasurementUnit,
       dateAdded,
       isCurrentPrice,
-      barcode);
+      barcode,
+      externalObservationId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1123,7 +1152,8 @@ class ProductItemTableData extends DataClass
           other.normalizedMeasurementUnit == this.normalizedMeasurementUnit &&
           other.dateAdded == this.dateAdded &&
           other.isCurrentPrice == this.isCurrentPrice &&
-          other.barcode == this.barcode);
+          other.barcode == this.barcode &&
+          other.externalObservationId == this.externalObservationId);
 }
 
 class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
@@ -1142,6 +1172,7 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
   final Value<DateTime> dateAdded;
   final Value<bool> isCurrentPrice;
   final Value<String?> barcode;
+  final Value<int?> externalObservationId;
   const ProductItemTableCompanion({
     this.id = const Value.absent(),
     this.nom = const Value.absent(),
@@ -1158,6 +1189,7 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     this.dateAdded = const Value.absent(),
     this.isCurrentPrice = const Value.absent(),
     this.barcode = const Value.absent(),
+    this.externalObservationId = const Value.absent(),
   });
   ProductItemTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1175,6 +1207,7 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     this.dateAdded = const Value.absent(),
     this.isCurrentPrice = const Value.absent(),
     this.barcode = const Value.absent(),
+    this.externalObservationId = const Value.absent(),
   })  : nom = Value(nom),
         productFamilyId = Value(productFamilyId),
         supermarketId = Value(supermarketId),
@@ -1198,6 +1231,7 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     Expression<DateTime>? dateAdded,
     Expression<bool>? isCurrentPrice,
     Expression<String>? barcode,
+    Expression<int>? externalObservationId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1218,6 +1252,8 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
       if (dateAdded != null) 'date_added': dateAdded,
       if (isCurrentPrice != null) 'is_current_price': isCurrentPrice,
       if (barcode != null) 'barcode': barcode,
+      if (externalObservationId != null)
+        'external_observation_id': externalObservationId,
     });
   }
 
@@ -1236,7 +1272,8 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
       Value<String?>? normalizedMeasurementUnit,
       Value<DateTime>? dateAdded,
       Value<bool>? isCurrentPrice,
-      Value<String?>? barcode}) {
+      Value<String?>? barcode,
+      Value<int?>? externalObservationId}) {
     return ProductItemTableCompanion(
       id: id ?? this.id,
       nom: nom ?? this.nom,
@@ -1255,6 +1292,8 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
       dateAdded: dateAdded ?? this.dateAdded,
       isCurrentPrice: isCurrentPrice ?? this.isCurrentPrice,
       barcode: barcode ?? this.barcode,
+      externalObservationId:
+          externalObservationId ?? this.externalObservationId,
     );
   }
 
@@ -1309,6 +1348,10 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
     if (barcode.present) {
       map['barcode'] = Variable<String>(barcode.value);
     }
+    if (externalObservationId.present) {
+      map['external_observation_id'] =
+          Variable<int>(externalObservationId.value);
+    }
     return map;
   }
 
@@ -1329,7 +1372,8 @@ class ProductItemTableCompanion extends UpdateCompanion<ProductItemTableData> {
           ..write('normalizedMeasurementUnit: $normalizedMeasurementUnit, ')
           ..write('dateAdded: $dateAdded, ')
           ..write('isCurrentPrice: $isCurrentPrice, ')
-          ..write('barcode: $barcode')
+          ..write('barcode: $barcode, ')
+          ..write('externalObservationId: $externalObservationId')
           ..write(')'))
         .toString();
   }
@@ -1355,10 +1399,7 @@ class $ShoppingListTableTable extends ShoppingListTable
   @override
   late final GeneratedColumn<int> productFamilyId = GeneratedColumn<int>(
       'product_family_id', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES product_family (id)'));
+      type: DriftSqlType.int, requiredDuringInsert: true);
   static const VerificationMeta _quantityMeta =
       const VerificationMeta('quantity');
   @override
@@ -1370,10 +1411,7 @@ class $ShoppingListTableTable extends ShoppingListTable
   @override
   late final GeneratedColumn<int> productItemId = GeneratedColumn<int>(
       'product_item_id', aliasedName, true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES product_item (id)'));
+      type: DriftSqlType.int, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
       [id, productFamilyId, quantity, productItemId];
@@ -1616,6 +1654,958 @@ class ShoppingListTableCompanion
   }
 }
 
+class $ExternalStoreMappingTableTable extends ExternalStoreMappingTable
+    with
+        TableInfo<$ExternalStoreMappingTableTable,
+            ExternalStoreMappingTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExternalStoreMappingTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _externalStoreIdMeta =
+      const VerificationMeta('externalStoreId');
+  @override
+  late final GeneratedColumn<String> externalStoreId = GeneratedColumn<String>(
+      'external_store_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _externalStoreNameMeta =
+      const VerificationMeta('externalStoreName');
+  @override
+  late final GeneratedColumn<String> externalStoreName =
+      GeneratedColumn<String>('external_store_name', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _supermarketIdMeta =
+      const VerificationMeta('supermarketId');
+  @override
+  late final GeneratedColumn<int> supermarketId = GeneratedColumn<int>(
+      'supermarket_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, externalStoreId, externalStoreName, supermarketId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'external_store_mapping';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<ExternalStoreMappingTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('external_store_id')) {
+      context.handle(
+          _externalStoreIdMeta,
+          externalStoreId.isAcceptableOrUnknown(
+              data['external_store_id']!, _externalStoreIdMeta));
+    } else if (isInserting) {
+      context.missing(_externalStoreIdMeta);
+    }
+    if (data.containsKey('external_store_name')) {
+      context.handle(
+          _externalStoreNameMeta,
+          externalStoreName.isAcceptableOrUnknown(
+              data['external_store_name']!, _externalStoreNameMeta));
+    } else if (isInserting) {
+      context.missing(_externalStoreNameMeta);
+    }
+    if (data.containsKey('supermarket_id')) {
+      context.handle(
+          _supermarketIdMeta,
+          supermarketId.isAcceptableOrUnknown(
+              data['supermarket_id']!, _supermarketIdMeta));
+    } else if (isInserting) {
+      context.missing(_supermarketIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {externalStoreId},
+      ];
+  @override
+  ExternalStoreMappingTableData map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExternalStoreMappingTableData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      externalStoreId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}external_store_id'])!,
+      externalStoreName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}external_store_name'])!,
+      supermarketId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}supermarket_id'])!,
+    );
+  }
+
+  @override
+  $ExternalStoreMappingTableTable createAlias(String alias) {
+    return $ExternalStoreMappingTableTable(attachedDatabase, alias);
+  }
+}
+
+class ExternalStoreMappingTableData extends DataClass
+    implements Insertable<ExternalStoreMappingTableData> {
+  final int id;
+  final String externalStoreId;
+  final String externalStoreName;
+  final int supermarketId;
+  const ExternalStoreMappingTableData(
+      {required this.id,
+      required this.externalStoreId,
+      required this.externalStoreName,
+      required this.supermarketId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['external_store_id'] = Variable<String>(externalStoreId);
+    map['external_store_name'] = Variable<String>(externalStoreName);
+    map['supermarket_id'] = Variable<int>(supermarketId);
+    return map;
+  }
+
+  ExternalStoreMappingTableCompanion toCompanion(bool nullToAbsent) {
+    return ExternalStoreMappingTableCompanion(
+      id: Value(id),
+      externalStoreId: Value(externalStoreId),
+      externalStoreName: Value(externalStoreName),
+      supermarketId: Value(supermarketId),
+    );
+  }
+
+  factory ExternalStoreMappingTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExternalStoreMappingTableData(
+      id: serializer.fromJson<int>(json['id']),
+      externalStoreId: serializer.fromJson<String>(json['externalStoreId']),
+      externalStoreName: serializer.fromJson<String>(json['externalStoreName']),
+      supermarketId: serializer.fromJson<int>(json['supermarketId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'externalStoreId': serializer.toJson<String>(externalStoreId),
+      'externalStoreName': serializer.toJson<String>(externalStoreName),
+      'supermarketId': serializer.toJson<int>(supermarketId),
+    };
+  }
+
+  ExternalStoreMappingTableData copyWith(
+          {int? id,
+          String? externalStoreId,
+          String? externalStoreName,
+          int? supermarketId}) =>
+      ExternalStoreMappingTableData(
+        id: id ?? this.id,
+        externalStoreId: externalStoreId ?? this.externalStoreId,
+        externalStoreName: externalStoreName ?? this.externalStoreName,
+        supermarketId: supermarketId ?? this.supermarketId,
+      );
+  ExternalStoreMappingTableData copyWithCompanion(
+      ExternalStoreMappingTableCompanion data) {
+    return ExternalStoreMappingTableData(
+      id: data.id.present ? data.id.value : this.id,
+      externalStoreId: data.externalStoreId.present
+          ? data.externalStoreId.value
+          : this.externalStoreId,
+      externalStoreName: data.externalStoreName.present
+          ? data.externalStoreName.value
+          : this.externalStoreName,
+      supermarketId: data.supermarketId.present
+          ? data.supermarketId.value
+          : this.supermarketId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExternalStoreMappingTableData(')
+          ..write('id: $id, ')
+          ..write('externalStoreId: $externalStoreId, ')
+          ..write('externalStoreName: $externalStoreName, ')
+          ..write('supermarketId: $supermarketId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, externalStoreId, externalStoreName, supermarketId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExternalStoreMappingTableData &&
+          other.id == this.id &&
+          other.externalStoreId == this.externalStoreId &&
+          other.externalStoreName == this.externalStoreName &&
+          other.supermarketId == this.supermarketId);
+}
+
+class ExternalStoreMappingTableCompanion
+    extends UpdateCompanion<ExternalStoreMappingTableData> {
+  final Value<int> id;
+  final Value<String> externalStoreId;
+  final Value<String> externalStoreName;
+  final Value<int> supermarketId;
+  const ExternalStoreMappingTableCompanion({
+    this.id = const Value.absent(),
+    this.externalStoreId = const Value.absent(),
+    this.externalStoreName = const Value.absent(),
+    this.supermarketId = const Value.absent(),
+  });
+  ExternalStoreMappingTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String externalStoreId,
+    required String externalStoreName,
+    required int supermarketId,
+  })  : externalStoreId = Value(externalStoreId),
+        externalStoreName = Value(externalStoreName),
+        supermarketId = Value(supermarketId);
+  static Insertable<ExternalStoreMappingTableData> custom({
+    Expression<int>? id,
+    Expression<String>? externalStoreId,
+    Expression<String>? externalStoreName,
+    Expression<int>? supermarketId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (externalStoreId != null) 'external_store_id': externalStoreId,
+      if (externalStoreName != null) 'external_store_name': externalStoreName,
+      if (supermarketId != null) 'supermarket_id': supermarketId,
+    });
+  }
+
+  ExternalStoreMappingTableCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? externalStoreId,
+      Value<String>? externalStoreName,
+      Value<int>? supermarketId}) {
+    return ExternalStoreMappingTableCompanion(
+      id: id ?? this.id,
+      externalStoreId: externalStoreId ?? this.externalStoreId,
+      externalStoreName: externalStoreName ?? this.externalStoreName,
+      supermarketId: supermarketId ?? this.supermarketId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (externalStoreId.present) {
+      map['external_store_id'] = Variable<String>(externalStoreId.value);
+    }
+    if (externalStoreName.present) {
+      map['external_store_name'] = Variable<String>(externalStoreName.value);
+    }
+    if (supermarketId.present) {
+      map['supermarket_id'] = Variable<int>(supermarketId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExternalStoreMappingTableCompanion(')
+          ..write('id: $id, ')
+          ..write('externalStoreId: $externalStoreId, ')
+          ..write('externalStoreName: $externalStoreName, ')
+          ..write('supermarketId: $supermarketId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ExternalPriceObservationTableTable extends ExternalPriceObservationTable
+    with
+        TableInfo<$ExternalPriceObservationTableTable,
+            ExternalPriceObservationTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExternalPriceObservationTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _openPricesIdMeta =
+      const VerificationMeta('openPricesId');
+  @override
+  late final GeneratedColumn<String> openPricesId = GeneratedColumn<String>(
+      'open_prices_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _productNameMeta =
+      const VerificationMeta('productName');
+  @override
+  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
+      'product_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _familyNameMeta =
+      const VerificationMeta('familyName');
+  @override
+  late final GeneratedColumn<String> familyName = GeneratedColumn<String>(
+      'family_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _externalStoreIdMeta =
+      const VerificationMeta('externalStoreId');
+  @override
+  late final GeneratedColumn<String> externalStoreId = GeneratedColumn<String>(
+      'external_store_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _externalStoreNameMeta =
+      const VerificationMeta('externalStoreName');
+  @override
+  late final GeneratedColumn<String> externalStoreName =
+      GeneratedColumn<String>('external_store_name', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  @override
+  late final GeneratedColumn<double> price = GeneratedColumn<double>(
+      'price', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _quantityMeta =
+      const VerificationMeta('quantity');
+  @override
+  late final GeneratedColumn<double> quantity = GeneratedColumn<double>(
+      'quantity', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _unitTypeMeta =
+      const VerificationMeta('unitType');
+  @override
+  late final GeneratedColumn<String> unitType = GeneratedColumn<String>(
+      'unit_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _pricePerQuantityMeta =
+      const VerificationMeta('pricePerQuantity');
+  @override
+  late final GeneratedColumn<double> pricePerQuantity = GeneratedColumn<double>(
+      'price_per_quantity', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _observedAtMeta =
+      const VerificationMeta('observedAt');
+  @override
+  late final GeneratedColumn<DateTime> observedAt = GeneratedColumn<DateTime>(
+      'observed_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _reviewStatusMeta =
+      const VerificationMeta('reviewStatus');
+  @override
+  late final GeneratedColumn<String> reviewStatus = GeneratedColumn<String>(
+      'review_status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('unreviewed'));
+  static const VerificationMeta _localProductItemIdMeta =
+      const VerificationMeta('localProductItemId');
+  @override
+  late final GeneratedColumn<int> localProductItemId = GeneratedColumn<int>(
+      'local_product_item_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        openPricesId,
+        productName,
+        familyName,
+        externalStoreId,
+        externalStoreName,
+        price,
+        quantity,
+        unitType,
+        pricePerQuantity,
+        observedAt,
+        reviewStatus,
+        localProductItemId
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'external_price_observation';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<ExternalPriceObservationTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('open_prices_id')) {
+      context.handle(
+          _openPricesIdMeta,
+          openPricesId.isAcceptableOrUnknown(
+              data['open_prices_id']!, _openPricesIdMeta));
+    } else if (isInserting) {
+      context.missing(_openPricesIdMeta);
+    }
+    if (data.containsKey('product_name')) {
+      context.handle(
+          _productNameMeta,
+          productName.isAcceptableOrUnknown(
+              data['product_name']!, _productNameMeta));
+    } else if (isInserting) {
+      context.missing(_productNameMeta);
+    }
+    if (data.containsKey('family_name')) {
+      context.handle(
+          _familyNameMeta,
+          familyName.isAcceptableOrUnknown(
+              data['family_name']!, _familyNameMeta));
+    } else if (isInserting) {
+      context.missing(_familyNameMeta);
+    }
+    if (data.containsKey('external_store_id')) {
+      context.handle(
+          _externalStoreIdMeta,
+          externalStoreId.isAcceptableOrUnknown(
+              data['external_store_id']!, _externalStoreIdMeta));
+    } else if (isInserting) {
+      context.missing(_externalStoreIdMeta);
+    }
+    if (data.containsKey('external_store_name')) {
+      context.handle(
+          _externalStoreNameMeta,
+          externalStoreName.isAcceptableOrUnknown(
+              data['external_store_name']!, _externalStoreNameMeta));
+    } else if (isInserting) {
+      context.missing(_externalStoreNameMeta);
+    }
+    if (data.containsKey('price')) {
+      context.handle(
+          _priceMeta, price.isAcceptableOrUnknown(data['price']!, _priceMeta));
+    } else if (isInserting) {
+      context.missing(_priceMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(_quantityMeta,
+          quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta));
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('unit_type')) {
+      context.handle(_unitTypeMeta,
+          unitType.isAcceptableOrUnknown(data['unit_type']!, _unitTypeMeta));
+    } else if (isInserting) {
+      context.missing(_unitTypeMeta);
+    }
+    if (data.containsKey('price_per_quantity')) {
+      context.handle(
+          _pricePerQuantityMeta,
+          pricePerQuantity.isAcceptableOrUnknown(
+              data['price_per_quantity']!, _pricePerQuantityMeta));
+    } else if (isInserting) {
+      context.missing(_pricePerQuantityMeta);
+    }
+    if (data.containsKey('observed_at')) {
+      context.handle(
+          _observedAtMeta,
+          observedAt.isAcceptableOrUnknown(
+              data['observed_at']!, _observedAtMeta));
+    }
+    if (data.containsKey('review_status')) {
+      context.handle(
+          _reviewStatusMeta,
+          reviewStatus.isAcceptableOrUnknown(
+              data['review_status']!, _reviewStatusMeta));
+    }
+    if (data.containsKey('local_product_item_id')) {
+      context.handle(
+          _localProductItemIdMeta,
+          localProductItemId.isAcceptableOrUnknown(
+              data['local_product_item_id']!, _localProductItemIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {openPricesId},
+      ];
+  @override
+  ExternalPriceObservationTableData map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExternalPriceObservationTableData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      openPricesId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}open_prices_id'])!,
+      productName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}product_name'])!,
+      familyName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}family_name'])!,
+      externalStoreId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}external_store_id'])!,
+      externalStoreName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}external_store_name'])!,
+      price: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}price'])!,
+      quantity: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}quantity'])!,
+      unitType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}unit_type'])!,
+      pricePerQuantity: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}price_per_quantity'])!,
+      observedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}observed_at'])!,
+      reviewStatus: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}review_status'])!,
+      localProductItemId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}local_product_item_id']),
+    );
+  }
+
+  @override
+  $ExternalPriceObservationTableTable createAlias(String alias) {
+    return $ExternalPriceObservationTableTable(attachedDatabase, alias);
+  }
+}
+
+class ExternalPriceObservationTableData extends DataClass
+    implements Insertable<ExternalPriceObservationTableData> {
+  final int id;
+  final String openPricesId;
+  final String productName;
+  final String familyName;
+  final String externalStoreId;
+  final String externalStoreName;
+  final double price;
+  final double quantity;
+  final String unitType;
+  final double pricePerQuantity;
+  final DateTime observedAt;
+  final String reviewStatus;
+  final int? localProductItemId;
+  const ExternalPriceObservationTableData(
+      {required this.id,
+      required this.openPricesId,
+      required this.productName,
+      required this.familyName,
+      required this.externalStoreId,
+      required this.externalStoreName,
+      required this.price,
+      required this.quantity,
+      required this.unitType,
+      required this.pricePerQuantity,
+      required this.observedAt,
+      required this.reviewStatus,
+      this.localProductItemId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['open_prices_id'] = Variable<String>(openPricesId);
+    map['product_name'] = Variable<String>(productName);
+    map['family_name'] = Variable<String>(familyName);
+    map['external_store_id'] = Variable<String>(externalStoreId);
+    map['external_store_name'] = Variable<String>(externalStoreName);
+    map['price'] = Variable<double>(price);
+    map['quantity'] = Variable<double>(quantity);
+    map['unit_type'] = Variable<String>(unitType);
+    map['price_per_quantity'] = Variable<double>(pricePerQuantity);
+    map['observed_at'] = Variable<DateTime>(observedAt);
+    map['review_status'] = Variable<String>(reviewStatus);
+    if (!nullToAbsent || localProductItemId != null) {
+      map['local_product_item_id'] = Variable<int>(localProductItemId);
+    }
+    return map;
+  }
+
+  ExternalPriceObservationTableCompanion toCompanion(bool nullToAbsent) {
+    return ExternalPriceObservationTableCompanion(
+      id: Value(id),
+      openPricesId: Value(openPricesId),
+      productName: Value(productName),
+      familyName: Value(familyName),
+      externalStoreId: Value(externalStoreId),
+      externalStoreName: Value(externalStoreName),
+      price: Value(price),
+      quantity: Value(quantity),
+      unitType: Value(unitType),
+      pricePerQuantity: Value(pricePerQuantity),
+      observedAt: Value(observedAt),
+      reviewStatus: Value(reviewStatus),
+      localProductItemId: localProductItemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localProductItemId),
+    );
+  }
+
+  factory ExternalPriceObservationTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExternalPriceObservationTableData(
+      id: serializer.fromJson<int>(json['id']),
+      openPricesId: serializer.fromJson<String>(json['openPricesId']),
+      productName: serializer.fromJson<String>(json['productName']),
+      familyName: serializer.fromJson<String>(json['familyName']),
+      externalStoreId: serializer.fromJson<String>(json['externalStoreId']),
+      externalStoreName: serializer.fromJson<String>(json['externalStoreName']),
+      price: serializer.fromJson<double>(json['price']),
+      quantity: serializer.fromJson<double>(json['quantity']),
+      unitType: serializer.fromJson<String>(json['unitType']),
+      pricePerQuantity: serializer.fromJson<double>(json['pricePerQuantity']),
+      observedAt: serializer.fromJson<DateTime>(json['observedAt']),
+      reviewStatus: serializer.fromJson<String>(json['reviewStatus']),
+      localProductItemId: serializer.fromJson<int?>(json['localProductItemId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'openPricesId': serializer.toJson<String>(openPricesId),
+      'productName': serializer.toJson<String>(productName),
+      'familyName': serializer.toJson<String>(familyName),
+      'externalStoreId': serializer.toJson<String>(externalStoreId),
+      'externalStoreName': serializer.toJson<String>(externalStoreName),
+      'price': serializer.toJson<double>(price),
+      'quantity': serializer.toJson<double>(quantity),
+      'unitType': serializer.toJson<String>(unitType),
+      'pricePerQuantity': serializer.toJson<double>(pricePerQuantity),
+      'observedAt': serializer.toJson<DateTime>(observedAt),
+      'reviewStatus': serializer.toJson<String>(reviewStatus),
+      'localProductItemId': serializer.toJson<int?>(localProductItemId),
+    };
+  }
+
+  ExternalPriceObservationTableData copyWith(
+          {int? id,
+          String? openPricesId,
+          String? productName,
+          String? familyName,
+          String? externalStoreId,
+          String? externalStoreName,
+          double? price,
+          double? quantity,
+          String? unitType,
+          double? pricePerQuantity,
+          DateTime? observedAt,
+          String? reviewStatus,
+          Value<int?> localProductItemId = const Value.absent()}) =>
+      ExternalPriceObservationTableData(
+        id: id ?? this.id,
+        openPricesId: openPricesId ?? this.openPricesId,
+        productName: productName ?? this.productName,
+        familyName: familyName ?? this.familyName,
+        externalStoreId: externalStoreId ?? this.externalStoreId,
+        externalStoreName: externalStoreName ?? this.externalStoreName,
+        price: price ?? this.price,
+        quantity: quantity ?? this.quantity,
+        unitType: unitType ?? this.unitType,
+        pricePerQuantity: pricePerQuantity ?? this.pricePerQuantity,
+        observedAt: observedAt ?? this.observedAt,
+        reviewStatus: reviewStatus ?? this.reviewStatus,
+        localProductItemId: localProductItemId.present
+            ? localProductItemId.value
+            : this.localProductItemId,
+      );
+  ExternalPriceObservationTableData copyWithCompanion(
+      ExternalPriceObservationTableCompanion data) {
+    return ExternalPriceObservationTableData(
+      id: data.id.present ? data.id.value : this.id,
+      openPricesId: data.openPricesId.present
+          ? data.openPricesId.value
+          : this.openPricesId,
+      productName:
+          data.productName.present ? data.productName.value : this.productName,
+      familyName:
+          data.familyName.present ? data.familyName.value : this.familyName,
+      externalStoreId: data.externalStoreId.present
+          ? data.externalStoreId.value
+          : this.externalStoreId,
+      externalStoreName: data.externalStoreName.present
+          ? data.externalStoreName.value
+          : this.externalStoreName,
+      price: data.price.present ? data.price.value : this.price,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      unitType: data.unitType.present ? data.unitType.value : this.unitType,
+      pricePerQuantity: data.pricePerQuantity.present
+          ? data.pricePerQuantity.value
+          : this.pricePerQuantity,
+      observedAt:
+          data.observedAt.present ? data.observedAt.value : this.observedAt,
+      reviewStatus: data.reviewStatus.present
+          ? data.reviewStatus.value
+          : this.reviewStatus,
+      localProductItemId: data.localProductItemId.present
+          ? data.localProductItemId.value
+          : this.localProductItemId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExternalPriceObservationTableData(')
+          ..write('id: $id, ')
+          ..write('openPricesId: $openPricesId, ')
+          ..write('productName: $productName, ')
+          ..write('familyName: $familyName, ')
+          ..write('externalStoreId: $externalStoreId, ')
+          ..write('externalStoreName: $externalStoreName, ')
+          ..write('price: $price, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitType: $unitType, ')
+          ..write('pricePerQuantity: $pricePerQuantity, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('reviewStatus: $reviewStatus, ')
+          ..write('localProductItemId: $localProductItemId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      openPricesId,
+      productName,
+      familyName,
+      externalStoreId,
+      externalStoreName,
+      price,
+      quantity,
+      unitType,
+      pricePerQuantity,
+      observedAt,
+      reviewStatus,
+      localProductItemId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExternalPriceObservationTableData &&
+          other.id == this.id &&
+          other.openPricesId == this.openPricesId &&
+          other.productName == this.productName &&
+          other.familyName == this.familyName &&
+          other.externalStoreId == this.externalStoreId &&
+          other.externalStoreName == this.externalStoreName &&
+          other.price == this.price &&
+          other.quantity == this.quantity &&
+          other.unitType == this.unitType &&
+          other.pricePerQuantity == this.pricePerQuantity &&
+          other.observedAt == this.observedAt &&
+          other.reviewStatus == this.reviewStatus &&
+          other.localProductItemId == this.localProductItemId);
+}
+
+class ExternalPriceObservationTableCompanion
+    extends UpdateCompanion<ExternalPriceObservationTableData> {
+  final Value<int> id;
+  final Value<String> openPricesId;
+  final Value<String> productName;
+  final Value<String> familyName;
+  final Value<String> externalStoreId;
+  final Value<String> externalStoreName;
+  final Value<double> price;
+  final Value<double> quantity;
+  final Value<String> unitType;
+  final Value<double> pricePerQuantity;
+  final Value<DateTime> observedAt;
+  final Value<String> reviewStatus;
+  final Value<int?> localProductItemId;
+  const ExternalPriceObservationTableCompanion({
+    this.id = const Value.absent(),
+    this.openPricesId = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.familyName = const Value.absent(),
+    this.externalStoreId = const Value.absent(),
+    this.externalStoreName = const Value.absent(),
+    this.price = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.unitType = const Value.absent(),
+    this.pricePerQuantity = const Value.absent(),
+    this.observedAt = const Value.absent(),
+    this.reviewStatus = const Value.absent(),
+    this.localProductItemId = const Value.absent(),
+  });
+  ExternalPriceObservationTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String openPricesId,
+    required String productName,
+    required String familyName,
+    required String externalStoreId,
+    required String externalStoreName,
+    required double price,
+    required double quantity,
+    required String unitType,
+    required double pricePerQuantity,
+    this.observedAt = const Value.absent(),
+    this.reviewStatus = const Value.absent(),
+    this.localProductItemId = const Value.absent(),
+  })  : openPricesId = Value(openPricesId),
+        productName = Value(productName),
+        familyName = Value(familyName),
+        externalStoreId = Value(externalStoreId),
+        externalStoreName = Value(externalStoreName),
+        price = Value(price),
+        quantity = Value(quantity),
+        unitType = Value(unitType),
+        pricePerQuantity = Value(pricePerQuantity);
+  static Insertable<ExternalPriceObservationTableData> custom({
+    Expression<int>? id,
+    Expression<String>? openPricesId,
+    Expression<String>? productName,
+    Expression<String>? familyName,
+    Expression<String>? externalStoreId,
+    Expression<String>? externalStoreName,
+    Expression<double>? price,
+    Expression<double>? quantity,
+    Expression<String>? unitType,
+    Expression<double>? pricePerQuantity,
+    Expression<DateTime>? observedAt,
+    Expression<String>? reviewStatus,
+    Expression<int>? localProductItemId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (openPricesId != null) 'open_prices_id': openPricesId,
+      if (productName != null) 'product_name': productName,
+      if (familyName != null) 'family_name': familyName,
+      if (externalStoreId != null) 'external_store_id': externalStoreId,
+      if (externalStoreName != null) 'external_store_name': externalStoreName,
+      if (price != null) 'price': price,
+      if (quantity != null) 'quantity': quantity,
+      if (unitType != null) 'unit_type': unitType,
+      if (pricePerQuantity != null) 'price_per_quantity': pricePerQuantity,
+      if (observedAt != null) 'observed_at': observedAt,
+      if (reviewStatus != null) 'review_status': reviewStatus,
+      if (localProductItemId != null)
+        'local_product_item_id': localProductItemId,
+    });
+  }
+
+  ExternalPriceObservationTableCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? openPricesId,
+      Value<String>? productName,
+      Value<String>? familyName,
+      Value<String>? externalStoreId,
+      Value<String>? externalStoreName,
+      Value<double>? price,
+      Value<double>? quantity,
+      Value<String>? unitType,
+      Value<double>? pricePerQuantity,
+      Value<DateTime>? observedAt,
+      Value<String>? reviewStatus,
+      Value<int?>? localProductItemId}) {
+    return ExternalPriceObservationTableCompanion(
+      id: id ?? this.id,
+      openPricesId: openPricesId ?? this.openPricesId,
+      productName: productName ?? this.productName,
+      familyName: familyName ?? this.familyName,
+      externalStoreId: externalStoreId ?? this.externalStoreId,
+      externalStoreName: externalStoreName ?? this.externalStoreName,
+      price: price ?? this.price,
+      quantity: quantity ?? this.quantity,
+      unitType: unitType ?? this.unitType,
+      pricePerQuantity: pricePerQuantity ?? this.pricePerQuantity,
+      observedAt: observedAt ?? this.observedAt,
+      reviewStatus: reviewStatus ?? this.reviewStatus,
+      localProductItemId: localProductItemId ?? this.localProductItemId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (openPricesId.present) {
+      map['open_prices_id'] = Variable<String>(openPricesId.value);
+    }
+    if (productName.present) {
+      map['product_name'] = Variable<String>(productName.value);
+    }
+    if (familyName.present) {
+      map['family_name'] = Variable<String>(familyName.value);
+    }
+    if (externalStoreId.present) {
+      map['external_store_id'] = Variable<String>(externalStoreId.value);
+    }
+    if (externalStoreName.present) {
+      map['external_store_name'] = Variable<String>(externalStoreName.value);
+    }
+    if (price.present) {
+      map['price'] = Variable<double>(price.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<double>(quantity.value);
+    }
+    if (unitType.present) {
+      map['unit_type'] = Variable<String>(unitType.value);
+    }
+    if (pricePerQuantity.present) {
+      map['price_per_quantity'] = Variable<double>(pricePerQuantity.value);
+    }
+    if (observedAt.present) {
+      map['observed_at'] = Variable<DateTime>(observedAt.value);
+    }
+    if (reviewStatus.present) {
+      map['review_status'] = Variable<String>(reviewStatus.value);
+    }
+    if (localProductItemId.present) {
+      map['local_product_item_id'] = Variable<int>(localProductItemId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExternalPriceObservationTableCompanion(')
+          ..write('id: $id, ')
+          ..write('openPricesId: $openPricesId, ')
+          ..write('productName: $productName, ')
+          ..write('familyName: $familyName, ')
+          ..write('externalStoreId: $externalStoreId, ')
+          ..write('externalStoreName: $externalStoreName, ')
+          ..write('price: $price, ')
+          ..write('quantity: $quantity, ')
+          ..write('unitType: $unitType, ')
+          ..write('pricePerQuantity: $pricePerQuantity, ')
+          ..write('observedAt: $observedAt, ')
+          ..write('reviewStatus: $reviewStatus, ')
+          ..write('localProductItemId: $localProductItemId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDriftDatabase extends GeneratedDatabase {
   _$AppDriftDatabase(QueryExecutor e) : super(e);
   $AppDriftDatabaseManager get managers => $AppDriftDatabaseManager(this);
@@ -1627,6 +2617,10 @@ abstract class _$AppDriftDatabase extends GeneratedDatabase {
       $ProductItemTableTable(this);
   late final $ShoppingListTableTable shoppingListTable =
       $ShoppingListTableTable(this);
+  late final $ExternalStoreMappingTableTable externalStoreMappingTable =
+      $ExternalStoreMappingTableTable(this);
+  late final $ExternalPriceObservationTableTable externalPriceObservationTable =
+      $ExternalPriceObservationTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1635,7 +2629,9 @@ abstract class _$AppDriftDatabase extends GeneratedDatabase {
         supermarketTable,
         productFamilyTable,
         productItemTable,
-        shoppingListTable
+        shoppingListTable,
+        externalStoreMappingTable,
+        externalPriceObservationTable
       ];
 }
 
@@ -1653,29 +2649,6 @@ typedef $$SupermarketTableTableUpdateCompanionBuilder
   Value<String?> adreca,
   Value<bool> actiu,
 });
-
-final class $$SupermarketTableTableReferences extends BaseReferences<
-    _$AppDriftDatabase, $SupermarketTableTable, SupermarketTableData> {
-  $$SupermarketTableTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$ProductItemTableTable, List<ProductItemTableData>>
-      _productItemTableRefsTable(_$AppDriftDatabase db) =>
-          MultiTypedResultKey.fromTable(db.productItemTable,
-              aliasName: $_aliasNameGenerator(
-                  db.supermarketTable.id, db.productItemTable.supermarketId));
-
-  $$ProductItemTableTableProcessedTableManager get productItemTableRefs {
-    final manager = $$ProductItemTableTableTableManager(
-            $_db, $_db.productItemTable)
-        .filter((f) => f.supermarketId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_productItemTableRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
 
 class $$SupermarketTableTableFilterComposer
     extends Composer<_$AppDriftDatabase, $SupermarketTableTable> {
@@ -1697,27 +2670,6 @@ class $$SupermarketTableTableFilterComposer
 
   ColumnFilters<bool> get actiu => $composableBuilder(
       column: $table.actiu, builder: (column) => ColumnFilters(column));
-
-  Expression<bool> productItemTableRefs(
-      Expression<bool> Function($$ProductItemTableTableFilterComposer f) f) {
-    final $$ProductItemTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.supermarketId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableFilterComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
 }
 
 class $$SupermarketTableTableOrderingComposer
@@ -1762,27 +2714,6 @@ class $$SupermarketTableTableAnnotationComposer
 
   GeneratedColumn<bool> get actiu =>
       $composableBuilder(column: $table.actiu, builder: (column) => column);
-
-  Expression<T> productItemTableRefs<T extends Object>(
-      Expression<T> Function($$ProductItemTableTableAnnotationComposer a) f) {
-    final $$ProductItemTableTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.supermarketId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableAnnotationComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
 }
 
 class $$SupermarketTableTableTableManager extends RootTableManager<
@@ -1794,9 +2725,13 @@ class $$SupermarketTableTableTableManager extends RootTableManager<
     $$SupermarketTableTableAnnotationComposer,
     $$SupermarketTableTableCreateCompanionBuilder,
     $$SupermarketTableTableUpdateCompanionBuilder,
-    (SupermarketTableData, $$SupermarketTableTableReferences),
+    (
+      SupermarketTableData,
+      BaseReferences<_$AppDriftDatabase, $SupermarketTableTable,
+          SupermarketTableData>
+    ),
     SupermarketTableData,
-    PrefetchHooks Function({bool productItemTableRefs})> {
+    PrefetchHooks Function()> {
   $$SupermarketTableTableTableManager(
       _$AppDriftDatabase db, $SupermarketTableTable table)
       : super(TableManagerState(
@@ -1833,37 +2768,9 @@ class $$SupermarketTableTableTableManager extends RootTableManager<
             actiu: actiu,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$SupermarketTableTableReferences(db, table, e)
-                  ))
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({productItemTableRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (productItemTableRefs) db.productItemTable
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (productItemTableRefs)
-                    await $_getPrefetchedData<SupermarketTableData,
-                            $SupermarketTableTable, ProductItemTableData>(
-                        currentTable: table,
-                        referencedTable: $$SupermarketTableTableReferences
-                            ._productItemTableRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$SupermarketTableTableReferences(db, table, p0)
-                                .productItemTableRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.supermarketId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
+          prefetchHooksCallback: null,
         ));
 }
 
@@ -1876,9 +2783,13 @@ typedef $$SupermarketTableTableProcessedTableManager = ProcessedTableManager<
     $$SupermarketTableTableAnnotationComposer,
     $$SupermarketTableTableCreateCompanionBuilder,
     $$SupermarketTableTableUpdateCompanionBuilder,
-    (SupermarketTableData, $$SupermarketTableTableReferences),
+    (
+      SupermarketTableData,
+      BaseReferences<_$AppDriftDatabase, $SupermarketTableTable,
+          SupermarketTableData>
+    ),
     SupermarketTableData,
-    PrefetchHooks Function({bool productItemTableRefs})>;
+    PrefetchHooks Function()>;
 typedef $$ProductFamilyTableTableCreateCompanionBuilder
     = ProductFamilyTableCompanion Function({
   Value<int> id,
@@ -1895,48 +2806,6 @@ typedef $$ProductFamilyTableTableUpdateCompanionBuilder
   Value<String?> shoppingUnit,
   Value<String?> purchaseMode,
 });
-
-final class $$ProductFamilyTableTableReferences extends BaseReferences<
-    _$AppDriftDatabase, $ProductFamilyTableTable, ProductFamilyTableData> {
-  $$ProductFamilyTableTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$ProductItemTableTable, List<ProductItemTableData>>
-      _productItemTableRefsTable(_$AppDriftDatabase db) =>
-          MultiTypedResultKey.fromTable(db.productItemTable,
-              aliasName: $_aliasNameGenerator(db.productFamilyTable.id,
-                  db.productItemTable.productFamilyId));
-
-  $$ProductItemTableTableProcessedTableManager get productItemTableRefs {
-    final manager =
-        $$ProductItemTableTableTableManager($_db, $_db.productItemTable).filter(
-            (f) => f.productFamilyId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_productItemTableRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
-  static MultiTypedResultKey<$ShoppingListTableTable,
-      List<ShoppingListTableData>> _shoppingListTableRefsTable(
-          _$AppDriftDatabase db) =>
-      MultiTypedResultKey.fromTable(db.shoppingListTable,
-          aliasName: $_aliasNameGenerator(
-              db.productFamilyTable.id, db.shoppingListTable.productFamilyId));
-
-  $$ShoppingListTableTableProcessedTableManager get shoppingListTableRefs {
-    final manager = $$ShoppingListTableTableTableManager(
-            $_db, $_db.shoppingListTable)
-        .filter(
-            (f) => f.productFamilyId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_shoppingListTableRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
 
 class $$ProductFamilyTableTableFilterComposer
     extends Composer<_$AppDriftDatabase, $ProductFamilyTableTable> {
@@ -1961,48 +2830,6 @@ class $$ProductFamilyTableTableFilterComposer
 
   ColumnFilters<String> get purchaseMode => $composableBuilder(
       column: $table.purchaseMode, builder: (column) => ColumnFilters(column));
-
-  Expression<bool> productItemTableRefs(
-      Expression<bool> Function($$ProductItemTableTableFilterComposer f) f) {
-    final $$ProductItemTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.productFamilyId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableFilterComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<bool> shoppingListTableRefs(
-      Expression<bool> Function($$ShoppingListTableTableFilterComposer f) f) {
-    final $$ShoppingListTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.shoppingListTable,
-        getReferencedColumn: (t) => t.productFamilyId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ShoppingListTableTableFilterComposer(
-              $db: $db,
-              $table: $db.shoppingListTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
 }
 
 class $$ProductFamilyTableTableOrderingComposer
@@ -2055,49 +2882,6 @@ class $$ProductFamilyTableTableAnnotationComposer
 
   GeneratedColumn<String> get purchaseMode => $composableBuilder(
       column: $table.purchaseMode, builder: (column) => column);
-
-  Expression<T> productItemTableRefs<T extends Object>(
-      Expression<T> Function($$ProductItemTableTableAnnotationComposer a) f) {
-    final $$ProductItemTableTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.productFamilyId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableAnnotationComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<T> shoppingListTableRefs<T extends Object>(
-      Expression<T> Function($$ShoppingListTableTableAnnotationComposer a) f) {
-    final $$ShoppingListTableTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.shoppingListTable,
-            getReferencedColumn: (t) => t.productFamilyId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$ShoppingListTableTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.shoppingListTable,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
-  }
 }
 
 class $$ProductFamilyTableTableTableManager extends RootTableManager<
@@ -2109,10 +2893,13 @@ class $$ProductFamilyTableTableTableManager extends RootTableManager<
     $$ProductFamilyTableTableAnnotationComposer,
     $$ProductFamilyTableTableCreateCompanionBuilder,
     $$ProductFamilyTableTableUpdateCompanionBuilder,
-    (ProductFamilyTableData, $$ProductFamilyTableTableReferences),
+    (
+      ProductFamilyTableData,
+      BaseReferences<_$AppDriftDatabase, $ProductFamilyTableTable,
+          ProductFamilyTableData>
+    ),
     ProductFamilyTableData,
-    PrefetchHooks Function(
-        {bool productItemTableRefs, bool shoppingListTableRefs})> {
+    PrefetchHooks Function()> {
   $$ProductFamilyTableTableTableManager(
       _$AppDriftDatabase db, $ProductFamilyTableTable table)
       : super(TableManagerState(
@@ -2154,52 +2941,9 @@ class $$ProductFamilyTableTableTableManager extends RootTableManager<
             purchaseMode: purchaseMode,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$ProductFamilyTableTableReferences(db, table, e)
-                  ))
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: (
-              {productItemTableRefs = false, shoppingListTableRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (productItemTableRefs) db.productItemTable,
-                if (shoppingListTableRefs) db.shoppingListTable
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (productItemTableRefs)
-                    await $_getPrefetchedData<ProductFamilyTableData,
-                            $ProductFamilyTableTable, ProductItemTableData>(
-                        currentTable: table,
-                        referencedTable: $$ProductFamilyTableTableReferences
-                            ._productItemTableRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$ProductFamilyTableTableReferences(db, table, p0)
-                                .productItemTableRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.productFamilyId == item.id),
-                        typedResults: items),
-                  if (shoppingListTableRefs)
-                    await $_getPrefetchedData<ProductFamilyTableData,
-                            $ProductFamilyTableTable, ShoppingListTableData>(
-                        currentTable: table,
-                        referencedTable: $$ProductFamilyTableTableReferences
-                            ._shoppingListTableRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$ProductFamilyTableTableReferences(db, table, p0)
-                                .shoppingListTableRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.productFamilyId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
+          prefetchHooksCallback: null,
         ));
 }
 
@@ -2212,10 +2956,13 @@ typedef $$ProductFamilyTableTableProcessedTableManager = ProcessedTableManager<
     $$ProductFamilyTableTableAnnotationComposer,
     $$ProductFamilyTableTableCreateCompanionBuilder,
     $$ProductFamilyTableTableUpdateCompanionBuilder,
-    (ProductFamilyTableData, $$ProductFamilyTableTableReferences),
+    (
+      ProductFamilyTableData,
+      BaseReferences<_$AppDriftDatabase, $ProductFamilyTableTable,
+          ProductFamilyTableData>
+    ),
     ProductFamilyTableData,
-    PrefetchHooks Function(
-        {bool productItemTableRefs, bool shoppingListTableRefs})>;
+    PrefetchHooks Function()>;
 typedef $$ProductItemTableTableCreateCompanionBuilder
     = ProductItemTableCompanion Function({
   Value<int> id,
@@ -2233,6 +2980,7 @@ typedef $$ProductItemTableTableCreateCompanionBuilder
   Value<DateTime> dateAdded,
   Value<bool> isCurrentPrice,
   Value<String?> barcode,
+  Value<int?> externalObservationId,
 });
 typedef $$ProductItemTableTableUpdateCompanionBuilder
     = ProductItemTableCompanion Function({
@@ -2251,64 +2999,8 @@ typedef $$ProductItemTableTableUpdateCompanionBuilder
   Value<DateTime> dateAdded,
   Value<bool> isCurrentPrice,
   Value<String?> barcode,
+  Value<int?> externalObservationId,
 });
-
-final class $$ProductItemTableTableReferences extends BaseReferences<
-    _$AppDriftDatabase, $ProductItemTableTable, ProductItemTableData> {
-  $$ProductItemTableTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $ProductFamilyTableTable _productFamilyIdTable(
-          _$AppDriftDatabase db) =>
-      db.productFamilyTable.createAlias($_aliasNameGenerator(
-          db.productItemTable.productFamilyId, db.productFamilyTable.id));
-
-  $$ProductFamilyTableTableProcessedTableManager get productFamilyId {
-    final $_column = $_itemColumn<int>('product_family_id')!;
-
-    final manager =
-        $$ProductFamilyTableTableTableManager($_db, $_db.productFamilyTable)
-            .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_productFamilyIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $SupermarketTableTable _supermarketIdTable(_$AppDriftDatabase db) =>
-      db.supermarketTable.createAlias($_aliasNameGenerator(
-          db.productItemTable.supermarketId, db.supermarketTable.id));
-
-  $$SupermarketTableTableProcessedTableManager get supermarketId {
-    final $_column = $_itemColumn<int>('supermarket_id')!;
-
-    final manager =
-        $$SupermarketTableTableTableManager($_db, $_db.supermarketTable)
-            .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_supermarketIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static MultiTypedResultKey<$ShoppingListTableTable,
-      List<ShoppingListTableData>> _shoppingListTableRefsTable(
-          _$AppDriftDatabase db) =>
-      MultiTypedResultKey.fromTable(db.shoppingListTable,
-          aliasName: $_aliasNameGenerator(
-              db.productItemTable.id, db.shoppingListTable.productItemId));
-
-  $$ShoppingListTableTableProcessedTableManager get shoppingListTableRefs {
-    final manager = $$ShoppingListTableTableTableManager(
-            $_db, $_db.shoppingListTable)
-        .filter((f) => f.productItemId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_shoppingListTableRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
 
 class $$ProductItemTableTableFilterComposer
     extends Composer<_$AppDriftDatabase, $ProductItemTableTable> {
@@ -2327,6 +3019,13 @@ class $$ProductItemTableTableFilterComposer
 
   ColumnFilters<bool> get actiu => $composableBuilder(
       column: $table.actiu, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get productFamilyId => $composableBuilder(
+      column: $table.productFamilyId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get supermarketId => $composableBuilder(
+      column: $table.supermarketId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get price => $composableBuilder(
       column: $table.price, builder: (column) => ColumnFilters(column));
@@ -2363,66 +3062,9 @@ class $$ProductItemTableTableFilterComposer
   ColumnFilters<String> get barcode => $composableBuilder(
       column: $table.barcode, builder: (column) => ColumnFilters(column));
 
-  $$ProductFamilyTableTableFilterComposer get productFamilyId {
-    final $$ProductFamilyTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productFamilyId,
-        referencedTable: $db.productFamilyTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductFamilyTableTableFilterComposer(
-              $db: $db,
-              $table: $db.productFamilyTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SupermarketTableTableFilterComposer get supermarketId {
-    final $$SupermarketTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.supermarketId,
-        referencedTable: $db.supermarketTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SupermarketTableTableFilterComposer(
-              $db: $db,
-              $table: $db.supermarketTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<bool> shoppingListTableRefs(
-      Expression<bool> Function($$ShoppingListTableTableFilterComposer f) f) {
-    final $$ShoppingListTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.shoppingListTable,
-        getReferencedColumn: (t) => t.productItemId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ShoppingListTableTableFilterComposer(
-              $db: $db,
-              $table: $db.shoppingListTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
+  ColumnFilters<int> get externalObservationId => $composableBuilder(
+      column: $table.externalObservationId,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$ProductItemTableTableOrderingComposer
@@ -2442,6 +3084,14 @@ class $$ProductItemTableTableOrderingComposer
 
   ColumnOrderings<bool> get actiu => $composableBuilder(
       column: $table.actiu, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get productFamilyId => $composableBuilder(
+      column: $table.productFamilyId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get supermarketId => $composableBuilder(
+      column: $table.supermarketId,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get price => $composableBuilder(
       column: $table.price, builder: (column) => ColumnOrderings(column));
@@ -2478,45 +3128,9 @@ class $$ProductItemTableTableOrderingComposer
   ColumnOrderings<String> get barcode => $composableBuilder(
       column: $table.barcode, builder: (column) => ColumnOrderings(column));
 
-  $$ProductFamilyTableTableOrderingComposer get productFamilyId {
-    final $$ProductFamilyTableTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productFamilyId,
-        referencedTable: $db.productFamilyTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductFamilyTableTableOrderingComposer(
-              $db: $db,
-              $table: $db.productFamilyTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SupermarketTableTableOrderingComposer get supermarketId {
-    final $$SupermarketTableTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.supermarketId,
-        referencedTable: $db.supermarketTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SupermarketTableTableOrderingComposer(
-              $db: $db,
-              $table: $db.supermarketTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
+  ColumnOrderings<int> get externalObservationId => $composableBuilder(
+      column: $table.externalObservationId,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$ProductItemTableTableAnnotationComposer
@@ -2536,6 +3150,12 @@ class $$ProductItemTableTableAnnotationComposer
 
   GeneratedColumn<bool> get actiu =>
       $composableBuilder(column: $table.actiu, builder: (column) => column);
+
+  GeneratedColumn<int> get productFamilyId => $composableBuilder(
+      column: $table.productFamilyId, builder: (column) => column);
+
+  GeneratedColumn<int> get supermarketId => $composableBuilder(
+      column: $table.supermarketId, builder: (column) => column);
 
   GeneratedColumn<double> get price =>
       $composableBuilder(column: $table.price, builder: (column) => column);
@@ -2567,68 +3187,8 @@ class $$ProductItemTableTableAnnotationComposer
   GeneratedColumn<String> get barcode =>
       $composableBuilder(column: $table.barcode, builder: (column) => column);
 
-  $$ProductFamilyTableTableAnnotationComposer get productFamilyId {
-    final $$ProductFamilyTableTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.productFamilyId,
-            referencedTable: $db.productFamilyTable,
-            getReferencedColumn: (t) => t.id,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$ProductFamilyTableTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.productFamilyTable,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return composer;
-  }
-
-  $$SupermarketTableTableAnnotationComposer get supermarketId {
-    final $$SupermarketTableTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.supermarketId,
-        referencedTable: $db.supermarketTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SupermarketTableTableAnnotationComposer(
-              $db: $db,
-              $table: $db.supermarketTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<T> shoppingListTableRefs<T extends Object>(
-      Expression<T> Function($$ShoppingListTableTableAnnotationComposer a) f) {
-    final $$ShoppingListTableTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.shoppingListTable,
-            getReferencedColumn: (t) => t.productItemId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$ShoppingListTableTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.shoppingListTable,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
-  }
+  GeneratedColumn<int> get externalObservationId => $composableBuilder(
+      column: $table.externalObservationId, builder: (column) => column);
 }
 
 class $$ProductItemTableTableTableManager extends RootTableManager<
@@ -2640,12 +3200,13 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
     $$ProductItemTableTableAnnotationComposer,
     $$ProductItemTableTableCreateCompanionBuilder,
     $$ProductItemTableTableUpdateCompanionBuilder,
-    (ProductItemTableData, $$ProductItemTableTableReferences),
+    (
+      ProductItemTableData,
+      BaseReferences<_$AppDriftDatabase, $ProductItemTableTable,
+          ProductItemTableData>
+    ),
     ProductItemTableData,
-    PrefetchHooks Function(
-        {bool productFamilyId,
-        bool supermarketId,
-        bool shoppingListTableRefs})> {
+    PrefetchHooks Function()> {
   $$ProductItemTableTableTableManager(
       _$AppDriftDatabase db, $ProductItemTableTable table)
       : super(TableManagerState(
@@ -2673,6 +3234,7 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             Value<DateTime> dateAdded = const Value.absent(),
             Value<bool> isCurrentPrice = const Value.absent(),
             Value<String?> barcode = const Value.absent(),
+            Value<int?> externalObservationId = const Value.absent(),
           }) =>
               ProductItemTableCompanion(
             id: id,
@@ -2690,6 +3252,7 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             dateAdded: dateAdded,
             isCurrentPrice: isCurrentPrice,
             barcode: barcode,
+            externalObservationId: externalObservationId,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -2707,6 +3270,7 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             Value<DateTime> dateAdded = const Value.absent(),
             Value<bool> isCurrentPrice = const Value.absent(),
             Value<String?> barcode = const Value.absent(),
+            Value<int?> externalObservationId = const Value.absent(),
           }) =>
               ProductItemTableCompanion.insert(
             id: id,
@@ -2724,79 +3288,12 @@ class $$ProductItemTableTableTableManager extends RootTableManager<
             dateAdded: dateAdded,
             isCurrentPrice: isCurrentPrice,
             barcode: barcode,
+            externalObservationId: externalObservationId,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$ProductItemTableTableReferences(db, table, e)
-                  ))
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: (
-              {productFamilyId = false,
-              supermarketId = false,
-              shoppingListTableRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (shoppingListTableRefs) db.shoppingListTable
-              ],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (productFamilyId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.productFamilyId,
-                    referencedTable: $$ProductItemTableTableReferences
-                        ._productFamilyIdTable(db),
-                    referencedColumn: $$ProductItemTableTableReferences
-                        ._productFamilyIdTable(db)
-                        .id,
-                  ) as T;
-                }
-                if (supermarketId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.supermarketId,
-                    referencedTable: $$ProductItemTableTableReferences
-                        ._supermarketIdTable(db),
-                    referencedColumn: $$ProductItemTableTableReferences
-                        ._supermarketIdTable(db)
-                        .id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (shoppingListTableRefs)
-                    await $_getPrefetchedData<ProductItemTableData,
-                            $ProductItemTableTable, ShoppingListTableData>(
-                        currentTable: table,
-                        referencedTable: $$ProductItemTableTableReferences
-                            ._shoppingListTableRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$ProductItemTableTableReferences(db, table, p0)
-                                .shoppingListTableRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.productItemId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
+          prefetchHooksCallback: null,
         ));
 }
 
@@ -2809,12 +3306,13 @@ typedef $$ProductItemTableTableProcessedTableManager = ProcessedTableManager<
     $$ProductItemTableTableAnnotationComposer,
     $$ProductItemTableTableCreateCompanionBuilder,
     $$ProductItemTableTableUpdateCompanionBuilder,
-    (ProductItemTableData, $$ProductItemTableTableReferences),
+    (
+      ProductItemTableData,
+      BaseReferences<_$AppDriftDatabase, $ProductItemTableTable,
+          ProductItemTableData>
+    ),
     ProductItemTableData,
-    PrefetchHooks Function(
-        {bool productFamilyId,
-        bool supermarketId,
-        bool shoppingListTableRefs})>;
+    PrefetchHooks Function()>;
 typedef $$ShoppingListTableTableCreateCompanionBuilder
     = ShoppingListTableCompanion Function({
   Value<int> id,
@@ -2830,45 +3328,6 @@ typedef $$ShoppingListTableTableUpdateCompanionBuilder
   Value<int?> productItemId,
 });
 
-final class $$ShoppingListTableTableReferences extends BaseReferences<
-    _$AppDriftDatabase, $ShoppingListTableTable, ShoppingListTableData> {
-  $$ShoppingListTableTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $ProductFamilyTableTable _productFamilyIdTable(
-          _$AppDriftDatabase db) =>
-      db.productFamilyTable.createAlias($_aliasNameGenerator(
-          db.shoppingListTable.productFamilyId, db.productFamilyTable.id));
-
-  $$ProductFamilyTableTableProcessedTableManager get productFamilyId {
-    final $_column = $_itemColumn<int>('product_family_id')!;
-
-    final manager =
-        $$ProductFamilyTableTableTableManager($_db, $_db.productFamilyTable)
-            .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_productFamilyIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $ProductItemTableTable _productItemIdTable(_$AppDriftDatabase db) =>
-      db.productItemTable.createAlias($_aliasNameGenerator(
-          db.shoppingListTable.productItemId, db.productItemTable.id));
-
-  $$ProductItemTableTableProcessedTableManager? get productItemId {
-    final $_column = $_itemColumn<int>('product_item_id');
-    if ($_column == null) return null;
-    final manager =
-        $$ProductItemTableTableTableManager($_db, $_db.productItemTable)
-            .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_productItemIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
 class $$ShoppingListTableTableFilterComposer
     extends Composer<_$AppDriftDatabase, $ShoppingListTableTable> {
   $$ShoppingListTableTableFilterComposer({
@@ -2881,48 +3340,15 @@ class $$ShoppingListTableTableFilterComposer
   ColumnFilters<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<int> get productFamilyId => $composableBuilder(
+      column: $table.productFamilyId,
+      builder: (column) => ColumnFilters(column));
+
   ColumnFilters<int> get quantity => $composableBuilder(
       column: $table.quantity, builder: (column) => ColumnFilters(column));
 
-  $$ProductFamilyTableTableFilterComposer get productFamilyId {
-    final $$ProductFamilyTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productFamilyId,
-        referencedTable: $db.productFamilyTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductFamilyTableTableFilterComposer(
-              $db: $db,
-              $table: $db.productFamilyTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$ProductItemTableTableFilterComposer get productItemId {
-    final $$ProductItemTableTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productItemId,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableFilterComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
+  ColumnFilters<int> get productItemId => $composableBuilder(
+      column: $table.productItemId, builder: (column) => ColumnFilters(column));
 }
 
 class $$ShoppingListTableTableOrderingComposer
@@ -2937,48 +3363,16 @@ class $$ShoppingListTableTableOrderingComposer
   ColumnOrderings<int> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get productFamilyId => $composableBuilder(
+      column: $table.productFamilyId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get quantity => $composableBuilder(
       column: $table.quantity, builder: (column) => ColumnOrderings(column));
 
-  $$ProductFamilyTableTableOrderingComposer get productFamilyId {
-    final $$ProductFamilyTableTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productFamilyId,
-        referencedTable: $db.productFamilyTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductFamilyTableTableOrderingComposer(
-              $db: $db,
-              $table: $db.productFamilyTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$ProductItemTableTableOrderingComposer get productItemId {
-    final $$ProductItemTableTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productItemId,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableOrderingComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
+  ColumnOrderings<int> get productItemId => $composableBuilder(
+      column: $table.productItemId,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$ShoppingListTableTableAnnotationComposer
@@ -2993,49 +3387,14 @@ class $$ShoppingListTableTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<int> get productFamilyId => $composableBuilder(
+      column: $table.productFamilyId, builder: (column) => column);
+
   GeneratedColumn<int> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
 
-  $$ProductFamilyTableTableAnnotationComposer get productFamilyId {
-    final $$ProductFamilyTableTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.productFamilyId,
-            referencedTable: $db.productFamilyTable,
-            getReferencedColumn: (t) => t.id,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$ProductFamilyTableTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.productFamilyTable,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return composer;
-  }
-
-  $$ProductItemTableTableAnnotationComposer get productItemId {
-    final $$ProductItemTableTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.productItemId,
-        referencedTable: $db.productItemTable,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ProductItemTableTableAnnotationComposer(
-              $db: $db,
-              $table: $db.productItemTable,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
+  GeneratedColumn<int> get productItemId => $composableBuilder(
+      column: $table.productItemId, builder: (column) => column);
 }
 
 class $$ShoppingListTableTableTableManager extends RootTableManager<
@@ -3047,9 +3406,13 @@ class $$ShoppingListTableTableTableManager extends RootTableManager<
     $$ShoppingListTableTableAnnotationComposer,
     $$ShoppingListTableTableCreateCompanionBuilder,
     $$ShoppingListTableTableUpdateCompanionBuilder,
-    (ShoppingListTableData, $$ShoppingListTableTableReferences),
+    (
+      ShoppingListTableData,
+      BaseReferences<_$AppDriftDatabase, $ShoppingListTableTable,
+          ShoppingListTableData>
+    ),
     ShoppingListTableData,
-    PrefetchHooks Function({bool productFamilyId, bool productItemId})> {
+    PrefetchHooks Function()> {
   $$ShoppingListTableTableTableManager(
       _$AppDriftDatabase db, $ShoppingListTableTable table)
       : super(TableManagerState(
@@ -3087,59 +3450,9 @@ class $$ShoppingListTableTableTableManager extends RootTableManager<
             productItemId: productItemId,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$ShoppingListTableTableReferences(db, table, e)
-                  ))
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: (
-              {productFamilyId = false, productItemId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (productFamilyId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.productFamilyId,
-                    referencedTable: $$ShoppingListTableTableReferences
-                        ._productFamilyIdTable(db),
-                    referencedColumn: $$ShoppingListTableTableReferences
-                        ._productFamilyIdTable(db)
-                        .id,
-                  ) as T;
-                }
-                if (productItemId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.productItemId,
-                    referencedTable: $$ShoppingListTableTableReferences
-                        ._productItemIdTable(db),
-                    referencedColumn: $$ShoppingListTableTableReferences
-                        ._productItemIdTable(db)
-                        .id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
+          prefetchHooksCallback: null,
         ));
 }
 
@@ -3152,9 +3465,483 @@ typedef $$ShoppingListTableTableProcessedTableManager = ProcessedTableManager<
     $$ShoppingListTableTableAnnotationComposer,
     $$ShoppingListTableTableCreateCompanionBuilder,
     $$ShoppingListTableTableUpdateCompanionBuilder,
-    (ShoppingListTableData, $$ShoppingListTableTableReferences),
+    (
+      ShoppingListTableData,
+      BaseReferences<_$AppDriftDatabase, $ShoppingListTableTable,
+          ShoppingListTableData>
+    ),
     ShoppingListTableData,
-    PrefetchHooks Function({bool productFamilyId, bool productItemId})>;
+    PrefetchHooks Function()>;
+typedef $$ExternalStoreMappingTableTableCreateCompanionBuilder
+    = ExternalStoreMappingTableCompanion Function({
+  Value<int> id,
+  required String externalStoreId,
+  required String externalStoreName,
+  required int supermarketId,
+});
+typedef $$ExternalStoreMappingTableTableUpdateCompanionBuilder
+    = ExternalStoreMappingTableCompanion Function({
+  Value<int> id,
+  Value<String> externalStoreId,
+  Value<String> externalStoreName,
+  Value<int> supermarketId,
+});
+
+class $$ExternalStoreMappingTableTableFilterComposer
+    extends Composer<_$AppDriftDatabase, $ExternalStoreMappingTableTable> {
+  $$ExternalStoreMappingTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get externalStoreId => $composableBuilder(
+      column: $table.externalStoreId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get externalStoreName => $composableBuilder(
+      column: $table.externalStoreName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get supermarketId => $composableBuilder(
+      column: $table.supermarketId, builder: (column) => ColumnFilters(column));
+}
+
+class $$ExternalStoreMappingTableTableOrderingComposer
+    extends Composer<_$AppDriftDatabase, $ExternalStoreMappingTableTable> {
+  $$ExternalStoreMappingTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get externalStoreId => $composableBuilder(
+      column: $table.externalStoreId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get externalStoreName => $composableBuilder(
+      column: $table.externalStoreName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get supermarketId => $composableBuilder(
+      column: $table.supermarketId,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$ExternalStoreMappingTableTableAnnotationComposer
+    extends Composer<_$AppDriftDatabase, $ExternalStoreMappingTableTable> {
+  $$ExternalStoreMappingTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get externalStoreId => $composableBuilder(
+      column: $table.externalStoreId, builder: (column) => column);
+
+  GeneratedColumn<String> get externalStoreName => $composableBuilder(
+      column: $table.externalStoreName, builder: (column) => column);
+
+  GeneratedColumn<int> get supermarketId => $composableBuilder(
+      column: $table.supermarketId, builder: (column) => column);
+}
+
+class $$ExternalStoreMappingTableTableTableManager extends RootTableManager<
+    _$AppDriftDatabase,
+    $ExternalStoreMappingTableTable,
+    ExternalStoreMappingTableData,
+    $$ExternalStoreMappingTableTableFilterComposer,
+    $$ExternalStoreMappingTableTableOrderingComposer,
+    $$ExternalStoreMappingTableTableAnnotationComposer,
+    $$ExternalStoreMappingTableTableCreateCompanionBuilder,
+    $$ExternalStoreMappingTableTableUpdateCompanionBuilder,
+    (
+      ExternalStoreMappingTableData,
+      BaseReferences<_$AppDriftDatabase, $ExternalStoreMappingTableTable,
+          ExternalStoreMappingTableData>
+    ),
+    ExternalStoreMappingTableData,
+    PrefetchHooks Function()> {
+  $$ExternalStoreMappingTableTableTableManager(
+      _$AppDriftDatabase db, $ExternalStoreMappingTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExternalStoreMappingTableTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExternalStoreMappingTableTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExternalStoreMappingTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> externalStoreId = const Value.absent(),
+            Value<String> externalStoreName = const Value.absent(),
+            Value<int> supermarketId = const Value.absent(),
+          }) =>
+              ExternalStoreMappingTableCompanion(
+            id: id,
+            externalStoreId: externalStoreId,
+            externalStoreName: externalStoreName,
+            supermarketId: supermarketId,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String externalStoreId,
+            required String externalStoreName,
+            required int supermarketId,
+          }) =>
+              ExternalStoreMappingTableCompanion.insert(
+            id: id,
+            externalStoreId: externalStoreId,
+            externalStoreName: externalStoreName,
+            supermarketId: supermarketId,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ExternalStoreMappingTableTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDriftDatabase,
+        $ExternalStoreMappingTableTable,
+        ExternalStoreMappingTableData,
+        $$ExternalStoreMappingTableTableFilterComposer,
+        $$ExternalStoreMappingTableTableOrderingComposer,
+        $$ExternalStoreMappingTableTableAnnotationComposer,
+        $$ExternalStoreMappingTableTableCreateCompanionBuilder,
+        $$ExternalStoreMappingTableTableUpdateCompanionBuilder,
+        (
+          ExternalStoreMappingTableData,
+          BaseReferences<_$AppDriftDatabase, $ExternalStoreMappingTableTable,
+              ExternalStoreMappingTableData>
+        ),
+        ExternalStoreMappingTableData,
+        PrefetchHooks Function()>;
+typedef $$ExternalPriceObservationTableTableCreateCompanionBuilder
+    = ExternalPriceObservationTableCompanion Function({
+  Value<int> id,
+  required String openPricesId,
+  required String productName,
+  required String familyName,
+  required String externalStoreId,
+  required String externalStoreName,
+  required double price,
+  required double quantity,
+  required String unitType,
+  required double pricePerQuantity,
+  Value<DateTime> observedAt,
+  Value<String> reviewStatus,
+  Value<int?> localProductItemId,
+});
+typedef $$ExternalPriceObservationTableTableUpdateCompanionBuilder
+    = ExternalPriceObservationTableCompanion Function({
+  Value<int> id,
+  Value<String> openPricesId,
+  Value<String> productName,
+  Value<String> familyName,
+  Value<String> externalStoreId,
+  Value<String> externalStoreName,
+  Value<double> price,
+  Value<double> quantity,
+  Value<String> unitType,
+  Value<double> pricePerQuantity,
+  Value<DateTime> observedAt,
+  Value<String> reviewStatus,
+  Value<int?> localProductItemId,
+});
+
+class $$ExternalPriceObservationTableTableFilterComposer
+    extends Composer<_$AppDriftDatabase, $ExternalPriceObservationTableTable> {
+  $$ExternalPriceObservationTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get openPricesId => $composableBuilder(
+      column: $table.openPricesId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get productName => $composableBuilder(
+      column: $table.productName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get familyName => $composableBuilder(
+      column: $table.familyName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get externalStoreId => $composableBuilder(
+      column: $table.externalStoreId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get externalStoreName => $composableBuilder(
+      column: $table.externalStoreName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get price => $composableBuilder(
+      column: $table.price, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get quantity => $composableBuilder(
+      column: $table.quantity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get unitType => $composableBuilder(
+      column: $table.unitType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get pricePerQuantity => $composableBuilder(
+      column: $table.pricePerQuantity,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get observedAt => $composableBuilder(
+      column: $table.observedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get reviewStatus => $composableBuilder(
+      column: $table.reviewStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get localProductItemId => $composableBuilder(
+      column: $table.localProductItemId,
+      builder: (column) => ColumnFilters(column));
+}
+
+class $$ExternalPriceObservationTableTableOrderingComposer
+    extends Composer<_$AppDriftDatabase, $ExternalPriceObservationTableTable> {
+  $$ExternalPriceObservationTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get openPricesId => $composableBuilder(
+      column: $table.openPricesId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get productName => $composableBuilder(
+      column: $table.productName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get familyName => $composableBuilder(
+      column: $table.familyName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get externalStoreId => $composableBuilder(
+      column: $table.externalStoreId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get externalStoreName => $composableBuilder(
+      column: $table.externalStoreName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get price => $composableBuilder(
+      column: $table.price, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get quantity => $composableBuilder(
+      column: $table.quantity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get unitType => $composableBuilder(
+      column: $table.unitType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get pricePerQuantity => $composableBuilder(
+      column: $table.pricePerQuantity,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get observedAt => $composableBuilder(
+      column: $table.observedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get reviewStatus => $composableBuilder(
+      column: $table.reviewStatus,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get localProductItemId => $composableBuilder(
+      column: $table.localProductItemId,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$ExternalPriceObservationTableTableAnnotationComposer
+    extends Composer<_$AppDriftDatabase, $ExternalPriceObservationTableTable> {
+  $$ExternalPriceObservationTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get openPricesId => $composableBuilder(
+      column: $table.openPricesId, builder: (column) => column);
+
+  GeneratedColumn<String> get productName => $composableBuilder(
+      column: $table.productName, builder: (column) => column);
+
+  GeneratedColumn<String> get familyName => $composableBuilder(
+      column: $table.familyName, builder: (column) => column);
+
+  GeneratedColumn<String> get externalStoreId => $composableBuilder(
+      column: $table.externalStoreId, builder: (column) => column);
+
+  GeneratedColumn<String> get externalStoreName => $composableBuilder(
+      column: $table.externalStoreName, builder: (column) => column);
+
+  GeneratedColumn<double> get price =>
+      $composableBuilder(column: $table.price, builder: (column) => column);
+
+  GeneratedColumn<double> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get unitType =>
+      $composableBuilder(column: $table.unitType, builder: (column) => column);
+
+  GeneratedColumn<double> get pricePerQuantity => $composableBuilder(
+      column: $table.pricePerQuantity, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get observedAt => $composableBuilder(
+      column: $table.observedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get reviewStatus => $composableBuilder(
+      column: $table.reviewStatus, builder: (column) => column);
+
+  GeneratedColumn<int> get localProductItemId => $composableBuilder(
+      column: $table.localProductItemId, builder: (column) => column);
+}
+
+class $$ExternalPriceObservationTableTableTableManager extends RootTableManager<
+    _$AppDriftDatabase,
+    $ExternalPriceObservationTableTable,
+    ExternalPriceObservationTableData,
+    $$ExternalPriceObservationTableTableFilterComposer,
+    $$ExternalPriceObservationTableTableOrderingComposer,
+    $$ExternalPriceObservationTableTableAnnotationComposer,
+    $$ExternalPriceObservationTableTableCreateCompanionBuilder,
+    $$ExternalPriceObservationTableTableUpdateCompanionBuilder,
+    (
+      ExternalPriceObservationTableData,
+      BaseReferences<_$AppDriftDatabase, $ExternalPriceObservationTableTable,
+          ExternalPriceObservationTableData>
+    ),
+    ExternalPriceObservationTableData,
+    PrefetchHooks Function()> {
+  $$ExternalPriceObservationTableTableTableManager(
+      _$AppDriftDatabase db, $ExternalPriceObservationTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExternalPriceObservationTableTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExternalPriceObservationTableTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExternalPriceObservationTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> openPricesId = const Value.absent(),
+            Value<String> productName = const Value.absent(),
+            Value<String> familyName = const Value.absent(),
+            Value<String> externalStoreId = const Value.absent(),
+            Value<String> externalStoreName = const Value.absent(),
+            Value<double> price = const Value.absent(),
+            Value<double> quantity = const Value.absent(),
+            Value<String> unitType = const Value.absent(),
+            Value<double> pricePerQuantity = const Value.absent(),
+            Value<DateTime> observedAt = const Value.absent(),
+            Value<String> reviewStatus = const Value.absent(),
+            Value<int?> localProductItemId = const Value.absent(),
+          }) =>
+              ExternalPriceObservationTableCompanion(
+            id: id,
+            openPricesId: openPricesId,
+            productName: productName,
+            familyName: familyName,
+            externalStoreId: externalStoreId,
+            externalStoreName: externalStoreName,
+            price: price,
+            quantity: quantity,
+            unitType: unitType,
+            pricePerQuantity: pricePerQuantity,
+            observedAt: observedAt,
+            reviewStatus: reviewStatus,
+            localProductItemId: localProductItemId,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String openPricesId,
+            required String productName,
+            required String familyName,
+            required String externalStoreId,
+            required String externalStoreName,
+            required double price,
+            required double quantity,
+            required String unitType,
+            required double pricePerQuantity,
+            Value<DateTime> observedAt = const Value.absent(),
+            Value<String> reviewStatus = const Value.absent(),
+            Value<int?> localProductItemId = const Value.absent(),
+          }) =>
+              ExternalPriceObservationTableCompanion.insert(
+            id: id,
+            openPricesId: openPricesId,
+            productName: productName,
+            familyName: familyName,
+            externalStoreId: externalStoreId,
+            externalStoreName: externalStoreName,
+            price: price,
+            quantity: quantity,
+            unitType: unitType,
+            pricePerQuantity: pricePerQuantity,
+            observedAt: observedAt,
+            reviewStatus: reviewStatus,
+            localProductItemId: localProductItemId,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ExternalPriceObservationTableTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDriftDatabase,
+        $ExternalPriceObservationTableTable,
+        ExternalPriceObservationTableData,
+        $$ExternalPriceObservationTableTableFilterComposer,
+        $$ExternalPriceObservationTableTableOrderingComposer,
+        $$ExternalPriceObservationTableTableAnnotationComposer,
+        $$ExternalPriceObservationTableTableCreateCompanionBuilder,
+        $$ExternalPriceObservationTableTableUpdateCompanionBuilder,
+        (
+          ExternalPriceObservationTableData,
+          BaseReferences<
+              _$AppDriftDatabase,
+              $ExternalPriceObservationTableTable,
+              ExternalPriceObservationTableData>
+        ),
+        ExternalPriceObservationTableData,
+        PrefetchHooks Function()>;
 
 class $AppDriftDatabaseManager {
   final _$AppDriftDatabase _db;
@@ -3167,4 +3954,11 @@ class $AppDriftDatabaseManager {
       $$ProductItemTableTableTableManager(_db, _db.productItemTable);
   $$ShoppingListTableTableTableManager get shoppingListTable =>
       $$ShoppingListTableTableTableManager(_db, _db.shoppingListTable);
+  $$ExternalStoreMappingTableTableTableManager get externalStoreMappingTable =>
+      $$ExternalStoreMappingTableTableTableManager(
+          _db, _db.externalStoreMappingTable);
+  $$ExternalPriceObservationTableTableTableManager
+      get externalPriceObservationTable =>
+          $$ExternalPriceObservationTableTableTableManager(
+              _db, _db.externalPriceObservationTable);
 }
