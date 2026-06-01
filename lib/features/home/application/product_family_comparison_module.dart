@@ -32,7 +32,7 @@ ProductFamilyComparisonView buildProductFamilyComparisonView({
     final supermarket = supermarketById[item.supermarketId];
     return ProductFamilyComparisonItem(
       productItem: item,
-      supermarketName: supermarket?.name ?? '',
+      supermarketName: supermarket?.name ?? 'Unknown supermarket',
       hasInactiveSupermarket: supermarket == null || !supermarket.isActive,
     );
   }).toList()
