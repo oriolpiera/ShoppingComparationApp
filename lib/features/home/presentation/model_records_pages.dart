@@ -1505,7 +1505,8 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
       return _BarcodeLookupData(matches: matches);
     }
 
-    final prefill = await widget.namePrefillService.tryGetProductPrefillByBarcode(
+    final prefill =
+        await widget.namePrefillService.tryGetProductPrefillByBarcode(
       widget.barcode,
     );
     return _BarcodeLookupData(
@@ -1549,6 +1550,8 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
         prefilledName: latest?.productItem.name ?? lookupData.prefilledName,
         prefilledFamily:
             latest?.familyName ?? lookupData.prefilledFamilySuggestion,
+        isPrefilledFamilyFromOff:
+            latest == null && lookupData.prefilledFamilySuggestion != null,
         prefilledQuantity: lookupData.prefilledQuantity,
         prefilledUnitType: lookupData.prefilledUnitType,
       ),
@@ -1694,6 +1697,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
     required this.lastUsedSupermarketId,
     this.prefilledName,
     this.prefilledFamily,
+    this.isPrefilledFamilyFromOff = false,
     this.prefilledQuantity,
     this.prefilledUnitType,
   });
@@ -1704,6 +1708,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
   final int? lastUsedSupermarketId;
   final String? prefilledName;
   final String? prefilledFamily;
+  final bool isPrefilledFamilyFromOff;
   final double? prefilledQuantity;
   final String? prefilledUnitType;
 
@@ -1813,7 +1818,7 @@ class _RegisterScannedPriceSheetState
                 controller: _familyController,
                 decoration: InputDecoration(
                   labelText: 'Family',
-                  helperText: widget.prefilledFamily != null
+                  helperText: widget.isPrefilledFamilyFromOff
                       ? 'Suggested from Open Food Facts. Please confirm or edit.'
                       : null,
                 ),

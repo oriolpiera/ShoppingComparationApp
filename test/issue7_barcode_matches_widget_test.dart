@@ -72,14 +72,70 @@ void main() {
     );
     expect(find.text('0.5'), findsOneWidget);
   });
+
+  testWidgets('existing family prefill does not show OFF helper text', (
+    tester,
+  ) async {
+    final repository = _FakeRepo(
+      matchesByBarcode: {
+        'X-KNOWN': [
+          BarcodeMatchResult(
+            productItem: ProductItem(
+              id: 10,
+              name: 'Known Yogurt',
+              productFamilyId: 1,
+              supermarketId: 1,
+              price: 2,
+              quantity: 1,
+              unitType: 'kg',
+              pricePerQuantity: 2,
+              dateAdded: DateTime(2026, 1, 1),
+              barcode: 'X-KNOWN',
+            ),
+            familyName: 'Confirmed Family',
+            supermarketName: 'A',
+          ),
+        ],
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProductItemsPage(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tag));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Barcode'),
+      'X-KNOWN',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirmed Family'), findsOneWidget);
+    expect(
+      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
+      findsNothing,
+    );
+  });
 }
 
 class _FakeRepo implements PersistenceRepository {
+  _FakeRepo({this.matchesByBarcode = const {}});
+
+  final Map<String, List<BarcodeMatchResult>> matchesByBarcode;
+
   @override
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
-  }) async => 1;
+  }) async =>
+      1;
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
@@ -87,7 +143,8 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
-  ) async => [];
+  ) async =>
+      matchesByBarcode[barcode] ?? [];
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
@@ -98,22 +155,24 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
-  }) async => [const ProductFamily(id: 1, name: 'Milk')];
+  }) async =>
+      [const ProductFamily(id: 1, name: 'Milk')];
 
   @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
     bool onlyCurrentPrice = true,
-  }) async => [];
+  }) async =>
+      [];
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
-    Supermarket(id: 1, name: 'A'),
-  ];
+        Supermarket(id: 1, name: 'A'),
+      ];
 
   @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
@@ -124,7 +183,8 @@ class _FakeRepo implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
-  }) async => const ScannedPriceRegistrationResult(created: false);
+  }) async =>
+      const ScannedPriceRegistrationResult(created: false);
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
@@ -144,7 +204,8 @@ class _FakeRepo implements PersistenceRepository {
     required double quantity,
     required String unitType,
     String? barcode,
-  }) async => 1;
+  }) async =>
+      1;
 
   @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
