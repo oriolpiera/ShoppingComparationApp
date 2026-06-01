@@ -13,8 +13,9 @@ import 'package:shopping_comparation_app/features/products/data/open_food_facts_
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
 void main() {
-  testWidgets('scan flow no-match offers Create Product Item and Re-scan',
-      (tester) async {
+  testWidgets('scan flow no-match offers Create Product Item and Re-scan', (
+    tester,
+  ) async {
     final repository = _FakeRepo();
 
     await tester.pumpWidget(
@@ -33,12 +34,13 @@ void main() {
     expect(find.text('Re-scan'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('scan flow no-match pre-fills name from Open Food Facts',
-      (tester) async {
+  testWidgets('scan flow no-match pre-fills name from Open Food Facts', (
+    tester,
+  ) async {
     final repository = _FakeRepo();
     final prefillService = OpenFoodFactsNamePrefillService(
       getRequest: (_) async =>
-          '{"status":1,"product":{"product_name":"Greek Yogurt"}}',
+          '{"status":1,"product":{"product_name":"Greek Yogurt 500 g","brands":"Acme","quantity":"500 g"}}',
     );
 
     await tester.pumpWidget(
@@ -62,11 +64,72 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+    expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
     expect(find.text('Greek Yogurt'), findsOneWidget);
+    expect(
+      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
+      findsOneWidget,
+    );
+    expect(find.text('0.5'), findsOneWidget);
+  });
+
+  testWidgets('existing family prefill does not show OFF helper text', (
+    tester,
+  ) async {
+    final repository = _FakeRepo(
+      matchesByBarcode: {
+        'X-KNOWN': [
+          BarcodeMatchResult(
+            productItem: ProductItem(
+              id: 10,
+              name: 'Known Yogurt',
+              productFamilyId: 1,
+              supermarketId: 1,
+              price: 2,
+              quantity: 1,
+              unitType: 'kg',
+              pricePerQuantity: 2,
+              dateAdded: DateTime(2026, 1, 1),
+              barcode: 'X-KNOWN',
+            ),
+            familyName: 'Confirmed Family',
+            supermarketName: 'A',
+          ),
+        ],
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProductItemsPage(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tag));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Barcode'),
+      'X-KNOWN',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Confirmed Family'), findsOneWidget);
+    expect(
+      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
+      findsNothing,
+    );
   });
 }
 
 class _FakeRepo implements PersistenceRepository {
+  _FakeRepo({this.matchesByBarcode = const {}});
+
+  final Map<String, List<BarcodeMatchResult>> matchesByBarcode;
+
   @override
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
@@ -81,7 +144,7 @@ class _FakeRepo implements PersistenceRepository {
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
   ) async =>
-      [];
+      matchesByBarcode[barcode] ?? [];
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
@@ -90,8 +153,9 @@ class _FakeRepo implements PersistenceRepository {
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
 
   @override
-  Future<List<ProductFamily>> getProductFamilies(
-          {bool onlyActive = true}) async =>
+  Future<List<ProductFamily>> getProductFamilies({
+    bool onlyActive = true,
+  }) async =>
       [const ProductFamily(id: 1, name: 'Milk')];
 
   @override
@@ -106,8 +170,9 @@ class _FakeRepo implements PersistenceRepository {
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
-  Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async =>
-      [Supermarket(id: 1, name: 'A')];
+  Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
+        Supermarket(id: 1, name: 'A'),
+      ];
 
   @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({

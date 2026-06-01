@@ -1587,12 +1587,20 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
     );
 
     if (matches.isNotEmpty) {
-      return _BarcodeLookupData(matches: matches, prefilledName: null);
+      return _BarcodeLookupData(matches: matches);
     }
 
-    final prefilledName = await widget.namePrefillService
-        .tryGetProductNameByBarcode(widget.barcode);
-    return _BarcodeLookupData(matches: matches, prefilledName: prefilledName);
+    final prefill =
+        await widget.namePrefillService.tryGetProductPrefillByBarcode(
+      widget.barcode,
+    );
+    return _BarcodeLookupData(
+      matches: matches,
+      prefilledName: prefill?.productName,
+      prefilledFamilySuggestion: prefill?.familySuggestion,
+      prefilledQuantity: prefill?.packageQuantityHint,
+      prefilledUnitType: prefill?.packageUnitHint,
+    );
   }
 
   Future<void> _refresh() async {
@@ -1625,7 +1633,12 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
         supermarkets: data.supermarkets,
         lastUsedSupermarketId: data.lastUsedSupermarketId,
         prefilledName: latest?.productItem.name ?? lookupData.prefilledName,
-        prefilledFamily: latest?.familyName,
+        prefilledFamily:
+            latest?.familyName ?? lookupData.prefilledFamilySuggestion,
+        isPrefilledFamilyFromOff:
+            latest == null && lookupData.prefilledFamilySuggestion != null,
+        prefilledQuantity: lookupData.prefilledQuantity,
+        prefilledUnitType: lookupData.prefilledUnitType,
       ),
     );
 
@@ -1754,10 +1767,19 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
 }
 
 class _BarcodeLookupData {
-  const _BarcodeLookupData({required this.matches, this.prefilledName});
+  const _BarcodeLookupData({
+    required this.matches,
+    this.prefilledName,
+    this.prefilledFamilySuggestion,
+    this.prefilledQuantity,
+    this.prefilledUnitType,
+  });
 
   final List<BarcodeMatchResult> matches;
   final String? prefilledName;
+  final String? prefilledFamilySuggestion;
+  final double? prefilledQuantity;
+  final String? prefilledUnitType;
 }
 
 class _RegisterScannedPriceSheet extends StatefulWidget {
@@ -1768,6 +1790,9 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
     required this.lastUsedSupermarketId,
     this.prefilledName,
     this.prefilledFamily,
+    this.isPrefilledFamilyFromOff = false,
+    this.prefilledQuantity,
+    this.prefilledUnitType,
   });
 
   final PersistenceRepository repository;
@@ -1776,6 +1801,9 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
   final int? lastUsedSupermarketId;
   final String? prefilledName;
   final String? prefilledFamily;
+  final bool isPrefilledFamilyFromOff;
+  final double? prefilledQuantity;
+  final String? prefilledUnitType;
 
   @override
   State<_RegisterScannedPriceSheet> createState() =>
@@ -1799,7 +1827,10 @@ class _RegisterScannedPriceSheetState
       text: widget.prefilledFamily ?? '',
     );
     _priceController = TextEditingController();
-    _quantityController = TextEditingController(text: '1');
+    _quantityController = TextEditingController(
+      text: widget.prefilledQuantity?.toString() ?? '1',
+    );
+    _unitType = widget.prefilledUnitType == 'L' ? 'L' : 'kg';
 
     if (widget.supermarkets.isEmpty) {
       _supermarketId = 0;
@@ -1877,7 +1908,12 @@ class _RegisterScannedPriceSheetState
               ),
               TextField(
                 controller: _familyController,
-                decoration: const InputDecoration(labelText: 'Family'),
+                decoration: InputDecoration(
+                  labelText: 'Family',
+                  helperText: widget.isPrefilledFamilyFromOff
+                      ? 'Suggested from Open Food Facts. Please confirm or edit.'
+                      : null,
+                ),
               ),
               DropdownButtonFormField<int>(
                 initialValue: _supermarketId,
