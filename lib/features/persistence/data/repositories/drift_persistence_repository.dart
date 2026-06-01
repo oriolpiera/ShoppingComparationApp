@@ -530,6 +530,13 @@ class DriftPersistenceRepository implements PersistenceRepository {
         throw StateError('External observation not found: $observationId');
       }
 
+      if (observation.localProductItemId != null) {
+        throw StateError(
+          'Observation $observationId is already confirmed '
+          'with local product item ${observation.localProductItemId}',
+        );
+      }
+
       final currentStatus =
           ExternalObservationReviewStatusCodec.fromStorageValue(
               observation.reviewStatus);
