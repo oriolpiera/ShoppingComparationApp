@@ -154,8 +154,9 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
     final save = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title:
-            Text(supermarket == null ? 'Add supermarket' : 'Edit supermarket'),
+        title: Text(
+          supermarket == null ? 'Add supermarket' : 'Edit supermarket',
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -302,6 +303,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               id: item.id,
                               name: item.name,
                               isActive: false,
+                              shoppingUnit: item.shoppingUnit,
+                              purchaseMode: item.purchaseMode,
                             ),
                           );
                           if (mounted) {
@@ -319,8 +322,9 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                             productFamilyId: item.id,
                             onlyCurrentPrice: false,
                           );
-                          for (final productItem
-                              in allItems.where((p) => p.isActive)) {
+                          for (final productItem in allItems.where(
+                            (p) => p.isActive,
+                          )) {
                             await widget.repository.saveProductItem(
                               ProductItem(
                                 id: productItem.id,
@@ -343,6 +347,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               id: item.id,
                               name: item.name,
                               isActive: false,
+                              shoppingUnit: item.shoppingUnit,
+                              purchaseMode: item.purchaseMode,
                             ),
                           );
                           if (mounted) {
@@ -375,27 +381,59 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
 
   Future<void> _openForm(ProductFamily? family) async {
     final nameController = TextEditingController(text: family?.name ?? '');
+    var shoppingUnit = family?.shoppingUnit ?? 'kg';
+    var purchaseMode = family?.purchaseMode ?? 'packaged';
 
     final save = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title:
-            Text(family == null ? 'Add product family' : 'Edit product family'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: 'Name'),
-          autofocus: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            family == null ? 'Add product family' : 'Edit product family',
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                autofocus: true,
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: shoppingUnit,
+                decoration: const InputDecoration(labelText: 'Shopping unit'),
+                items: const [
+                  DropdownMenuItem(value: 'kg', child: Text('kg')),
+                  DropdownMenuItem(value: 'L', child: Text('L')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => shoppingUnit = value);
+                },
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: purchaseMode,
+                decoration: const InputDecoration(labelText: 'Purchase mode'),
+                items: const [
+                  DropdownMenuItem(value: 'packaged', child: Text('packaged')),
+                  DropdownMenuItem(value: 'fresh', child: Text('fresh')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => purchaseMode = value);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
 
@@ -406,6 +444,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
           id: family?.id,
           name: nextName,
           isActive: true,
+          shoppingUnit: shoppingUnit,
+          purchaseMode: purchaseMode,
         ),
       );
       _refresh();
@@ -438,10 +478,11 @@ class _SupermarketDetailsPage extends StatelessWidget {
         children: [
           _DetailRow(label: 'Name', value: item.name),
           _DetailRow(
-              label: 'Address',
-              value: item.address?.trim().isEmpty == true
-                  ? '—'
-                  : (item.address ?? '—')),
+            label: 'Address',
+            value: item.address?.trim().isEmpty == true
+                ? '—'
+                : (item.address ?? '—'),
+          ),
           _DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
           const SizedBox(height: 24),
           FilledButton.tonalIcon(
@@ -450,8 +491,9 @@ class _SupermarketDetailsPage extends StatelessWidget {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Delete supermarket?'),
-                  content:
-                      const Text('This will mark the supermarket as inactive.'),
+                  content: const Text(
+                    'This will mark the supermarket as inactive.',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -632,6 +674,9 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
           quantity: quantity,
           unitType: unitType,
           pricePerQuantity: price / quantity,
+          packageQuantityAmount: quantity,
+          packageQuantityUnit: unitType,
+          normalizedMeasurementUnit: normalizeUnitTypeForComparison(unitType),
           dateAdded: item.dateAdded,
           isCurrentPrice: item.isCurrentPrice,
           barcode: item.barcode,
@@ -768,8 +813,9 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                 ...comparisonView.items.map((comparisonItem) {
                   final productItem = comparisonItem.productItem;
                   final supermarketName = comparisonItem.supermarketName;
-                  final unitType =
-                      normalizeUnitTypeForDisplay(productItem.unitType);
+                  final unitType = normalizeUnitTypeForDisplay(
+                    productItem.unitType,
+                  );
 
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -791,9 +837,9 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                             ),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                             ),
                             child: const Text(
                               'inactive supermarket',
@@ -871,7 +917,9 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                               _ProductFamilyDetailsAction
                                   .deleteAndInactivateItems,
                             ),
-                            child: const Text('Inactivate all active items'),
+                            child: const Text(
+                              'Inactivate all active items',
+                            ),
                           ),
                         ],
                       ),
@@ -964,12 +1012,15 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
   }
 
   Future<_ProductContext> _load() async {
-    final items =
-        await widget.repository.getProductItems(onlyCurrentPrice: true);
-    final families =
-        await widget.repository.getProductFamilies(onlyActive: true);
-    final supermarkets =
-        await widget.repository.getSupermarkets(onlyActive: true);
+    final items = await widget.repository.getProductItems(
+      onlyCurrentPrice: true,
+    );
+    final families = await widget.repository.getProductFamilies(
+      onlyActive: true,
+    );
+    final supermarkets = await widget.repository.getSupermarkets(
+      onlyActive: true,
+    );
     final lastUsedSupermarketId =
         await widget.repository.getLastUsedSupermarketId();
     return _ProductContext(
@@ -1142,15 +1193,19 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                 final query = _queryController.text.toLowerCase().trim();
                 final filtered = data.items
                     .where((i) => i.isActive)
-                    .map((i) => (
-                          item: i,
-                          familyName: familyNameById[i.productFamilyId] ??
-                              'Unknown family',
-                        ))
-                    .where((entry) =>
-                        query.isEmpty ||
-                        entry.item.name.toLowerCase().contains(query) ||
-                        entry.familyName.toLowerCase().contains(query))
+                    .map(
+                      (i) => (
+                        item: i,
+                        familyName: familyNameById[i.productFamilyId] ??
+                            'Unknown family',
+                      ),
+                    )
+                    .where(
+                      (entry) =>
+                          query.isEmpty ||
+                          entry.item.name.toLowerCase().contains(query) ||
+                          entry.familyName.toLowerCase().contains(query),
+                    )
                     .toList()
                   ..sort((a, b) {
                     final byFamily = a.familyName.toLowerCase().compareTo(
@@ -1195,8 +1250,10 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                               item: item,
                               familyName: entry.familyName,
                               supermarketName: supermarketName,
-                              formattedDateAdded:
-                                  _formatDateAdded(context, item.dateAdded),
+                              formattedDateAdded: _formatDateAdded(
+                                context,
+                                item.dateAdded,
+                              ),
                             ),
                           ),
                         );
@@ -1274,9 +1331,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     if (data.supermarkets.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Need at least one supermarket first'),
-          ),
+          const SnackBar(content: Text('Need at least one supermarket first')),
         );
       }
       return;
@@ -1335,9 +1390,10 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                       ..sort();
                     return names
                         .where(
-                            (name) => normalizeFamilySearchText(name).contains(
-                                  normalizedQuery,
-                                ))
+                          (name) => normalizeFamilySearchText(
+                            name,
+                          ).contains(normalizedQuery),
+                        )
                         .take(8);
                   },
                   onSelected: (selection) {
@@ -1368,10 +1424,12 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   initialValue: supermarketId,
                   decoration: const InputDecoration(labelText: 'Supermarket'),
                   items: data.supermarkets
-                      .map((s) => DropdownMenuItem<int>(
-                            value: s.id,
-                            child: Text(s.name),
-                          ))
+                      .map(
+                        (s) => DropdownMenuItem<int>(
+                          value: s.id,
+                          child: Text(s.name),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -1430,6 +1488,31 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
+      final resolvedFamilyId =
+          await widget.repository.resolveProductFamilyIdByName(familyName);
+      final refreshedFamilies = await widget.repository.getProductFamilies(
+        onlyActive: true,
+      );
+      final selectedFamily = refreshedFamilies.firstWhere(
+        (f) => f.id == resolvedFamilyId,
+        orElse: () => ProductFamily(name: familyName),
+      );
+      final shoppingUnit = selectedFamily.shoppingUnit;
+      if (shoppingUnit != null &&
+          normalizeUnitTypeForComparison(shoppingUnit) !=
+              normalizeUnitTypeForComparison(unitType)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Unit type is incompatible with family shopping unit',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
       if (item == null) {
         await widget.repository.saveQuickProductItem(
           productName: name,
@@ -1440,8 +1523,6 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
           unitType: unitType,
         );
       } else {
-        final resolvedFamilyId =
-            await widget.repository.resolveProductFamilyIdByName(familyName);
         await widget.repository.saveProductItem(
           ProductItem(
             id: item.id,
@@ -1453,6 +1534,9 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
             quantity: quantity,
             unitType: unitType,
             pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+            packageQuantityAmount: quantity,
+            packageQuantityUnit: unitType,
+            normalizedMeasurementUnit: normalizeUnitTypeForComparison(unitType),
             dateAdded: item.dateAdded,
             isCurrentPrice: true,
             barcode: item.barcode,
@@ -1498,8 +1582,9 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
   }
 
   Future<_BarcodeLookupData> _load() async {
-    final matches =
-        await widget.repository.findCurrentActiveByBarcode(widget.barcode);
+    final matches = await widget.repository.findCurrentActiveByBarcode(
+      widget.barcode,
+    );
 
     if (matches.isNotEmpty) {
       return _BarcodeLookupData(matches: matches);
@@ -1558,9 +1643,9 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
     );
 
     if (!mounted || result == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message ?? 'Done')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.message ?? 'Done')));
     if (result.created) {
       Navigator.of(context).pop(true);
     } else {
@@ -1569,16 +1654,23 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
   }
 
   Future<_ProductContext> _loadCreateData() async {
-    final items =
-        await widget.repository.getProductItems(onlyCurrentPrice: true);
-    final families =
-        await widget.repository.getProductFamilies(onlyActive: true);
-    final supermarkets =
-        await widget.repository.getSupermarkets(onlyActive: true);
+    final items = await widget.repository.getProductItems(
+      onlyCurrentPrice: true,
+    );
+    final families = await widget.repository.getProductFamilies(
+      onlyActive: true,
+    );
+    final supermarkets = await widget.repository.getSupermarkets(
+      onlyActive: true,
+    );
     final lastUsedSupermarketId =
         await widget.repository.getLastUsedSupermarketId();
     return _ProductContext(
-        items, families, supermarkets, lastUsedSupermarketId);
+      items,
+      families,
+      supermarkets,
+      lastUsedSupermarketId,
+    );
   }
 
   @override
@@ -1607,7 +1699,8 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                        'No current active Product Items for this barcode.'),
+                      'No current active Product Items for this barcode.',
+                    ),
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: () => _createProductItem(lookupData),
@@ -1730,8 +1823,9 @@ class _RegisterScannedPriceSheetState
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.prefilledName ?? '');
-    _familyController =
-        TextEditingController(text: widget.prefilledFamily ?? '');
+    _familyController = TextEditingController(
+      text: widget.prefilledFamily ?? '',
+    );
     _priceController = TextEditingController();
     _quantityController = TextEditingController(
       text: widget.prefilledQuantity?.toString() ?? '1',
@@ -1771,9 +1865,7 @@ class _RegisterScannedPriceSheetState
 
     if (name.isEmpty || family.isEmpty || price == null || quantity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all required fields.'),
-        ),
+        const SnackBar(content: Text('Please fill in all required fields.')),
       );
       return;
     }
@@ -1904,13 +1996,16 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   Future<_ShoppingListViewData> _load() async {
     final entries = await widget.repository.getShoppingList();
-    final families =
-        await widget.repository.getProductFamilies(onlyActive: false);
+    final families = await widget.repository.getProductFamilies(
+      onlyActive: false,
+    );
     final activeFamilies = await widget.repository.getProductFamilies();
-    final items =
-        await widget.repository.getProductItems(onlyCurrentPrice: true);
-    final supermarkets =
-        await widget.repository.getSupermarkets(onlyActive: true);
+    final items = await widget.repository.getProductItems(
+      onlyCurrentPrice: true,
+    );
+    final supermarkets = await widget.repository.getSupermarkets(
+      onlyActive: true,
+    );
 
     final familyById = {
       for (final family in families)
@@ -2007,8 +2102,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                 initialValue: selectedFamilyId,
                 decoration: const InputDecoration(labelText: 'Product family'),
                 items: data.activeFamilyOptions
-                    .map((f) =>
-                        DropdownMenuItem(value: f.id, child: Text(f.name)))
+                    .map(
+                      (f) => DropdownMenuItem(value: f.id, child: Text(f.name)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value != null) {
@@ -2070,8 +2166,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     );
 
     if (confirmed == true) {
-      await widget.repository
-          .deleteShoppingListEntries(_selectedEntryIds.toList());
+      await widget.repository.deleteShoppingListEntries(
+        _selectedEntryIds.toList(),
+      );
       setState(() {
         _boughtEntries.removeAll(_selectedEntryIds);
         _selectedEntryIds.clear();
@@ -2120,14 +2217,8 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
       onLongPress: () => _onLongPressRow(row),
       onTap: () => _onTapRow(row),
       leading: _selectionMode
-          ? Checkbox(
-              value: isSelected,
-              onChanged: (_) => _onTapRow(row),
-            )
-          : Checkbox(
-              value: isBought,
-              onChanged: (_) => _toggleBought(row),
-            ),
+          ? Checkbox(value: isSelected, onChanged: (_) => _onTapRow(row))
+          : Checkbox(value: isBought, onChanged: (_) => _toggleBought(row)),
       title: Text(
         row.familyName,
         style: TextStyle(
@@ -2174,9 +2265,11 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(_selectionMode
-                ? '${_selectedEntryIds.length} selected'
-                : 'Shopping list'),
+            title: Text(
+              _selectionMode
+                  ? '${_selectedEntryIds.length} selected'
+                  : 'Shopping list',
+            ),
             actions: [
               if (_selectionMode)
                 IconButton(
@@ -2231,8 +2324,10 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                   }),
                   if (pending.isNotEmpty)
                     const ListTile(
-                      title: Text('Pending / inactive',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      title: Text(
+                        'Pending / inactive',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ...pending.map(_buildRow),
                 ],
@@ -2312,7 +2407,9 @@ class _ProductItemDetailsPage extends StatelessWidget {
           _DetailRow(label: 'Family', value: familyName),
           _DetailRow(label: 'Supermarket', value: supermarketName),
           _DetailRow(
-              label: 'Price', value: '€${item.price.toStringAsFixed(2)}'),
+            label: 'Price',
+            value: '€${item.price.toStringAsFixed(2)}',
+          ),
           _DetailRow(label: 'Quantity', value: item.quantity.toString()),
           _DetailRow(label: 'Unit type', value: item.unitType),
           _DetailRow(
@@ -2322,7 +2419,9 @@ class _ProductItemDetailsPage extends StatelessWidget {
           _DetailRow(label: 'Date added', value: formattedDateAdded),
           _DetailRow(label: 'Active', value: _yesNo(item.isActive)),
           _DetailRow(
-              label: 'Current price', value: _yesNo(item.isCurrentPrice)),
+            label: 'Current price',
+            value: _yesNo(item.isCurrentPrice),
+          ),
           _DetailRow(
             label: 'Barcode',
             value: (item.barcode == null || item.barcode!.trim().isEmpty)
@@ -2336,8 +2435,9 @@ class _ProductItemDetailsPage extends StatelessWidget {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Delete product?'),
-                  content:
-                      const Text('This will mark the product as inactive.'),
+                  content: const Text(
+                    'This will mark the product as inactive.',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
