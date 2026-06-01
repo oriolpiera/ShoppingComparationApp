@@ -1,5 +1,6 @@
-
 import 'measurement.dart';
+
+const _doubleEpsilon = 1e-9;
 
 enum ShoppingUnit {
   kilogram(MeasurementUnit.kilogram),
@@ -59,8 +60,9 @@ class FamilyOffer {
       if (packageQuantity.unit.dimension != MeasurementDimension.count) {
         throw ArgumentError('Piece mode requires count units');
       }
-      if (packageQuantity.amount != 1) {
-        throw ArgumentError('Piece mode requires package quantity amount to be 1');
+      if ((packageQuantity.amount - 1).abs() > _doubleEpsilon) {
+        throw ArgumentError(
+            'Piece mode requires package quantity amount to be 1');
       }
     }
   }
@@ -72,7 +74,8 @@ class FamilyOffer {
 
   double totalCostFor(FamilyNeedQuantity need) {
     if (!need.unit.measurementUnit.isCompatibleWith(packageQuantity.unit)) {
-      throw UnitCompatibilityException(need.unit.measurementUnit, packageQuantity.unit);
+      throw UnitCompatibilityException(
+          need.unit.measurementUnit, packageQuantity.unit);
     }
 
     final needed = need.normalizedAmount;
@@ -80,11 +83,11 @@ class FamilyOffer {
 
     return switch (purchaseMode) {
       PurchaseMode.weighted => (needed / perPackage) * price,
-      PurchaseMode.packaged || PurchaseMode.piece =>
+      PurchaseMode.packaged ||
+      PurchaseMode.piece =>
         (needed / perPackage).ceil() * price,
     };
   }
-
 }
 
 FamilyOffer? selectFamilyWinner({
@@ -96,13 +99,14 @@ FamilyOffer? selectFamilyWinner({
 
   for (final offer in offers) {
     final cost = offer.totalCostFor(need);
-    if (winner == null || cost < winnerCost!) {
+    if (winner == null || cost < winnerCost! - _doubleEpsilon) {
       winner = offer;
       winnerCost = cost;
       continue;
     }
 
-    if (cost == winnerCost && offer.id.compareTo(winner.id) < 0) {
+    final isTie = (cost - winnerCost).abs() <= _doubleEpsilon;
+    if (isTie && offer.id.compareTo(winner.id) < 0) {
       winner = offer;
       winnerCost = cost;
     }

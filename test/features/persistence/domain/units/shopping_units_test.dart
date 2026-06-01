@@ -7,7 +7,8 @@ void main() {
     test('normalizes and converts compatible units', () {
       expect(MeasurementUnit.kilogram.toBase(1.25), 1250);
       expect(MeasurementUnit.kilogram.convert(1, MeasurementUnit.gram), 1000);
-      expect(MeasurementUnit.milliliter.convert(500, MeasurementUnit.liter), 0.5);
+      expect(
+          MeasurementUnit.milliliter.convert(500, MeasurementUnit.liter), 0.5);
     });
 
     test('throws on incompatible conversion', () {
@@ -25,7 +26,8 @@ void main() {
           id: 'a',
           price: 3,
           purchaseMode: PurchaseMode.weighted,
-          packageQuantity: PackageQuantity(amount: 1, unit: MeasurementUnit.unit),
+          packageQuantity:
+              PackageQuantity(amount: 1, unit: MeasurementUnit.unit),
         ),
         throwsArgumentError,
       );
@@ -37,7 +39,21 @@ void main() {
           id: 'a',
           price: 3,
           purchaseMode: PurchaseMode.piece,
-          packageQuantity: PackageQuantity(amount: 1, unit: MeasurementUnit.gram),
+          packageQuantity:
+              PackageQuantity(amount: 1, unit: MeasurementUnit.gram),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects piece mode when amount is not one', () {
+      expect(
+        () => FamilyOffer(
+          id: 'a',
+          price: 3,
+          purchaseMode: PurchaseMode.piece,
+          packageQuantity:
+              PackageQuantity(amount: 2, unit: MeasurementUnit.unit),
         ),
         throwsArgumentError,
       );
@@ -55,18 +71,46 @@ void main() {
             id: 'bulk',
             price: 4,
             purchaseMode: PurchaseMode.weighted,
-            packageQuantity: PackageQuantity(amount: 1, unit: MeasurementUnit.kilogram),
+            packageQuantity:
+                PackageQuantity(amount: 1, unit: MeasurementUnit.kilogram),
           ),
           FamilyOffer(
             id: 'pack500',
             price: 1.5,
             purchaseMode: PurchaseMode.packaged,
-            packageQuantity: PackageQuantity(amount: 500, unit: MeasurementUnit.gram),
+            packageQuantity:
+                PackageQuantity(amount: 500, unit: MeasurementUnit.gram),
           ),
         ],
       );
 
       expect(winner?.id, 'pack500');
+    });
+
+    test('uses lexicographic id as tie-breaker for equal costs', () {
+      final need = FamilyNeedQuantity(amount: 2, unit: ShoppingUnit.kilogram);
+
+      final winner = selectFamilyWinner(
+        need: need,
+        offers: [
+          FamilyOffer(
+            id: 'z-offer',
+            price: 10 / 3,
+            purchaseMode: PurchaseMode.weighted,
+            packageQuantity:
+                PackageQuantity(amount: 1, unit: MeasurementUnit.kilogram),
+          ),
+          FamilyOffer(
+            id: 'a-offer',
+            price: 5,
+            purchaseMode: PurchaseMode.weighted,
+            packageQuantity:
+                PackageQuantity(amount: 1.5, unit: MeasurementUnit.kilogram),
+          ),
+        ],
+      );
+
+      expect(winner?.id, 'a-offer');
     });
 
     test('throws when need and offer units are incompatible', () {
@@ -75,7 +119,8 @@ void main() {
         id: 'vol',
         price: 1,
         purchaseMode: PurchaseMode.packaged,
-        packageQuantity: PackageQuantity(amount: 1, unit: MeasurementUnit.liter),
+        packageQuantity:
+            PackageQuantity(amount: 1, unit: MeasurementUnit.liter),
       );
 
       expect(
