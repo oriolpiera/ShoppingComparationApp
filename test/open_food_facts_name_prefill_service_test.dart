@@ -25,6 +25,16 @@ void main() {
       expect(name, isNull);
     });
 
+    test('returns null when JSON is malformed', () {
+      final service = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async => null,
+      );
+
+      final name = service.parseProductNameFromResponse('{bad json');
+
+      expect(name, isNull);
+    });
+
     test('returns null when request fails', () async {
       final service = OpenFoodFactsNamePrefillService(
         getRequest: (_) async => throw Exception('network'),
