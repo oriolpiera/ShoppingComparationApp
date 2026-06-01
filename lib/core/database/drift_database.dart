@@ -164,14 +164,6 @@ class AppDriftDatabase extends _$AppDriftDatabase {
 
           if (from < 4) {
             await customStatement('''
-              CREATE TABLE IF NOT EXISTS external_store_mapping (
-                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                external_store_id TEXT NOT NULL UNIQUE,
-                external_store_name TEXT NOT NULL,
-                supermarket_id INTEGER NOT NULL REFERENCES supermarket (id)
-              );
-            ''');
-            await customStatement('''
               CREATE TABLE IF NOT EXISTS external_price_observation (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 open_prices_id TEXT NOT NULL UNIQUE,
@@ -188,18 +180,24 @@ class AppDriftDatabase extends _$AppDriftDatabase {
                 local_product_item_id INTEGER NULL REFERENCES product_item (id)
               );
             ''');
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS external_store_mapping (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                external_store_id TEXT NOT NULL UNIQUE,
+                external_store_name TEXT NOT NULL,
+                supermarket_id INTEGER NOT NULL REFERENCES supermarket (id)
+              );
+            ''');
             await customStatement(
               'CREATE UNIQUE INDEX IF NOT EXISTS idx_external_price_observation_open_prices_id ON external_price_observation(open_prices_id);',
             );
 
-            final productItemColumns =
-                await customSelect('PRAGMA table_info(product_item);').get();
-            final hasExternalObservationColumn = productItemColumns
-                .any((row) => row.data['name'] == 'external_observation_id');
-            if (!hasExternalObservationColumn) {
+            try {
               await customStatement(
                 'ALTER TABLE product_item ADD COLUMN external_observation_id INTEGER NULL REFERENCES external_price_observation(id);',
               );
+            } catch (_) {
+              // Column may already exist from fresh-schema creation or prior run.
             }
           }
         },

@@ -474,8 +474,12 @@ class DriftPersistenceRepository implements PersistenceRepository {
         unitType: Value(observation.unitType),
         pricePerQuantity: Value(observation.pricePerQuantity),
         observedAt: Value(observation.observedAt),
-        reviewStatus: Value(observation.reviewStatus.storageValue),
-        localProductItemId: Value(observation.localProductItemId),
+        reviewStatus: existing != null
+            ? Value(existing.reviewStatus)
+            : Value(observation.reviewStatus.storageValue),
+        localProductItemId: existing != null
+            ? Value(existing.localProductItemId)
+            : Value(observation.localProductItemId),
       ),
     );
   }
