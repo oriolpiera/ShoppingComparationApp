@@ -13,8 +13,9 @@ import 'package:shopping_comparation_app/features/products/data/open_food_facts_
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
 void main() {
-  testWidgets('scan flow no-match offers Create Product Item and Re-scan',
-      (tester) async {
+  testWidgets('scan flow no-match offers Create Product Item and Re-scan', (
+    tester,
+  ) async {
     final repository = _FakeRepo();
 
     await tester.pumpWidget(
@@ -33,12 +34,13 @@ void main() {
     expect(find.text('Re-scan'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('scan flow no-match pre-fills name from Open Food Facts',
-      (tester) async {
+  testWidgets('scan flow no-match pre-fills name from Open Food Facts', (
+    tester,
+  ) async {
     final repository = _FakeRepo();
     final prefillService = OpenFoodFactsNamePrefillService(
       getRequest: (_) async =>
-          '{"status":1,"product":{"product_name":"Greek Yogurt"}}',
+          '{"status":1,"product":{"product_name":"Greek Yogurt 500 g","brands":"Acme","quantity":"500 g"}}',
     );
 
     await tester.pumpWidget(
@@ -62,7 +64,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+    expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
     expect(find.text('Greek Yogurt'), findsOneWidget);
+    expect(
+      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
+      findsOneWidget,
+    );
+    expect(find.text('0.5'), findsOneWidget);
   });
 }
 
@@ -71,8 +79,7 @@ class _FakeRepo implements PersistenceRepository {
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
@@ -80,8 +87,7 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
-  ) async =>
-      [];
+  ) async => [];
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
@@ -90,24 +96,24 @@ class _FakeRepo implements PersistenceRepository {
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
 
   @override
-  Future<List<ProductFamily>> getProductFamilies(
-          {bool onlyActive = true}) async =>
-      [const ProductFamily(id: 1, name: 'Milk')];
+  Future<List<ProductFamily>> getProductFamilies({
+    bool onlyActive = true,
+  }) async => [const ProductFamily(id: 1, name: 'Milk')];
 
   @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
     bool onlyCurrentPrice = true,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
-  Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async =>
-      [Supermarket(id: 1, name: 'A')];
+  Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
+    Supermarket(id: 1, name: 'A'),
+  ];
 
   @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
@@ -118,8 +124,7 @@ class _FakeRepo implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
-  }) async =>
-      const ScannedPriceRegistrationResult(created: false);
+  }) async => const ScannedPriceRegistrationResult(created: false);
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
@@ -139,8 +144,7 @@ class _FakeRepo implements PersistenceRepository {
     required double quantity,
     required String unitType,
     String? barcode,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;

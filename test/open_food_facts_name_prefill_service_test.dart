@@ -15,6 +15,22 @@ void main() {
       expect(name, 'Oat Drink');
     });
 
+    test('parses metadata prefill when available', () {
+      final service = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async => null,
+      );
+
+      final prefill = service.parseProductPrefillFromResponse(
+        '{"status":1,"product":{"product_name":"Greek Yogurt 500 g","brands":"Acme","quantity":"500 g"}}',
+      );
+
+      expect(prefill, isNotNull);
+      expect(prefill!.productName, 'Greek Yogurt 500 g');
+      expect(prefill.familySuggestion, 'Greek Yogurt');
+      expect(prefill.packageQuantityHint, 0.5);
+      expect(prefill.packageUnitHint, 'kg');
+    });
+
     test('returns null when product not found', () {
       final service = OpenFoodFactsNamePrefillService(
         getRequest: (_) async => null,
