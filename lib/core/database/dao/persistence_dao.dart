@@ -66,6 +66,53 @@ class PersistenceDao {
     return db.into(db.productItemTable).insertOnConflictUpdate(companion);
   }
 
+  Future<List<ExternalStoreMappingTableData>> getExternalStoreMappings() {
+    return (db.select(db.externalStoreMappingTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.externalStoreName)]))
+        .get();
+  }
+
+  Future<int> saveExternalStoreMapping(
+    ExternalStoreMappingTableCompanion companion,
+  ) {
+    return db
+        .into(db.externalStoreMappingTable)
+        .insertOnConflictUpdate(companion);
+  }
+
+  Future<ExternalStoreMappingTableData?> getExternalStoreMappingByExternalId(
+    String externalStoreId,
+  ) {
+    return (db.select(db.externalStoreMappingTable)
+          ..where((t) => t.externalStoreId.equals(externalStoreId))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<List<ExternalPriceObservationTableData>>
+      getExternalPriceObservations() {
+    return (db.select(db.externalPriceObservationTable)
+          ..orderBy([(t) => OrderingTerm.desc(t.observedAt)]))
+        .get();
+  }
+
+  Future<ExternalPriceObservationTableData?> getExternalPriceObservationById(
+    int observationId,
+  ) {
+    return (db.select(db.externalPriceObservationTable)
+          ..where((t) => t.id.equals(observationId))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<int> saveExternalPriceObservation(
+    ExternalPriceObservationTableCompanion companion,
+  ) {
+    return db
+        .into(db.externalPriceObservationTable)
+        .insertOnConflictUpdate(companion);
+  }
+
   Future<List<ProductItemTableData>> getCurrentActiveItemsByBarcode(
       String barcode) {
     final query = db.select(db.productItemTable)

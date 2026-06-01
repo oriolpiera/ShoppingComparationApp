@@ -6,10 +6,13 @@ import '../../../../core/normalization/family_unit_normalization.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
 import '../../domain/entities/barcode_match_result.dart';
+import '../../domain/entities/external_price_observation.dart';
+import '../../domain/entities/external_store_mapping.dart';
 import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/scanned_price_registration_result.dart';
 import '../../domain/entities/shopping_list_entry.dart';
+import '../../domain/external_observation_review_policy.dart';
 import '../../domain/shopping_list_optimizer.dart';
 import '../../domain/repositories/persistence_repository.dart';
 
@@ -127,6 +130,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
             packageQuantityAmount: row.packageQuantityAmount,
             packageQuantityUnit: row.packageQuantityUnit,
             normalizedMeasurementUnit: row.normalizedMeasurementUnit,
+            externalObservationId: row.externalObservationId,
           ),
         )
         .toList();
@@ -151,6 +155,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         dateAdded: Value(item.dateAdded),
         isCurrentPrice: Value(item.isCurrentPrice),
         barcode: Value(item.barcode),
+        externalObservationId: Value(item.externalObservationId),
       ),
     );
   }
@@ -201,6 +206,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
             dateAdded: Value(row.dateAdded),
             isCurrentPrice: const Value(false),
             barcode: Value(row.barcode),
+            externalObservationId: Value(row.externalObservationId),
           ),
         );
       }
@@ -265,6 +271,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
             packageQuantityAmount: row.packageQuantityAmount,
             packageQuantityUnit: row.packageQuantityUnit,
             normalizedMeasurementUnit: row.normalizedMeasurementUnit,
+            externalObservationId: row.externalObservationId,
           ),
         )
         .toList()
@@ -355,6 +362,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
             dateAdded: Value(row.dateAdded),
             isCurrentPrice: const Value(false),
             barcode: Value(row.barcode),
+            externalObservationId: Value(row.externalObservationId),
           ),
         );
       }
@@ -376,6 +384,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
           dateAdded: DateTime.now(),
           isCurrentPrice: true,
           barcode: normalizedBarcode,
+          externalObservationId: null,
         ),
       );
     });
@@ -384,6 +393,184 @@ class DriftPersistenceRepository implements PersistenceRepository {
       created: true,
       message: 'New current price registered.',
     );
+  }
+
+  @override
+  Future<List<ExternalStoreMapping>> getExternalStoreMappings() async {
+    final rows = await dao.getExternalStoreMappings();
+    return rows
+        .map(
+          (row) => ExternalStoreMapping(
+            id: row.id,
+            externalStoreId: row.externalStoreId,
+            externalStoreName: row.externalStoreName,
+            supermarketId: row.supermarketId,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping) {
+    return dao.saveExternalStoreMapping(
+      ExternalStoreMappingTableCompanion(
+        id: mapping.id == null ? const Value.absent() : Value(mapping.id!),
+        externalStoreId: Value(mapping.externalStoreId),
+        externalStoreName: Value(mapping.externalStoreName),
+        supermarketId: Value(mapping.supermarketId),
+      ),
+    );
+  }
+
+  @override
+  Future<List<ExternalPriceObservation>> getExternalPriceObservations() async {
+    final rows = await dao.getExternalPriceObservations();
+    return rows
+        .map(
+          (row) => ExternalPriceObservation(
+            id: row.id,
+            openPricesId: row.openPricesId,
+            productName: row.productName,
+            familyName: row.familyName,
+            externalStoreId: row.externalStoreId,
+            externalStoreName: row.externalStoreName,
+            price: row.price,
+            quantity: row.quantity,
+            unitType: row.unitType,
+            pricePerQuantity: row.pricePerQuantity,
+            observedAt: row.observedAt,
+            reviewStatus: ExternalObservationReviewStatusCodec.fromStorageValue(
+              row.reviewStatus,
+            ),
+            localProductItemId: row.localProductItemId,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<int> saveExternalPriceObservation(
+      ExternalPriceObservation observation) {
+    return dao.saveExternalPriceObservation(
+      ExternalPriceObservationTableCompanion(
+        id: observation.id == null
+            ? const Value.absent()
+            : Value(observation.id!),
+        openPricesId: Value(observation.openPricesId),
+        productName: Value(observation.productName),
+        familyName: Value(observation.familyName),
+        externalStoreId: Value(observation.externalStoreId),
+        externalStoreName: Value(observation.externalStoreName),
+        price: Value(observation.price),
+        quantity: Value(observation.quantity),
+        unitType: Value(observation.unitType),
+        pricePerQuantity: Value(observation.pricePerQuantity),
+        observedAt: Value(observation.observedAt),
+        reviewStatus: Value(observation.reviewStatus.storageValue),
+        localProductItemId: Value(observation.localProductItemId),
+      ),
+    );
+  }
+
+  @override
+  Future<void> updateExternalObservationReviewStatus({
+    required int observationId,
+    required ExternalObservationReviewStatus newStatus,
+  }) async {
+    final row = await dao.getExternalPriceObservationById(observationId);
+    if (row == null) {
+      throw StateError('External observation not found: $observationId');
+    }
+    final current =
+        ExternalObservationReviewStatusCodec.fromStorageValue(row.reviewStatus);
+    if (!canTransitionReviewStatus(from: current, to: newStatus)) {
+      throw StateError(
+          'Invalid review status transition: $current -> $newStatus');
+    }
+
+    await dao.saveExternalPriceObservation(
+      ExternalPriceObservationTableCompanion(
+        id: Value(row.id),
+        openPricesId: Value(row.openPricesId),
+        productName: Value(row.productName),
+        familyName: Value(row.familyName),
+        externalStoreId: Value(row.externalStoreId),
+        externalStoreName: Value(row.externalStoreName),
+        price: Value(row.price),
+        quantity: Value(row.quantity),
+        unitType: Value(row.unitType),
+        pricePerQuantity: Value(row.pricePerQuantity),
+        observedAt: Value(row.observedAt),
+        reviewStatus: Value(newStatus.storageValue),
+        localProductItemId: Value(row.localProductItemId),
+      ),
+    );
+  }
+
+  @override
+  Future<int> confirmExternalObservationLocally({
+    required int observationId,
+  }) async {
+    final observation =
+        await dao.getExternalPriceObservationById(observationId);
+    if (observation == null) {
+      throw StateError('External observation not found: $observationId');
+    }
+
+    final mapping = await dao
+        .getExternalStoreMappingByExternalId(observation.externalStoreId);
+    if (mapping == null) {
+      throw StateError(
+          'Missing external store mapping for ${observation.externalStoreId}');
+    }
+
+    final familyId = await resolveProductFamilyIdByName(observation.familyName);
+    final productItemId = await saveProductItem(
+      ProductItem(
+        name: observation.productName,
+        productFamilyId: familyId,
+        supermarketId: mapping.supermarketId,
+        price: observation.price,
+        quantity: observation.quantity,
+        unitType: observation.unitType,
+        pricePerQuantity: observation.pricePerQuantity,
+        packageQuantityAmount: observation.quantity,
+        packageQuantityUnit: observation.unitType,
+        normalizedMeasurementUnit:
+            normalizeUnitTypeForComparison(observation.unitType),
+        dateAdded: DateTime.now(),
+        isCurrentPrice: true,
+        externalObservationId: observation.id,
+      ),
+    );
+
+    await updateExternalObservationReviewStatus(
+      observationId: observationId,
+      newStatus: ExternalObservationReviewStatus.acceptedForComparison,
+    );
+
+    final refreshed = await dao.getExternalPriceObservationById(observationId);
+    if (refreshed != null) {
+      await dao.saveExternalPriceObservation(
+        ExternalPriceObservationTableCompanion(
+          id: Value(refreshed.id),
+          openPricesId: Value(refreshed.openPricesId),
+          productName: Value(refreshed.productName),
+          familyName: Value(refreshed.familyName),
+          externalStoreId: Value(refreshed.externalStoreId),
+          externalStoreName: Value(refreshed.externalStoreName),
+          price: Value(refreshed.price),
+          quantity: Value(refreshed.quantity),
+          unitType: Value(refreshed.unitType),
+          pricePerQuantity: Value(refreshed.pricePerQuantity),
+          observedAt: Value(refreshed.observedAt),
+          reviewStatus: Value(refreshed.reviewStatus),
+          localProductItemId: Value(productItemId),
+        ),
+      );
+    }
+
+    return productItemId;
   }
 
   @override
@@ -457,11 +644,49 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final families = await getProductFamilies(onlyActive: false);
     final supermarkets = await getSupermarkets(onlyActive: true);
     final items = await getProductItems(onlyCurrentPrice: true);
-
     final familyById = {
       for (final family in families)
         if (family.id != null) family.id!: family,
     };
+    final familyIdByName = {
+      for (final family in families)
+        if (family.id != null) normalizeFamilyKey(family.name): family.id!,
+    };
+
+    final externalRows = await dao.getExternalPriceObservations();
+    final mappings = await dao.getExternalStoreMappings();
+    final mappingByExternalStoreId = {
+      for (final mapping in mappings) mapping.externalStoreId: mapping,
+    };
+
+    final acceptedExternalItems = externalRows
+        .where(
+          (row) =>
+              row.reviewStatus ==
+                  ExternalObservationReviewStatus
+                      .acceptedForComparison.storageValue &&
+              row.localProductItemId == null,
+        )
+        .map((row) {
+          final mapping = mappingByExternalStoreId[row.externalStoreId];
+          final familyId = familyIdByName[normalizeFamilyKey(row.familyName)];
+          if (mapping == null || familyId == null) return null;
+          return ProductItem(
+            id: row.localProductItemId,
+            name: row.productName,
+            productFamilyId: familyId,
+            supermarketId: mapping.supermarketId,
+            price: row.price,
+            quantity: row.quantity,
+            unitType: row.unitType,
+            pricePerQuantity: row.pricePerQuantity,
+            dateAdded: row.observedAt,
+            isCurrentPrice: true,
+            externalObservationId: row.id,
+          );
+        })
+        .whereType<ProductItem>()
+        .toList();
     final supermarketNameById = {
       for (final market in supermarkets)
         if (market.id != null) market.id!: market.name,
@@ -470,7 +695,10 @@ class DriftPersistenceRepository implements PersistenceRepository {
       shoppingList: shoppingList,
       familyById: familyById,
       supermarketNameById: supermarketNameById,
-      items: items,
+      items: [
+        ...items,
+        ...acceptedExternalItems.where((i) => i.productFamilyId > 0)
+      ],
     );
 
     final result = optimization.groups
@@ -486,6 +714,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
                     productFamilyName: entry.productFamilyName,
                     quantity: entry.quantity,
                     bestItem: entry.bestItem,
+                    sourceTag:
+                        entry.bestItem.isOpenPricesSource ? 'OpenPrices' : null,
                   ),
                 )
                 .toList(),
