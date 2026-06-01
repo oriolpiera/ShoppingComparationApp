@@ -158,11 +158,18 @@ class AppDriftDatabase extends _$AppDriftDatabase {
           }
 
           if (from < 4) {
-            await customStatement(
-              'ALTER TABLE product_item ADD COLUMN external_observation_id INTEGER NULL REFERENCES external_price_observation(id);',
-            );
+            final productItemColumns =
+                await customSelect('PRAGMA table_info(product_item);').get();
+            final hasExternalObservationColumn = productItemColumns
+                .any((row) => row.data['name'] == 'external_observation_id');
+            if (!hasExternalObservationColumn) {
+              await customStatement(
+                'ALTER TABLE product_item ADD COLUMN external_observation_id INTEGER NULL REFERENCES external_price_observation(id);',
+              );
+            }
+
             await customStatement('''
-              CREATE TABLE external_store_mapping (
+              CREATE TABLE IF NOT EXISTS external_store_mapping (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 external_store_id TEXT NOT NULL UNIQUE,
                 external_store_name TEXT NOT NULL,
@@ -170,7 +177,7 @@ class AppDriftDatabase extends _$AppDriftDatabase {
               );
             ''');
             await customStatement('''
-              CREATE TABLE external_price_observation (
+              CREATE TABLE IF NOT EXISTS external_price_observation (
                 id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 open_prices_id TEXT NOT NULL,
                 product_name TEXT NOT NULL,
