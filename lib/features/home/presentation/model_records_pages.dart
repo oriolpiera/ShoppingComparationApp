@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../../../core/scanner/mobile_scanner_port.dart';
+import '../application/product_family_comparison_module.dart';
 import '../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
 import '../../persistence/domain/entities/scanned_price_registration_result.dart';
