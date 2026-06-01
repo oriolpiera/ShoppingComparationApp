@@ -10,6 +10,7 @@ import '../../persistence/domain/entities/scanned_price_registration_result.dart
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
+import '../../persistence/domain/shopping_list_optimizer.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
 
@@ -1889,62 +1890,43 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
         if (market.id != null) market.id!: market.name,
     };
 
-    final bestByFamily = <int, ProductItem>{};
-    for (final item in items.where((i) => i.isActive && i.isCurrentPrice)) {
-      final current = bestByFamily[item.productFamilyId];
-      if (current == null || _isBetterItem(item, current)) {
-        bestByFamily[item.productFamilyId] = item;
-      }
-    }
+    final optimization = optimizeShoppingList(
+      shoppingList: entries,
+      familyById: familyById,
+      supermarketNameById: marketNameById,
+      items: items,
+    );
 
-    final optimizedGroups = <String, List<_ShoppingRow>>{};
-    final pendingRows = <_ShoppingRow>[];
-
-    for (final entry in entries) {
-      final family = familyById[entry.productFamilyId];
-      if (family == null) continue;
-
-      final bestItem = bestByFamily[entry.productFamilyId];
-      final isInactiveFamily = !family.isActive;
-      if (bestItem == null || isInactiveFamily) {
-        pendingRows.add(
-          _ShoppingRow(
-            entryId: entry.id ?? -1,
-            familyId: entry.productFamilyId,
-            familyName: family.name,
-            quantity: entry.quantity,
-            isInactiveFamily: isInactiveFamily,
+    final sortedGroups = optimization.groups
+        .map(
+          (group) => MapEntry(
+            group.supermarketName,
+            group.entries
+                .map(
+                  (entry) => _ShoppingRow(
+                    entryId: entry.shoppingListEntryId,
+                    familyId: entry.productFamilyId,
+                    familyName: entry.productFamilyName,
+                    quantity: entry.quantity,
+                    bestItem: entry.bestItem,
+                  ),
+                )
+                .toList(),
           ),
-        );
-        continue;
-      }
+        )
+        .toList();
 
-      final marketName = marketNameById[bestItem.supermarketId];
-      if (marketName == null) {
-        pendingRows.add(
-          _ShoppingRow(
-            entryId: entry.id ?? -1,
+    final pendingRows = optimization.pendingEntries
+        .map(
+          (entry) => _ShoppingRow(
+            entryId: entry.shoppingListEntryId,
             familyId: entry.productFamilyId,
-            familyName: family.name,
+            familyName: entry.productFamilyName,
             quantity: entry.quantity,
+            isInactiveFamily: entry.isInactiveFamily,
           ),
-        );
-        continue;
-      }
-
-      optimizedGroups.putIfAbsent(marketName, () => []).add(
-            _ShoppingRow(
-              entryId: entry.id ?? -1,
-              familyId: entry.productFamilyId,
-              familyName: family.name,
-              quantity: entry.quantity,
-              bestItem: bestItem,
-            ),
-          );
-    }
-
-    final sortedGroups = optimizedGroups.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+        )
+        .toList();
 
     final activeFamilyOptions = activeFamilies
         .where((f) => f.id != null)
@@ -1956,19 +1938,6 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
       pendingRows: pendingRows,
       activeFamilyOptions: activeFamilyOptions,
     );
-  }
-
-  bool _isBetterItem(ProductItem candidate, ProductItem current) {
-    final byUnit =
-        candidate.pricePerQuantity.compareTo(current.pricePerQuantity);
-    if (byUnit != 0) return byUnit < 0;
-    final byPrice = candidate.price.compareTo(current.price);
-    if (byPrice != 0) return byPrice < 0;
-    final byDate = candidate.dateAdded.compareTo(current.dateAdded);
-    if (byDate != 0) return byDate > 0;
-    final candidateId = candidate.id ?? 1 << 30;
-    final currentId = current.id ?? 1 << 30;
-    return candidateId < currentId;
   }
 
   void _refresh() {

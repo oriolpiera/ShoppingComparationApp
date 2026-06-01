@@ -10,6 +10,7 @@ import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/scanned_price_registration_result.dart';
 import '../../domain/entities/shopping_list_entry.dart';
+import '../../domain/shopping_list_optimizer.dart';
 import '../../domain/repositories/persistence_repository.dart';
 
 class DriftPersistenceRepository implements PersistenceRepository {
@@ -427,87 +428,41 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final supermarkets = await getSupermarkets(onlyActive: true);
     final items = await getProductItems(onlyCurrentPrice: true);
 
-    final familyNameById = {
+    final familyById = {
       for (final family in families)
-        if (family.id != null) family.id!: family.name,
+        if (family.id != null) family.id!: family,
     };
     final supermarketNameById = {
       for (final market in supermarkets)
         if (market.id != null) market.id!: market.name,
     };
+    final optimization = optimizeShoppingList(
+      shoppingList: shoppingList,
+      familyById: familyById,
+      supermarketNameById: supermarketNameById,
+      items: items,
+    );
 
-    final activeFamilyIds = {
-      for (final family in families)
-        if (family.id != null && family.isActive) family.id!,
-    };
-
-    final cheapestByFamily = <int, ProductItem>{};
-    for (final item in items.where(
-      (item) =>
-          item.isActive &&
-          item.isCurrentPrice &&
-          activeFamilyIds.contains(item.productFamilyId),
-    )) {
-      final current = cheapestByFamily[item.productFamilyId];
-      if (current == null || _isBetterItem(item, current)) {
-        cheapestByFamily[item.productFamilyId] = item;
-      }
-    }
-
-    final groups = <int, List<OptimizedShoppingItem>>{};
-
-    for (final entry in shoppingList) {
-      final bestItem = cheapestByFamily[entry.productFamilyId];
-      if (bestItem == null ||
-          !activeFamilyIds.contains(entry.productFamilyId)) {
-        continue;
-      }
-
-      final marketId = bestItem.supermarketId;
-      final marketName = supermarketNameById[marketId];
-      final familyName = familyNameById[entry.productFamilyId];
-      if (marketName == null || familyName == null) {
-        continue;
-      }
-
-      groups.putIfAbsent(marketId, () => []).add(
-            OptimizedShoppingItem(
-              shoppingListEntryId: entry.id ?? -1,
-              productFamilyId: entry.productFamilyId,
-              productFamilyName: familyName,
-              quantity: entry.quantity,
-              bestItem: bestItem,
-            ),
-          );
-    }
-
-    final result = groups.entries
+    final result = optimization.groups
         .map(
-          (entry) => OptimizedShoppingGroup(
-            supermarketId: entry.key,
-            supermarketName: supermarketNameById[entry.key]!,
-            items: entry.value,
+          (group) => OptimizedShoppingGroup(
+            supermarketId: group.supermarketId,
+            supermarketName: group.supermarketName,
+            items: group.entries
+                .map(
+                  (entry) => OptimizedShoppingItem(
+                    shoppingListEntryId: entry.shoppingListEntryId,
+                    productFamilyId: entry.productFamilyId,
+                    productFamilyName: entry.productFamilyName,
+                    quantity: entry.quantity,
+                    bestItem: entry.bestItem,
+                  ),
+                )
+                .toList(),
           ),
         )
-        .toList()
-      ..sort((a, b) => a.supermarketName.compareTo(b.supermarketName));
+        .toList();
 
     return result;
-  }
-
-  bool _isBetterItem(ProductItem candidate, ProductItem current) {
-    final byUnit =
-        candidate.pricePerQuantity.compareTo(current.pricePerQuantity);
-    if (byUnit != 0) return byUnit < 0;
-
-    final byPrice = candidate.price.compareTo(current.price);
-    if (byPrice != 0) return byPrice < 0;
-
-    final byDate = candidate.dateAdded.compareTo(current.dateAdded);
-    if (byDate != 0) return byDate > 0;
-
-    final candidateId = candidate.id ?? 1 << 30;
-    final currentId = current.id ?? 1 << 30;
-    return candidateId < currentId;
   }
 }
