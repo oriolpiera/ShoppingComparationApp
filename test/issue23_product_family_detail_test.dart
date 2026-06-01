@@ -163,6 +163,38 @@ void main() {
     expect(find.text('Product family details'), findsOneWidget);
     expect(repository.savedFamilies, isEmpty);
   });
+
+  testWidgets('shows inactive supermarket badge in comparison row', (
+    tester,
+  ) async {
+    final repository = _FakeRepository(
+      families: [const ProductFamily(id: 1, name: 'Coffee')],
+      supermarkets: [Supermarket(id: 1, name: 'Store', isActive: false)],
+      items: [
+        ProductItem(
+          id: 1,
+          name: 'Ground Coffee',
+          isActive: true,
+          productFamilyId: 1,
+          supermarketId: 1,
+          price: 4.2,
+          quantity: 1,
+          unitType: 'kg',
+          pricePerQuantity: 4.2,
+          dateAdded: DateTime(2026, 1, 1),
+          isCurrentPrice: true,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_buildApp(repository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Coffee'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('inactive supermarket'), findsOneWidget);
+  });
 }
 
 Widget _buildApp(PersistenceRepository repository) {

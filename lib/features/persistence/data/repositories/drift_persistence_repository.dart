@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
+import '../../../../core/normalization/family_unit_normalization.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
 import '../../domain/entities/barcode_match_result.dart';
@@ -9,37 +10,11 @@ import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/scanned_price_registration_result.dart';
 import '../../domain/entities/shopping_list_entry.dart';
+import '../../domain/shopping_list_optimizer.dart';
 import '../../domain/repositories/persistence_repository.dart';
 
 class DriftPersistenceRepository implements PersistenceRepository {
   final PersistenceDao dao;
-
-  static final _diacriticsMap = <String, String>{
-    'à': 'a',
-    'á': 'a',
-    'â': 'a',
-    'ä': 'a',
-    'ã': 'a',
-    'è': 'e',
-    'é': 'e',
-    'ê': 'e',
-    'ë': 'e',
-    'ì': 'i',
-    'í': 'i',
-    'î': 'i',
-    'ï': 'i',
-    'ò': 'o',
-    'ó': 'o',
-    'ô': 'o',
-    'ö': 'o',
-    'õ': 'o',
-    'ù': 'u',
-    'ú': 'u',
-    'û': 'u',
-    'ü': 'u',
-    'ç': 'c',
-    'ñ': 'n',
-  };
   static const double _priceEpsilon = 1e-9;
 
   DriftPersistenceRepository(this.dao);
@@ -100,10 +75,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async {
-    final normalizedTarget = _normalizeKey(familyName);
+    final normalizedTarget = normalizeFamilyKey(familyName);
     final families = await getProductFamilies(onlyActive: true);
     for (final family in families) {
-      if (family.id != null && _normalizeKey(family.name) == normalizedTarget) {
+      if (family.id != null &&
+          normalizeFamilyKey(family.name) == normalizedTarget) {
         return family.id!;
       }
     }
@@ -190,9 +166,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
       onlyCurrentPrice: true,
     );
 
-    final normalizedProduct = _normalizeKey(trimmedName);
+    final normalizedProduct = normalizeFamilyKey(trimmedName);
     for (final row in currentRows) {
-      if (_normalizeKey(row.nom) == normalizedProduct) {
+      if (normalizeFamilyKey(row.nom) == normalizedProduct) {
         await dao.saveProductItem(
           ProductItemTableCompanion(
             id: Value(row.id),
@@ -220,7 +196,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         supermarketId: supermarketId,
         price: price,
         quantity: quantity,
-        unitType: unitType.trim(),
+        unitType: normalizeUnitTypeForStorage(unitType),
         pricePerQuantity: quantity == 0 ? 0 : price / quantity,
         dateAdded: DateTime.now(),
         isCurrentPrice: true,
@@ -315,7 +291,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
     final currentMatches =
         await dao.getCurrentActiveItemsByBarcode(normalizedBarcode);
-    final unit = unitType.trim();
+    final unit = normalizeUnitTypeForStorage(unitType);
 
     final currentSameMarket = currentMatches
         .where((row) => row.supermarketId == supermarketId)
@@ -324,7 +300,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final sameTupleExists = currentSameMarket.any((row) {
       return (row.price - price).abs() < _priceEpsilon &&
           (row.quantity - quantity).abs() < _priceEpsilon &&
-          row.unitType.trim().toLowerCase() == unit.toLowerCase();
+          normalizeUnitTypeForComparison(row.unitType) ==
+              normalizeUnitTypeForComparison(unit);
     });
 
     if (sameTupleExists) {
@@ -377,22 +354,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
       created: true,
       message: 'New current price registered.',
     );
-  }
-
-  String _normalizeKey(String value) {
-    final lower = value.toLowerCase().trim();
-    final buffer = StringBuffer();
-
-    for (final rune in lower.runes) {
-      final char = String.fromCharCode(rune);
-      buffer.write(_diacriticsMap[char] ?? char);
-    }
-
-    return buffer
-        .toString()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
   }
 
   @override
@@ -467,87 +428,41 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final supermarkets = await getSupermarkets(onlyActive: true);
     final items = await getProductItems(onlyCurrentPrice: true);
 
-    final familyNameById = {
+    final familyById = {
       for (final family in families)
-        if (family.id != null) family.id!: family.name,
+        if (family.id != null) family.id!: family,
     };
     final supermarketNameById = {
       for (final market in supermarkets)
         if (market.id != null) market.id!: market.name,
     };
+    final optimization = optimizeShoppingList(
+      shoppingList: shoppingList,
+      familyById: familyById,
+      supermarketNameById: supermarketNameById,
+      items: items,
+    );
 
-    final activeFamilyIds = {
-      for (final family in families)
-        if (family.id != null && family.isActive) family.id!,
-    };
-
-    final cheapestByFamily = <int, ProductItem>{};
-    for (final item in items.where(
-      (item) =>
-          item.isActive &&
-          item.isCurrentPrice &&
-          activeFamilyIds.contains(item.productFamilyId),
-    )) {
-      final current = cheapestByFamily[item.productFamilyId];
-      if (current == null || _isBetterItem(item, current)) {
-        cheapestByFamily[item.productFamilyId] = item;
-      }
-    }
-
-    final groups = <int, List<OptimizedShoppingItem>>{};
-
-    for (final entry in shoppingList) {
-      final bestItem = cheapestByFamily[entry.productFamilyId];
-      if (bestItem == null ||
-          !activeFamilyIds.contains(entry.productFamilyId)) {
-        continue;
-      }
-
-      final marketId = bestItem.supermarketId;
-      final marketName = supermarketNameById[marketId];
-      final familyName = familyNameById[entry.productFamilyId];
-      if (marketName == null || familyName == null) {
-        continue;
-      }
-
-      groups.putIfAbsent(marketId, () => []).add(
-            OptimizedShoppingItem(
-              shoppingListEntryId: entry.id ?? -1,
-              productFamilyId: entry.productFamilyId,
-              productFamilyName: familyName,
-              quantity: entry.quantity,
-              bestItem: bestItem,
-            ),
-          );
-    }
-
-    final result = groups.entries
+    final result = optimization.groups
         .map(
-          (entry) => OptimizedShoppingGroup(
-            supermarketId: entry.key,
-            supermarketName: supermarketNameById[entry.key]!,
-            items: entry.value,
+          (group) => OptimizedShoppingGroup(
+            supermarketId: group.supermarketId,
+            supermarketName: group.supermarketName,
+            items: group.entries
+                .map(
+                  (entry) => OptimizedShoppingItem(
+                    shoppingListEntryId: entry.shoppingListEntryId,
+                    productFamilyId: entry.productFamilyId,
+                    productFamilyName: entry.productFamilyName,
+                    quantity: entry.quantity,
+                    bestItem: entry.bestItem,
+                  ),
+                )
+                .toList(),
           ),
         )
-        .toList()
-      ..sort((a, b) => a.supermarketName.compareTo(b.supermarketName));
+        .toList();
 
     return result;
-  }
-
-  bool _isBetterItem(ProductItem candidate, ProductItem current) {
-    final byUnit =
-        candidate.pricePerQuantity.compareTo(current.pricePerQuantity);
-    if (byUnit != 0) return byUnit < 0;
-
-    final byPrice = candidate.price.compareTo(current.price);
-    if (byPrice != 0) return byPrice < 0;
-
-    final byDate = candidate.dateAdded.compareTo(current.dateAdded);
-    if (byDate != 0) return byDate > 0;
-
-    final candidateId = candidate.id ?? 1 << 30;
-    final currentId = current.id ?? 1 << 30;
-    return candidateId < currentId;
   }
 }

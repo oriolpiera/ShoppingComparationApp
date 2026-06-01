@@ -68,8 +68,7 @@ class OpenFoodFactsNamePrefillService {
         return null;
       }
 
-      return await utf8
-          .decoder
+      return await utf8.decoder
           .bind(response)
           .join()
           .timeout(const Duration(seconds: 4));

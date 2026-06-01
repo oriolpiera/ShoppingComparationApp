@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/normalization/family_unit_normalization.dart';
 import '../../../core/scanner/mobile_scanner_port.dart';
 import '../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
@@ -8,6 +9,7 @@ import '../../persistence/domain/entities/scanned_price_registration_result.dart
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
+import '../../persistence/domain/shopping_list_optimizer.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
 
@@ -553,7 +555,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
     final quantityController = TextEditingController(
       text: item.quantity.toString(),
     );
-    var unitType = item.unitType.trim().toLowerCase() == 'l' ? 'L' : 'kg';
+    var unitType = normalizeUnitTypeForDisplay(item.unitType);
 
     final save = await showDialog<bool>(
       context: context,
@@ -727,22 +729,10 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
 
           final data =
               snapshot.data ?? const _ProductFamilyDetailsData([], {}, 0);
-          final comparisonItems = data.items
-              .where((i) => i.isCurrentPrice && i.isActive)
-              .toList()
-            ..sort((a, b) {
-              final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
-              if (byUnit != 0) return byUnit;
-              final byPrice = a.price.compareTo(b.price);
-              if (byPrice != 0) return byPrice;
-              final marketA = data.supermarketById[a.supermarketId]?.name ?? '';
-              final marketB = data.supermarketById[b.supermarketId]?.name ?? '';
-              return marketA.toLowerCase().compareTo(marketB.toLowerCase());
-            });
-
-          final bestUnitPrice = comparisonItems.isEmpty
-              ? null
-              : comparisonItems.first.pricePerQuantity;
+          final comparisonView = buildProductFamilyComparisonView(
+            items: data.items,
+            supermarketById: data.supermarketById,
+          );
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -754,13 +744,13 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
               ),
               _DetailRow(
                 label: 'Current active items count',
-                value: '${comparisonItems.length}',
+                value: '${comparisonView.items.length}',
               ),
               _DetailRow(
                 label: 'Best unit price',
-                value: bestUnitPrice == null
+                value: comparisonView.bestUnitPrice == null
                     ? '—'
-                    : bestUnitPrice.toStringAsFixed(2),
+                    : comparisonView.bestUnitPrice!.toStringAsFixed(2),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -768,23 +758,17 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              if (comparisonItems.isEmpty)
+              if (comparisonView.items.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text('No current active Product Items'),
                 )
               else
-                ...comparisonItems.map((productItem) {
-                  final supermarket =
-                      data.supermarketById[productItem.supermarketId];
-                  final supermarketName =
-                      supermarket?.name ?? 'Unknown supermarket';
-                  final inactiveSupermarket =
-                      supermarket == null || !supermarket.isActive;
+                ...comparisonView.items.map((comparisonItem) {
+                  final productItem = comparisonItem.productItem;
+                  final supermarketName = comparisonItem.supermarketName;
                   final unitType =
-                      productItem.unitType.trim().toLowerCase() == 'l'
-                          ? 'L'
-                          : 'kg';
+                      normalizeUnitTypeForDisplay(productItem.unitType);
 
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -798,7 +782,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (inactiveSupermarket)
+                        if (comparisonItem.hasInactiveSupermarket)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
@@ -823,7 +807,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                     onTap: () => _openItemDetails(
                       productItem,
                       widget.item.name,
-                      supermarketName,
+                      comparisonItem.supermarketName,
                     ),
                   );
                 }),
@@ -995,44 +979,6 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     );
   }
 
-  String _normalizeText(String value) {
-    const map = {
-      'à': 'a',
-      'á': 'a',
-      'â': 'a',
-      'ä': 'a',
-      'ã': 'a',
-      'è': 'e',
-      'é': 'e',
-      'ê': 'e',
-      'ë': 'e',
-      'ì': 'i',
-      'í': 'i',
-      'î': 'i',
-      'ï': 'i',
-      'ò': 'o',
-      'ó': 'o',
-      'ô': 'o',
-      'ö': 'o',
-      'õ': 'o',
-      'ù': 'u',
-      'ú': 'u',
-      'û': 'u',
-      'ü': 'u',
-      'ç': 'c',
-      'ñ': 'n',
-    };
-
-    final lower = value.toLowerCase().trim();
-    final buffer = StringBuffer();
-    for (final rune in lower.runes) {
-      final char = String.fromCharCode(rune);
-      buffer.write(map[char] ?? char);
-    }
-
-    return buffer.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
-
   void _refresh() {
     setState(() {
       _future = _load();
@@ -1094,14 +1040,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     }
   }
 
-  String _normalizedUnitType(String unitType) {
-    final value = unitType.trim().toLowerCase();
-    if (value == 'l') return 'L';
-    return 'kg';
-  }
-
   RichText _buildMetricsText(BuildContext context, ProductItem item) {
-    final unitType = _normalizedUnitType(item.unitType);
+    final unitType = normalizeUnitTypeForDisplay(item.unitType);
     final colorScheme = Theme.of(context).colorScheme;
 
     return RichText(
@@ -1353,7 +1293,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     final quantityController = TextEditingController(
       text: item == null ? '' : item.quantity.toString(),
     );
-    var unitType = _normalizedUnitType(item?.unitType ?? 'kg');
+    var unitType = normalizeUnitTypeForDisplay(item?.unitType ?? 'kg');
     final familyController = TextEditingController(
       text: item == null ? '' : (familyById[item.productFamilyId]?.name ?? ''),
     );
@@ -1386,15 +1326,17 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                     if (query.length < 3) {
                       return const Iterable<String>.empty();
                     }
-                    final normalizedQuery = _normalizeText(query);
+                    final normalizedQuery = normalizeFamilySearchText(query);
                     final names = data.families
                         .map((f) => f.name)
                         .toSet()
                         .toList()
                       ..sort();
                     return names
-                        .where((name) =>
-                            _normalizeText(name).contains(normalizedQuery))
+                        .where(
+                            (name) => normalizeFamilySearchText(name).contains(
+                                  normalizedQuery,
+                                ))
                         .take(8);
                   },
                   onSelected: (selection) {
@@ -1947,62 +1889,43 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
         if (market.id != null) market.id!: market.name,
     };
 
-    final bestByFamily = <int, ProductItem>{};
-    for (final item in items.where((i) => i.isActive && i.isCurrentPrice)) {
-      final current = bestByFamily[item.productFamilyId];
-      if (current == null || _isBetterItem(item, current)) {
-        bestByFamily[item.productFamilyId] = item;
-      }
-    }
+    final optimization = optimizeShoppingList(
+      shoppingList: entries,
+      familyById: familyById,
+      supermarketNameById: marketNameById,
+      items: items,
+    );
 
-    final optimizedGroups = <String, List<_ShoppingRow>>{};
-    final pendingRows = <_ShoppingRow>[];
-
-    for (final entry in entries) {
-      final family = familyById[entry.productFamilyId];
-      if (family == null) continue;
-
-      final bestItem = bestByFamily[entry.productFamilyId];
-      final isInactiveFamily = !family.isActive;
-      if (bestItem == null || isInactiveFamily) {
-        pendingRows.add(
-          _ShoppingRow(
-            entryId: entry.id ?? -1,
-            familyId: entry.productFamilyId,
-            familyName: family.name,
-            quantity: entry.quantity,
-            isInactiveFamily: isInactiveFamily,
+    final sortedGroups = optimization.groups
+        .map(
+          (group) => MapEntry(
+            group.supermarketName,
+            group.entries
+                .map(
+                  (entry) => _ShoppingRow(
+                    entryId: entry.shoppingListEntryId,
+                    familyId: entry.productFamilyId,
+                    familyName: entry.productFamilyName,
+                    quantity: entry.quantity,
+                    bestItem: entry.bestItem,
+                  ),
+                )
+                .toList(),
           ),
-        );
-        continue;
-      }
+        )
+        .toList();
 
-      final marketName = marketNameById[bestItem.supermarketId];
-      if (marketName == null) {
-        pendingRows.add(
-          _ShoppingRow(
-            entryId: entry.id ?? -1,
+    final pendingRows = optimization.pendingEntries
+        .map(
+          (entry) => _ShoppingRow(
+            entryId: entry.shoppingListEntryId,
             familyId: entry.productFamilyId,
-            familyName: family.name,
+            familyName: entry.productFamilyName,
             quantity: entry.quantity,
+            isInactiveFamily: entry.isInactiveFamily,
           ),
-        );
-        continue;
-      }
-
-      optimizedGroups.putIfAbsent(marketName, () => []).add(
-            _ShoppingRow(
-              entryId: entry.id ?? -1,
-              familyId: entry.productFamilyId,
-              familyName: family.name,
-              quantity: entry.quantity,
-              bestItem: bestItem,
-            ),
-          );
-    }
-
-    final sortedGroups = optimizedGroups.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+        )
+        .toList();
 
     final activeFamilyOptions = activeFamilies
         .where((f) => f.id != null)
@@ -2014,19 +1937,6 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
       pendingRows: pendingRows,
       activeFamilyOptions: activeFamilyOptions,
     );
-  }
-
-  bool _isBetterItem(ProductItem candidate, ProductItem current) {
-    final byUnit =
-        candidate.pricePerQuantity.compareTo(current.pricePerQuantity);
-    if (byUnit != 0) return byUnit < 0;
-    final byPrice = candidate.price.compareTo(current.price);
-    if (byPrice != 0) return byPrice < 0;
-    final byDate = candidate.dateAdded.compareTo(current.dateAdded);
-    if (byDate != 0) return byDate > 0;
-    final candidateId = candidate.id ?? 1 << 30;
-    final currentId = current.id ?? 1 << 30;
-    return candidateId < currentId;
   }
 
   void _refresh() {
