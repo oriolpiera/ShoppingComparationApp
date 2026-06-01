@@ -11,6 +11,9 @@ class ProductItem {
   final DateTime dateAdded;
   final bool isCurrentPrice;
   final String? barcode;
+  final double? packageQuantityAmount;
+  final String? packageQuantityUnit;
+  final String? normalizedMeasurementUnit;
 
   const ProductItem({
     this.id,
@@ -25,5 +28,8 @@ class ProductItem {
     required this.dateAdded,
     this.isCurrentPrice = true,
     this.barcode,
+    this.packageQuantityAmount,
+    this.packageQuantityUnit,
+    this.normalizedMeasurementUnit,
   });
 }

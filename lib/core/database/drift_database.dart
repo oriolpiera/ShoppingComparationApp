@@ -20,6 +20,8 @@ class ProductFamilyTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get nom => text()();
   BoolColumn get actiu => boolean().withDefault(const Constant(true))();
+  TextColumn get shoppingUnit => text().nullable()();
+  TextColumn get purchaseMode => text().nullable()();
 }
 
 class ProductItemTable extends Table {
@@ -38,6 +40,9 @@ class ProductItemTable extends Table {
   RealColumn get quantity => real()();
   TextColumn get unitType => text()();
   RealColumn get pricePerQuantity => real()();
+  RealColumn get packageQuantityAmount => real().nullable()();
+  TextColumn get packageQuantityUnit => text().nullable()();
+  TextColumn get normalizedMeasurementUnit => text().nullable()();
 
   DateTimeColumn get dateAdded => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isCurrentPrice =>
@@ -67,9 +72,10 @@ class ShoppingListTable extends Table {
 )
 class AppDriftDatabase extends _$AppDriftDatabase {
   AppDriftDatabase() : super(_openConnection());
+  AppDriftDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -91,6 +97,24 @@ class AppDriftDatabase extends _$AppDriftDatabase {
             await customStatement('DROP TABLE shopping_list;');
             await customStatement(
                 'ALTER TABLE shopping_list_v2 RENAME TO shopping_list;');
+          }
+
+          if (from < 3) {
+            await customStatement(
+              'ALTER TABLE product_family ADD COLUMN shopping_unit TEXT;',
+            );
+            await customStatement(
+              'ALTER TABLE product_family ADD COLUMN purchase_mode TEXT;',
+            );
+            await customStatement(
+              'ALTER TABLE product_item ADD COLUMN package_quantity_amount REAL;',
+            );
+            await customStatement(
+              'ALTER TABLE product_item ADD COLUMN package_quantity_unit TEXT;',
+            );
+            await customStatement(
+              'ALTER TABLE product_item ADD COLUMN normalized_measurement_unit TEXT;',
+            );
           }
         },
       );
