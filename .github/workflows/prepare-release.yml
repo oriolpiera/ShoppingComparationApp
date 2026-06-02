@@ -62,17 +62,15 @@ jobs:
 
           git push --atomic origin "${BRANCH}" "v${VERSION}"
 
-      - name: Create pull request
+      - name: Merge into main
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ github.event.inputs.version }}"
           BRANCH="release/v${VERSION}"
 
-          gh pr create \
-            --base main \
-            --head "${BRANCH}" \
-            --title "Release v${VERSION}" \
-            --body "Version bump to ${VERSION}
-
-          After merge, create a GitHub Release from the tag v${VERSION} to trigger the APK build."
+          gh api "repos/${{ github.repository }}/merges" \
+            --method POST \
+            --field base=main \
+            --field head="${BRANCH}" \
+            --jq '"Merged: \(.sha)"'
