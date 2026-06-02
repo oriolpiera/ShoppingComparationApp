@@ -11,126 +11,70 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/pr
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
-import 'package:shopping_comparation_app/features/products/data/open_food_facts_name_prefill_service.dart';
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
 void main() {
-  testWidgets('scan flow no-match offers Create Product Item and Re-scan', (
+  testWidgets('fresh capture uses weighted semantics by default for kg items', (
     tester,
   ) async {
-    final repository = _FakeRepo();
+    final repository = _CapturingRepo();
 
     await tester.pumpWidget(
       MaterialApp(home: ProductItemsPage(repository: repository)),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.tag));
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Fresh'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.widgetWithText(TextField, 'Barcode'), 'X-NEW');
-    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Create Product Item'), findsOneWidget);
-    expect(find.text('Re-scan'), findsAtLeastNWidgets(1));
-  });
-
-  testWidgets('scan flow no-match pre-fills name from Open Food Facts', (
-    tester,
-  ) async {
-    final repository = _FakeRepo();
-    final prefillService = OpenFoodFactsNamePrefillService(
-      getRequest: (_) async =>
-          '{"status":1,"product":{"product_name":"Greek Yogurt 500 g","brands":"Acme","quantity":"500 g"}}',
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ProductItemsPage(
-          repository: repository,
-          namePrefillService: prefillService,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.tag));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.widgetWithText(TextField, 'Barcode'), 'X-NEW');
-    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
-    await tester.pumpAndSettle();
-
-    expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
-    expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
-    expect(find.text('Greek Yogurt'), findsOneWidget);
+    expect(find.text('Add fresh product'), findsOneWidget);
     expect(
-      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
+      find.widgetWithText(SwitchListTile, 'Fresh product'),
       findsOneWidget,
     );
-    expect(find.text('0.5'), findsOneWidget);
-  });
 
-  testWidgets('existing family prefill does not show OFF helper text', (
-    tester,
-  ) async {
-    final repository = _FakeRepo(
-      matchesByBarcode: {
-        'X-KNOWN': [
-          BarcodeMatchResult(
-            productItem: ProductItem(
-              id: 10,
-              name: 'Known Yogurt',
-              productFamilyId: 1,
-              supermarketId: 1,
-              price: 2,
-              quantity: 1,
-              unitType: 'kg',
-              pricePerQuantity: 2,
-              dateAdded: DateTime(2026, 1, 1),
-              barcode: 'X-KNOWN',
-            ),
-            familyName: 'Confirmed Family',
-            supermarketName: 'A',
-          ),
-        ],
-      },
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.tag));
-    await tester.pumpAndSettle();
-
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Tomatoes');
     await tester.enterText(
-      find.widgetWithText(TextField, 'Barcode'),
-      'X-KNOWN',
+      find.widgetWithText(TextField, 'Family'),
+      'Tomatoes',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.enterText(find.widgetWithText(TextField, 'Price'), '2.75');
+    await tester.enterText(find.widgetWithText(TextField, 'Quantity'), '1.1');
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Confirmed Family'), findsOneWidget);
-    expect(
-      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
-      findsNothing,
-    );
+    expect(repository.lastQuickCapture, isNotNull);
+    expect(repository.lastQuickCapture!.barcode, isNull);
+    expect(repository.lastQuickCapture!.purchaseMode, 'weighted');
+    expect(repository.lastQuickCapture!.unitType, 'kg');
   });
 }
 
-class _FakeRepo implements PersistenceRepository {
-  _FakeRepo({this.matchesByBarcode = const {}});
+class _QuickCaptureCall {
+  const _QuickCaptureCall({
+    required this.productName,
+    required this.familyName,
+    required this.supermarketId,
+    required this.price,
+    required this.quantity,
+    required this.unitType,
+    required this.purchaseMode,
+    required this.barcode,
+  });
 
-  final Map<String, List<BarcodeMatchResult>> matchesByBarcode;
+  final String productName;
+  final String familyName;
+  final int supermarketId;
+  final double price;
+  final double quantity;
+  final String unitType;
+  final String? purchaseMode;
+  final String? barcode;
+}
+
+class _CapturingRepo implements PersistenceRepository {
+  _QuickCaptureCall? lastQuickCapture;
 
   @override
   Future<int> addOrIncrementShoppingListEntry({
@@ -144,7 +88,7 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
-  ) async => matchesByBarcode[barcode] ?? [];
+  ) async => [];
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
@@ -155,7 +99,7 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
-  }) async => [const ProductFamily(id: 1, name: 'Milk')];
+  }) async => const [];
 
   @override
   Future<List<ProductItem>> getProductItems({
@@ -195,7 +139,7 @@ class _FakeRepo implements PersistenceRepository {
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
-    Supermarket(id: 1, name: 'A'),
+    Supermarket(id: 1, name: 'Market'),
   ];
 
   @override
@@ -228,7 +172,19 @@ class _FakeRepo implements PersistenceRepository {
     required String unitType,
     String? purchaseMode,
     String? barcode,
-  }) async => 1;
+  }) async {
+    lastQuickCapture = _QuickCaptureCall(
+      productName: productName,
+      familyName: familyName,
+      supermarketId: supermarketId,
+      price: price,
+      quantity: quantity,
+      unitType: unitType,
+      purchaseMode: purchaseMode,
+      barcode: barcode,
+    );
+    return 1;
+  }
 
   @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;

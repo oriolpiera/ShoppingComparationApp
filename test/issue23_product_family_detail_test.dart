@@ -200,9 +200,7 @@ void main() {
 }
 
 Widget _buildApp(PersistenceRepository repository) {
-  return MaterialApp(
-    home: ProductFamiliesPage(repository: repository),
-  );
+  return MaterialApp(home: ProductFamiliesPage(repository: repository));
 }
 
 class _FakeRepository implements PersistenceRepository {
@@ -219,8 +217,9 @@ class _FakeRepository implements PersistenceRepository {
   final List<ProductFamily> savedFamilies = [];
 
   @override
-  Future<List<ProductFamily>> getProductFamilies(
-      {bool onlyActive = true}) async {
+  Future<List<ProductFamily>> getProductFamilies({
+    bool onlyActive = true,
+  }) async {
     if (!onlyActive) return families;
     return families.where((f) => f.isActive).toList();
   }
@@ -277,8 +276,7 @@ class _FakeRepository implements PersistenceRepository {
   @override
   Future<int> saveExternalPriceObservation(
     ExternalPriceObservation observation,
-  ) async =>
-      1;
+  ) async => 1;
 
   @override
   Future<void> updateExternalObservationReviewStatus({
@@ -289,8 +287,7 @@ class _FakeRepository implements PersistenceRepository {
   @override
   Future<int> confirmExternalObservationLocally({
     required int observationId,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
@@ -306,9 +303,9 @@ class _FakeRepository implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    String? purchaseMode,
     String? barcode,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
@@ -317,8 +314,7 @@ class _FakeRepository implements PersistenceRepository {
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
@@ -326,8 +322,7 @@ class _FakeRepository implements PersistenceRepository {
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
-  ) async =>
-      [];
+  ) async => [];
 
   @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
@@ -338,8 +333,7 @@ class _FakeRepository implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
-  }) async =>
-      const ScannedPriceRegistrationResult(created: false);
+  }) async => const ScannedPriceRegistrationResult(created: false);
 
   @override
   Future<int> saveSupermarket(Supermarket supermarket) async => 1;
