@@ -4,12 +4,6 @@ on:
   release:
     types:
       - published
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Semantic version (e.g. 1.2.3). If empty, latest git tag vX.Y.Z is used"
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -41,40 +35,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Update app version for this build
+      - name: Verify version matches tag
         run: |
-          BASE_VERSION=""
-          BUILD_NUMBER=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
-
-          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
-            TAG_VERSION="${GITHUB_REF_NAME#v}"
-            if printf '%s' "${TAG_VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-              BASE_VERSION="${TAG_VERSION}"
-            fi
-          elif [ -n "${{ github.event.inputs.version }}" ]; then
-            INPUT_VERSION="${{ github.event.inputs.version }}"
-            if printf '%s' "${INPUT_VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-              BASE_VERSION="${INPUT_VERSION}"
-            else
-              echo "Invalid workflow input version: '${INPUT_VERSION}'. Use semantic version X.Y.Z"
-              exit 1
-            fi
-          else
-            LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p')
-            if [ -n "${LATEST_TAG}" ]; then
-              BASE_VERSION="${LATEST_TAG#v}"
-            fi
-          fi
-
-          if [ -z "${BASE_VERSION}" ]; then
-            echo "Could not determine semantic version from release tag, workflow input, or git tags."
-            echo "Expected: vX.Y.Z tag or workflow input 'version' with X.Y.Z."
+          PUBSPEC_VERSION=$(grep '^version: ' pubspec.yaml | sed 's/^version: //')
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          BASE_VERSION="${PUBSPEC_VERSION%%+*}"
+          if [ "${BASE_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "Version mismatch: pubspec.yaml says ${BASE_VERSION}, tag says ${TAG_VERSION}"
             exit 1
           fi
-
-          NEW_VERSION="${BASE_VERSION}+${BUILD_NUMBER}"
-          sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
-          echo "Using app version ${NEW_VERSION}"
+          echo "Building version ${PUBSPEC_VERSION}"
 
       - name: Validate Android signing secrets
         run: |
@@ -124,7 +94,6 @@ jobs:
           if-no-files-found: error
 
       - name: Attach APK to GitHub Release assets
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: build/app/outputs/flutter-apk/*.apk
