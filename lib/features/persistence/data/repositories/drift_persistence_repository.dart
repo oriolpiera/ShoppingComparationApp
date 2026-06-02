@@ -175,10 +175,22 @@ class DriftPersistenceRepository implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    required String shoppingUnit,
+    required String purchaseMode,
     String? barcode,
   }) async {
     final trimmedName = productName.trim();
-    final familyId = await resolveProductFamilyIdByName(familyName);
+    final trimmedFamilyName = familyName.trim();
+    final familyId = await resolveProductFamilyIdByName(trimmedFamilyName);
+    await saveProductFamily(
+      ProductFamily(
+        id: familyId,
+        name: trimmedFamilyName,
+        isActive: true,
+        shoppingUnit: shoppingUnit,
+        purchaseMode: purchaseMode,
+      ),
+    );
 
     final currentRows = await dao.getProductItems(
       productFamilyId: familyId,
@@ -311,6 +323,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    required String shoppingUnit,
+    required String purchaseMode,
   }) async {
     final normalizedBarcode = barcode.trim();
     if (normalizedBarcode.isEmpty) {
@@ -367,7 +381,17 @@ class DriftPersistenceRepository implements PersistenceRepository {
         );
       }
 
-      final familyId = await resolveProductFamilyIdByName(familyName);
+      final trimmedFamilyName = familyName.trim();
+      final familyId = await resolveProductFamilyIdByName(trimmedFamilyName);
+      await saveProductFamily(
+        ProductFamily(
+          id: familyId,
+          name: trimmedFamilyName,
+          isActive: true,
+          shoppingUnit: shoppingUnit,
+          purchaseMode: purchaseMode,
+        ),
+      );
       await saveProductItem(
         ProductItem(
           name: productName.trim(),

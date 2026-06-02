@@ -30,6 +30,8 @@ abstract class PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    required String shoppingUnit,
+    required String purchaseMode,
     String? barcode,
   });
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(String barcode);
@@ -41,6 +43,8 @@ abstract class PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    required String shoppingUnit,
+    required String purchaseMode,
   });
 
   Future<List<ExternalStoreMapping>> getExternalStoreMappings();
