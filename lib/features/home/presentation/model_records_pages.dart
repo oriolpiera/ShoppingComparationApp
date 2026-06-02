@@ -1583,8 +1583,6 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
-      final resolvedFamilyId = await widget.repository
-          .resolveProductFamilyIdByName(familyName);
       final refreshedFamilies = await widget.repository.getProductFamilies(
         onlyActive: true,
       );
@@ -1593,11 +1591,6 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         familyName: familyName,
       );
       final selectedFamily = existingFamily ?? ProductFamily(name: familyName);
-      final familyError = _validateItemForFamily(
-        family: selectedFamily,
-        quantity: quantity,
-        unitType: unitType,
-      );
       final familyError = _validateItemForFamily(
         family: selectedFamily,
         quantity: quantity,
@@ -1978,8 +1971,6 @@ class _RegisterScannedPriceSheetState
       return;
     }
 
-    final resolvedFamilyId = await widget.repository
-        .resolveProductFamilyIdByName(family);
     final families = await widget.repository.getProductFamilies(
       onlyActive: true,
     );

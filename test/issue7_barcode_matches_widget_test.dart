@@ -199,7 +199,7 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
-  }) async => [const ProductFamily(id: 1, name: 'Milk')];
+  }) async => families;
 
   @override
   Future<List<ProductItem>> getProductItems({
