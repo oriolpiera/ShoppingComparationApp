@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/database/drift_database_provider.dart';
@@ -24,7 +26,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     if (_isWebPreview) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        DemoSeedService(repository).seed();
+        unawaited(DemoSeedService(repository).seed());
       });
     }
   }
