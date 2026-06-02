@@ -36,6 +36,21 @@ void _showValidationSnackBar(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
+ProductFamily? _findExistingFamilyByName({
+  required Iterable<ProductFamily> families,
+  required String familyName,
+}) {
+  final normalizedTarget = normalizeFamilyKey(familyName);
+
+  for (final family in families) {
+    if (normalizeFamilyKey(family.name) == normalizedTarget) {
+      return family;
+    }
+  }
+
+  return null;
+}
+
 class SupermarketsPage extends StatefulWidget {
   const SupermarketsPage({super.key, required this.repository});
 
@@ -1573,9 +1588,15 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
       final refreshedFamilies = await widget.repository.getProductFamilies(
         onlyActive: true,
       );
-      final selectedFamily = refreshedFamilies.firstWhere(
-        (f) => f.id == resolvedFamilyId,
-        orElse: () => ProductFamily(name: familyName),
+      final existingFamily = _findExistingFamilyByName(
+        families: refreshedFamilies,
+        familyName: familyName,
+      );
+      final selectedFamily = existingFamily ?? ProductFamily(name: familyName);
+      final familyError = _validateItemForFamily(
+        family: selectedFamily,
+        quantity: quantity,
+        unitType: unitType,
       );
       final familyError = _validateItemForFamily(
         family: selectedFamily,
@@ -1607,6 +1628,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
           purchaseMode: capturePurchaseMode,
         );
       } else {
+        final resolvedFamilyId = existingFamily?.id ??
+            await widget.repository.resolveProductFamilyIdByName(familyName);
         await widget.repository.saveProductItem(
           ProductItem(
             id: item.id,
@@ -1960,10 +1983,9 @@ class _RegisterScannedPriceSheetState
     final families = await widget.repository.getProductFamilies(
       onlyActive: true,
     );
-    final selectedFamily = families.firstWhere(
-      (candidate) => candidate.id == resolvedFamilyId,
-      orElse: () => ProductFamily(name: family),
-    );
+    final selectedFamily =
+        _findExistingFamilyByName(families: families, familyName: family) ??
+            ProductFamily(name: family);
     final familyError = _validateItemForFamily(
       family: selectedFamily,
       quantity: quantity,

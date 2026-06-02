@@ -123,8 +123,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
               id: family.id,
               name: family.name,
               isActive: family.isActive,
-              shoppingUnit: nextShoppingUnit,
-              purchaseMode: nextPurchaseMode,
+              shoppingUnit: family.shoppingUnit ?? nextShoppingUnit,
+              purchaseMode: family.purchaseMode ?? nextPurchaseMode,
             ),
           );
         }

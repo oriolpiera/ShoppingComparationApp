@@ -126,4 +126,62 @@ void main() {
       expect(families.single.purchaseMode, 'weighted');
     },
   );
+
+  test('quick capture infers piece semantics for unit-based families',
+      () async {
+    final supermarketId = await repository.saveSupermarket(
+      Supermarket(name: 'Market', isActive: true),
+    );
+
+    final itemId = await repository.saveQuickProductItem(
+      productName: 'Eggs 6-pack',
+      familyName: 'Eggs',
+      supermarketId: supermarketId,
+      price: 2.4,
+      quantity: 6,
+      unitType: 'unit',
+    );
+
+    final items = await repository.getProductItems(
+      supermarketId: supermarketId,
+      onlyCurrentPrice: false,
+    );
+    final item = items.singleWhere((candidate) => candidate.id == itemId);
+    final families = await repository.getProductFamilies(onlyActive: false);
+
+    expect(item.unitType, 'unit');
+    expect(item.packageQuantityAmount, 6);
+    expect(item.packageQuantityUnit, 'unit');
+    expect(item.normalizedMeasurementUnit, 'unit');
+    expect(families.single.shoppingUnit, 'piece');
+    expect(families.single.purchaseMode, 'piece');
+  });
+
+  test('fills missing purchase mode without overwriting shopping unit',
+      () async {
+    final supermarketId = await repository.saveSupermarket(
+      Supermarket(name: 'Market', isActive: true),
+    );
+
+    await repository.saveProductFamily(
+      const ProductFamily(
+        name: 'Olive Oil',
+        shoppingUnit: 'liter',
+      ),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Olive Oil Bottle',
+      familyName: 'Olive Oil',
+      supermarketId: supermarketId,
+      price: 4.5,
+      quantity: 1,
+      unitType: 'L',
+    );
+
+    final families = await repository.getProductFamilies(onlyActive: false);
+    expect(families.single.shoppingUnit, 'liter');
+    expect(families.single.purchaseMode, 'packaged');
+  });
+
 }
