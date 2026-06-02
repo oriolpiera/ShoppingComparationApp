@@ -19,15 +19,12 @@ class _HomePageState extends State<HomePage> {
     AppDriftDatabaseProvider.instance,
   );
 
-  late final DemoSeedService _seedService = DemoSeedService(repository);
-  bool _isSeeding = false;
-
   @override
   void initState() {
     super.initState();
     if (_isWebPreview) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _seedDemoData(showSnackBar: false);
+        DemoSeedService(repository).seed();
       });
     }
   }
@@ -64,35 +61,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isSeeding ? null : _seedDemoData,
-        icon: _isSeeding
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.data_array),
-        label: Text(_isSeeding ? 'Seeding...' : 'Seed demo'),
-      ),
     );
-  }
-
-  Future<void> _seedDemoData({bool showSnackBar = true}) async {
-    setState(() => _isSeeding = true);
-    try {
-      await _seedService.seed();
-      if (!mounted) return;
-      if (showSnackBar) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Demo data ready')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSeeding = false);
-      }
-    }
   }
 
   void _open(BuildContext context, Widget page) {
