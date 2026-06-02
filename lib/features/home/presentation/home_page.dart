@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../../../core/database/drift_database_provider.dart';
@@ -24,7 +25,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    if (_isWebPreview) {
+    if (_isWebPreview || kDebugMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(DemoSeedService(repository).seed());
       });
