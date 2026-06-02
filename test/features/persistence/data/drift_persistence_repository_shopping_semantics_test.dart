@@ -92,4 +92,31 @@ void main() {
     expect(families.single.shoppingUnit, 'piece');
     expect(families.single.purchaseMode, 'piece');
   });
+
+  test('fills missing purchase mode without overwriting shopping unit',
+      () async {
+    final supermarketId = await repository.saveSupermarket(
+      Supermarket(name: 'Market', isActive: true),
+    );
+
+    await repository.saveProductFamily(
+      const ProductFamily(
+        name: 'Olive Oil',
+        shoppingUnit: 'liter',
+      ),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Olive Oil Bottle',
+      familyName: 'Olive Oil',
+      supermarketId: supermarketId,
+      price: 4.5,
+      quantity: 1,
+      unitType: 'L',
+    );
+
+    final families = await repository.getProductFamilies(onlyActive: false);
+    expect(families.single.shoppingUnit, 'liter');
+    expect(families.single.purchaseMode, 'packaged');
+  });
 }
