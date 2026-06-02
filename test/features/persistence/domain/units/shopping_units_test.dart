@@ -46,17 +46,15 @@ void main() {
       );
     });
 
-    test('rejects piece mode when amount is not one', () {
-      expect(
-        () => FamilyOffer(
-          id: 'a',
-          price: 3,
-          purchaseMode: PurchaseMode.piece,
-          packageQuantity:
-              PackageQuantity(amount: 2, unit: MeasurementUnit.unit),
-        ),
-        throwsArgumentError,
+    test('accepts piece mode with multi-piece packages', () {
+      final offer = FamilyOffer(
+        id: 'eggs-6',
+        price: 2.4,
+        purchaseMode: PurchaseMode.piece,
+        packageQuantity: PackageQuantity(amount: 6, unit: MeasurementUnit.unit),
       );
+
+      expect(offer.packageQuantity.amount, 6);
     });
   });
 
@@ -70,8 +68,8 @@ void main() {
             PackageQuantity(amount: 300, unit: MeasurementUnit.milliliter),
       );
 
-      final total = offer
-          .totalCostFor(FamilyNeedQuantity(amount: 1, unit: ShoppingUnit.liter));
+      final total = offer.totalCostFor(
+          FamilyNeedQuantity(amount: 1, unit: ShoppingUnit.liter));
 
       expect(total, 4);
     });
@@ -100,10 +98,26 @@ void main() {
         packageQuantity: PackageQuantity(amount: 1, unit: MeasurementUnit.unit),
       );
 
-      final total =
-          offer.totalCostFor(FamilyNeedQuantity(amount: 3, unit: ShoppingUnit.piece));
+      final total = offer.totalCostFor(
+        FamilyNeedQuantity(amount: 3, unit: ShoppingUnit.piece),
+      );
 
       expect(total, 6);
+    });
+
+    test('piece mode buys whole count packages for eggs', () {
+      final offer = FamilyOffer(
+        id: 'eggs-6',
+        price: 2.4,
+        purchaseMode: PurchaseMode.piece,
+        packageQuantity: PackageQuantity(amount: 6, unit: MeasurementUnit.unit),
+      );
+
+      final total = offer.totalCostFor(
+        FamilyNeedQuantity(amount: 10, unit: ShoppingUnit.piece),
+      );
+
+      expect(total, 4.8);
     });
 
     test('throws when need and offer units are incompatible', () {
@@ -209,5 +223,37 @@ void main() {
       expect(winner?.id, 'a-offer');
     });
 
+    test('selects cheapest egg pack for a 12-piece need', () {
+      final need = FamilyNeedQuantity(amount: 12, unit: ShoppingUnit.piece);
+
+      final winner = selectFamilyWinner(
+        need: need,
+        offers: [
+          FamilyOffer(
+            id: 'pack-6',
+            price: 2.4,
+            purchaseMode: PurchaseMode.piece,
+            packageQuantity:
+                PackageQuantity(amount: 6, unit: MeasurementUnit.unit),
+          ),
+          FamilyOffer(
+            id: 'pack-10',
+            price: 3.7,
+            purchaseMode: PurchaseMode.piece,
+            packageQuantity:
+                PackageQuantity(amount: 10, unit: MeasurementUnit.unit),
+          ),
+          FamilyOffer(
+            id: 'pack-12',
+            price: 4.6,
+            purchaseMode: PurchaseMode.piece,
+            packageQuantity:
+                PackageQuantity(amount: 12, unit: MeasurementUnit.unit),
+          ),
+        ],
+      );
+
+      expect(winner?.id, 'pack-12');
+    });
   });
 }

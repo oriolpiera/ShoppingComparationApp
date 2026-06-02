@@ -60,10 +60,6 @@ class FamilyOffer {
       if (packageQuantity.unit.dimension != MeasurementDimension.count) {
         throw ArgumentError('Piece mode requires count units');
       }
-      if ((packageQuantity.amount - 1).abs() > _doubleEpsilon) {
-        throw ArgumentError(
-            'Piece mode requires package quantity amount to be 1');
-      }
     }
   }
 

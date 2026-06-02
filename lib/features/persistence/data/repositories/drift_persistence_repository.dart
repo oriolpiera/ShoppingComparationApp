@@ -79,25 +79,71 @@ class DriftPersistenceRepository implements PersistenceRepository {
         id: family.id == null ? const Value.absent() : Value(family.id!),
         nom: Value(family.name),
         actiu: Value(family.isActive),
-        shoppingUnit: Value(family.shoppingUnit),
-        purchaseMode: Value(family.purchaseMode),
+        shoppingUnit: Value(
+          family.shoppingUnit == null
+              ? null
+              : normalizeShoppingUnitForStorage(family.shoppingUnit),
+        ),
+        purchaseMode: Value(
+          family.purchaseMode == null
+              ? null
+              : normalizePurchaseModeForStorage(family.purchaseMode),
+        ),
       ),
     );
   }
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async {
+    return _resolveProductFamilyIdByName(familyName);
+  }
+
+  Future<int> _resolveProductFamilyIdByName(
+    String familyName, {
+    String? shoppingUnit,
+    String? purchaseMode,
+  }) async {
     final normalizedTarget = normalizeFamilyKey(familyName);
     final families = await getProductFamilies(onlyActive: true);
     for (final family in families) {
       if (family.id != null &&
           normalizeFamilyKey(family.name) == normalizedTarget) {
+        final nextShoppingUnit = shoppingUnit == null
+            ? family.shoppingUnit
+            : normalizeShoppingUnitForStorage(shoppingUnit);
+        final nextPurchaseMode = purchaseMode == null
+            ? family.purchaseMode
+            : normalizePurchaseModeForStorage(purchaseMode);
+
+        if (family.shoppingUnit == null && nextShoppingUnit != null ||
+            family.purchaseMode == null && nextPurchaseMode != null) {
+          await saveProductFamily(
+            ProductFamily(
+              id: family.id,
+              name: family.name,
+              isActive: family.isActive,
+              shoppingUnit: nextShoppingUnit,
+              purchaseMode: nextPurchaseMode,
+            ),
+          );
+        }
+
         return family.id!;
       }
     }
 
     return saveProductFamily(
-        ProductFamily(name: familyName.trim(), isActive: true));
+      ProductFamily(
+        name: familyName.trim(),
+        isActive: true,
+        shoppingUnit: shoppingUnit == null
+            ? null
+            : normalizeShoppingUnitForStorage(shoppingUnit),
+        purchaseMode: purchaseMode == null
+            ? null
+            : normalizePurchaseModeForStorage(purchaseMode),
+      ),
+    );
   }
 
   @override
@@ -178,7 +224,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
     String? barcode,
   }) async {
     final trimmedName = productName.trim();
-    final familyId = await resolveProductFamilyIdByName(familyName);
+    final familyId = await _resolveProductFamilyIdByName(
+      familyName,
+      shoppingUnit: inferShoppingUnitFromUnitType(unitType),
+      purchaseMode: inferPurchaseModeFromUnitType(unitType),
+    );
 
     final currentRows = await dao.getProductItems(
       productFamilyId: familyId,
@@ -367,7 +417,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
         );
       }
 
-      final familyId = await resolveProductFamilyIdByName(familyName);
+      final familyId = await _resolveProductFamilyIdByName(
+        familyName,
+        shoppingUnit: inferShoppingUnitFromUnitType(unitType),
+        purchaseMode: inferPurchaseModeFromUnitType(unitType),
+      );
       await saveProductItem(
         ProductItem(
           name: productName.trim(),
