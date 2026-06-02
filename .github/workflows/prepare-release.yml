@@ -37,22 +37,39 @@ jobs:
             exit 1
           fi
 
-      - name: Update pubspec.yaml
+      - name: Create release branch and bump version
         run: |
           VERSION="${{ github.event.inputs.version }}"
+          BRANCH="release/v${VERSION}"
+
+          git checkout -b "${BRANCH}"
+
           BUILD_NUMBER=$(git rev-list --count HEAD)
           sed -i "s/^version: .*/version: ${VERSION}+${BUILD_NUMBER}/" pubspec.yaml
-
-      - name: Commit and tag
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add pubspec.yaml
           git commit -m "chore: bump version to ${VERSION}"
 
           git tag "v${VERSION}"
-          git push origin main
-          git push origin "v${VERSION}"
+
+      - name: Push branch and tag
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          BRANCH="release/v${VERSION}"
+
+          git push --atomic origin "${BRANCH}" "v${VERSION}"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          BRANCH="release/v${VERSION}"
+
+          gh pr create \
+            --base main \
+            --head "${BRANCH}" \
+            --title "Release v${VERSION}" \
+            --body "Version bump to ${VERSION}
+
+          After merge, create a GitHub Release from the tag v${VERSION} to trigger the APK build."
