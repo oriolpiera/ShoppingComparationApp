@@ -180,8 +180,7 @@ class _FakeRepo implements PersistenceRepository {
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
@@ -189,8 +188,7 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
-  ) async =>
-      matchesByBarcode[barcode] ?? [];
+  ) async => matchesByBarcode[barcode] ?? [];
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
@@ -201,16 +199,14 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
-  }) async =>
-      families;
+  }) async => families;
 
   @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
     bool onlyCurrentPrice = true,
-  }) async =>
-      [];
+  }) async => [];
 
   @override
   Future<List<ExternalStoreMapping>> getExternalStoreMappings() async => [];
@@ -225,8 +221,7 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<int> saveExternalPriceObservation(
     ExternalPriceObservation observation,
-  ) async =>
-      1;
+  ) async => 1;
 
   @override
   Future<void> updateExternalObservationReviewStatus({
@@ -237,16 +232,15 @@ class _FakeRepo implements PersistenceRepository {
   @override
   Future<int> confirmExternalObservationLocally({
     required int observationId,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
-        Supermarket(id: 1, name: 'A'),
-      ];
+    Supermarket(id: 1, name: 'A'),
+  ];
 
   @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
@@ -282,9 +276,9 @@ class _FakeRepo implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    String? purchaseMode,
     String? barcode,
-  }) async =>
-      1;
+  }) async => 1;
 
   @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;

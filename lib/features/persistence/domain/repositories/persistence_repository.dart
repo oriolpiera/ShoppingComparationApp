@@ -30,6 +30,7 @@ abstract class PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    String? purchaseMode,
     String? barcode,
   });
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(String barcode);
@@ -47,14 +48,13 @@ abstract class PersistenceRepository {
   Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping);
   Future<List<ExternalPriceObservation>> getExternalPriceObservations();
   Future<int> saveExternalPriceObservation(
-      ExternalPriceObservation observation);
+    ExternalPriceObservation observation,
+  );
   Future<void> updateExternalObservationReviewStatus({
     required int observationId,
     required ExternalObservationReviewStatus newStatus,
   });
-  Future<int> confirmExternalObservationLocally({
-    required int observationId,
-  });
+  Future<int> confirmExternalObservationLocally({required int observationId});
 
   Future<List<ShoppingListEntry>> getShoppingList();
   Future<int> saveShoppingListEntry(ShoppingListEntry entry);

@@ -56,8 +56,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
   }
 
   @override
-  Future<List<ProductFamily>> getProductFamilies(
-      {bool onlyActive = true}) async {
+  Future<List<ProductFamily>> getProductFamilies({
+    bool onlyActive = true,
+  }) async {
     final rows = await dao.getProductFamilies(onlyActive: onlyActive);
     return rows
         .map(
@@ -221,13 +222,14 @@ class DriftPersistenceRepository implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
+    String? purchaseMode,
     String? barcode,
   }) async {
     final trimmedName = productName.trim();
     final familyId = await _resolveProductFamilyIdByName(
       familyName,
       shoppingUnit: inferShoppingUnitFromUnitType(unitType),
-      purchaseMode: inferPurchaseModeFromUnitType(unitType),
+      purchaseMode: purchaseMode ?? inferPurchaseModeFromUnitType(unitType),
     );
 
     final currentRows = await dao.getProductItems(
@@ -284,7 +286,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
-      String barcode) async {
+    String barcode,
+  ) async {
     final normalized = barcode.trim();
     if (normalized.isEmpty) return const [];
 
@@ -303,41 +306,42 @@ class DriftPersistenceRepository implements PersistenceRepository {
         if (market.id != null) market.id!: market.name,
     };
 
-    final items = rows
-        .map(
-          (row) => ProductItem(
-            id: row.id,
-            name: row.nom,
-            isActive: row.actiu,
-            productFamilyId: row.productFamilyId,
-            supermarketId: row.supermarketId,
-            price: row.price,
-            quantity: row.quantity,
-            unitType: row.unitType,
-            pricePerQuantity: row.pricePerQuantity,
-            dateAdded: row.dateAdded,
-            isCurrentPrice: row.isCurrentPrice,
-            barcode: row.barcode,
-            packageQuantityAmount: row.packageQuantityAmount,
-            packageQuantityUnit: row.packageQuantityUnit,
-            normalizedMeasurementUnit: row.normalizedMeasurementUnit,
-            externalObservationId: row.externalObservationId,
-          ),
-        )
-        .toList()
-      ..sort((a, b) {
-        final byCurrent =
-            (b.isCurrentPrice ? 1 : 0) - (a.isCurrentPrice ? 1 : 0);
-        if (byCurrent != 0) return byCurrent;
+    final items =
+        rows
+            .map(
+              (row) => ProductItem(
+                id: row.id,
+                name: row.nom,
+                isActive: row.actiu,
+                productFamilyId: row.productFamilyId,
+                supermarketId: row.supermarketId,
+                price: row.price,
+                quantity: row.quantity,
+                unitType: row.unitType,
+                pricePerQuantity: row.pricePerQuantity,
+                dateAdded: row.dateAdded,
+                isCurrentPrice: row.isCurrentPrice,
+                barcode: row.barcode,
+                packageQuantityAmount: row.packageQuantityAmount,
+                packageQuantityUnit: row.packageQuantityUnit,
+                normalizedMeasurementUnit: row.normalizedMeasurementUnit,
+                externalObservationId: row.externalObservationId,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final byCurrent =
+                (b.isCurrentPrice ? 1 : 0) - (a.isCurrentPrice ? 1 : 0);
+            if (byCurrent != 0) return byCurrent;
 
-        final byDate = b.dateAdded.compareTo(a.dateAdded);
-        if (byDate != 0) return byDate;
+            final byDate = b.dateAdded.compareTo(a.dateAdded);
+            if (byDate != 0) return byDate;
 
-        final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
-        if (byUnit != 0) return byUnit;
+            final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
+            if (byUnit != 0) return byUnit;
 
-        return a.price.compareTo(b.price);
-      });
+            return a.price.compareTo(b.price);
+          });
 
     return items
         .map(
@@ -345,7 +349,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
             productItem: item,
             familyName:
                 familyNameById[item.productFamilyId] ?? 'Unknown family',
-            supermarketName: supermarketNameById[item.supermarketId] ??
+            supermarketName:
+                supermarketNameById[item.supermarketId] ??
                 'Unknown supermarket',
           ),
         )
@@ -370,8 +375,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
       );
     }
 
-    final currentMatches =
-        await dao.getCurrentActiveItemsByBarcode(normalizedBarcode);
+    final currentMatches = await dao.getCurrentActiveItemsByBarcode(
+      normalizedBarcode,
+    );
     final unit = normalizeUnitTypeForStorage(unitType);
 
     final currentSameMarket = currentMatches
@@ -504,7 +510,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
   @override
   Future<int> saveExternalPriceObservation(
-      ExternalPriceObservation observation) async {
+    ExternalPriceObservation observation,
+  ) async {
     final existing = observation.id == null
         ? await dao.getExternalPriceObservationByOpenPricesId(
             observation.openPricesId,
@@ -516,8 +523,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
         id: observation.id != null
             ? Value(observation.id!)
             : existing == null
-                ? const Value.absent()
-                : Value(existing.id),
+            ? const Value.absent()
+            : Value(existing.id),
         openPricesId: Value(observation.openPricesId),
         productName: Value(observation.productName),
         familyName: Value(observation.familyName),
@@ -547,11 +554,13 @@ class DriftPersistenceRepository implements PersistenceRepository {
     if (row == null) {
       throw StateError('External observation not found: $observationId');
     }
-    final current =
-        ExternalObservationReviewStatusCodec.fromStorageValue(row.reviewStatus);
+    final current = ExternalObservationReviewStatusCodec.fromStorageValue(
+      row.reviewStatus,
+    );
     if (!canTransitionReviewStatus(from: current, to: newStatus)) {
       throw StateError(
-          'Invalid review status transition: $current -> $newStatus');
+        'Invalid review status transition: $current -> $newStatus',
+      );
     }
 
     await dao.saveExternalPriceObservation(
@@ -578,8 +587,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
     required int observationId,
   }) async {
     return dao.db.transaction(() async {
-      final observation =
-          await dao.getExternalPriceObservationById(observationId);
+      final observation = await dao.getExternalPriceObservationById(
+        observationId,
+      );
       if (observation == null) {
         throw StateError('External observation not found: $observationId');
       }
@@ -593,7 +603,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
       final currentStatus =
           ExternalObservationReviewStatusCodec.fromStorageValue(
-              observation.reviewStatus);
+            observation.reviewStatus,
+          );
       if (!canTransitionReviewStatus(
         from: currentStatus,
         to: ExternalObservationReviewStatus.acceptedForComparison,
@@ -603,15 +614,18 @@ class DriftPersistenceRepository implements PersistenceRepository {
         );
       }
 
-      final mapping = await dao
-          .getExternalStoreMappingByExternalId(observation.externalStoreId);
+      final mapping = await dao.getExternalStoreMappingByExternalId(
+        observation.externalStoreId,
+      );
       if (mapping == null) {
         throw StateError(
-            'Missing external store mapping for ${observation.externalStoreId}');
+          'Missing external store mapping for ${observation.externalStoreId}',
+        );
       }
 
-      final familyId =
-          await resolveProductFamilyIdByName(observation.familyName);
+      final familyId = await resolveProductFamilyIdByName(
+        observation.familyName,
+      );
       final productItemId = await saveProductItem(
         ProductItem(
           name: observation.productName,
@@ -623,8 +637,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
           pricePerQuantity: observation.pricePerQuantity,
           packageQuantityAmount: observation.quantity,
           packageQuantityUnit: observation.unitType,
-          normalizedMeasurementUnit:
-              normalizeUnitTypeForComparison(observation.unitType),
+          normalizedMeasurementUnit: normalizeUnitTypeForComparison(
+            observation.unitType,
+          ),
           dateAdded: DateTime.now(),
           isCurrentPrice: true,
           externalObservationId: observation.id,
@@ -703,10 +718,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
     }
 
     final insertedId = await saveShoppingListEntry(
-      ShoppingListEntry(
-        productFamilyId: productFamilyId,
-        quantity: quantity,
-      ),
+      ShoppingListEntry(productFamilyId: productFamilyId, quantity: quantity),
     );
     final check = await dao.getShoppingListEntryByFamily(productFamilyId);
     if (check == null) {
@@ -746,7 +758,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
           (row) =>
               row.reviewStatus ==
                   ExternalObservationReviewStatus
-                      .acceptedForComparison.storageValue &&
+                      .acceptedForComparison
+                      .storageValue &&
               row.localProductItemId == null,
         )
         .map((row) {
@@ -779,7 +792,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
       supermarketNameById: supermarketNameById,
       items: [
         ...items,
-        ...acceptedExternalItems.where((i) => i.productFamilyId > 0)
+        ...acceptedExternalItems.where((i) => i.productFamilyId > 0),
       ],
     );
 
@@ -796,8 +809,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
                     productFamilyName: entry.productFamilyName,
                     quantity: entry.quantity,
                     bestItem: entry.bestItem,
-                    sourceTag:
-                        entry.bestItem.isOpenPricesSource ? 'OpenPrices' : null,
+                    sourceTag: entry.bestItem.isOpenPricesSource
+                        ? 'OpenPrices'
+                        : null,
                   ),
                 )
                 .toList(),
