@@ -14,6 +14,43 @@ import '../../persistence/domain/shopping_list_optimizer.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
 
+String? _validateItemForFamily({
+  required ProductFamily family,
+  required double quantity,
+  required String unitType,
+}) {
+  final shoppingUnit =
+      family.shoppingUnit ?? inferShoppingUnitFromUnitType(unitType);
+  final purchaseMode =
+      family.purchaseMode ?? inferPurchaseModeFromUnitType(unitType);
+
+  return validateItemSemantics(
+    shoppingUnit: shoppingUnit,
+    purchaseMode: purchaseMode,
+    packageQuantityAmount: quantity,
+    packageQuantityUnit: unitType,
+  );
+}
+
+void _showValidationSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+ProductFamily? _findExistingFamilyByName({
+  required Iterable<ProductFamily> families,
+  required String familyName,
+}) {
+  final normalizedTarget = normalizeFamilyKey(familyName);
+
+  for (final family in families) {
+    if (normalizeFamilyKey(family.name) == normalizedTarget) {
+      return family;
+    }
+  }
+
+  return null;
+}
+
 class SupermarketsPage extends StatefulWidget {
   const SupermarketsPage({super.key, required this.repository});
 
@@ -381,8 +418,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
 
   Future<void> _openForm(ProductFamily? family) async {
     final nameController = TextEditingController(text: family?.name ?? '');
-    var shoppingUnit = family?.shoppingUnit ?? 'kg';
-    var purchaseMode = family?.purchaseMode ?? 'packaged';
+    var shoppingUnit = normalizeShoppingUnitForStorage(family?.shoppingUnit);
+    var purchaseMode = normalizePurchaseModeForStorage(family?.purchaseMode);
 
     final save = await showDialog<bool>(
       context: context,
@@ -403,8 +440,9 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                 initialValue: shoppingUnit,
                 decoration: const InputDecoration(labelText: 'Shopping unit'),
                 items: const [
-                  DropdownMenuItem(value: 'kg', child: Text('kg')),
-                  DropdownMenuItem(value: 'L', child: Text('L')),
+                  DropdownMenuItem(value: 'kilogram', child: Text('kg')),
+                  DropdownMenuItem(value: 'liter', child: Text('L')),
+                  DropdownMenuItem(value: 'piece', child: Text('piece')),
                 ],
                 onChanged: (value) {
                   if (value != null) setDialogState(() => shoppingUnit = value);
@@ -414,8 +452,9 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                 initialValue: purchaseMode,
                 decoration: const InputDecoration(labelText: 'Purchase mode'),
                 items: const [
+                  DropdownMenuItem(value: 'weighted', child: Text('weighted')),
                   DropdownMenuItem(value: 'packaged', child: Text('packaged')),
-                  DropdownMenuItem(value: 'fresh', child: Text('fresh')),
+                  DropdownMenuItem(value: 'piece', child: Text('piece')),
                 ],
                 onChanged: (value) {
                   if (value != null) setDialogState(() => purchaseMode = value);
@@ -439,6 +478,17 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
 
     final nextName = nameController.text.trim();
     if (save == true && nextName.isNotEmpty) {
+      final familyError = validateFamilySemantics(
+        shoppingUnit: shoppingUnit,
+        purchaseMode: purchaseMode,
+      );
+      if (familyError != null) {
+        if (mounted) {
+          _showValidationSnackBar(context, familyError);
+        }
+        return;
+      }
+
       await widget.repository.saveProductFamily(
         ProductFamily(
           id: family?.id,
@@ -629,6 +679,7 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
                   items: const [
                     DropdownMenuItem(value: 'kg', child: Text('kg')),
                     DropdownMenuItem(value: 'L', child: Text('L')),
+                    DropdownMenuItem(value: 'unit', child: Text('unit')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -663,6 +714,19 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
+      final familyError = _validateItemForFamily(
+        family: widget.item,
+        quantity: quantity,
+        unitType: unitType,
+      );
+      if (familyError != null) {
+        if (mounted) {
+          _showValidationSnackBar(context, familyError);
+        }
+        return;
+      }
+
+      final storedUnitType = normalizeUnitTypeForStorage(unitType);
       await widget.repository.saveProductItem(
         ProductItem(
           id: item.id,
@@ -672,11 +736,13 @@ class _ProductFamilyDetailsPageState extends State<_ProductFamilyDetailsPage> {
           supermarketId: item.supermarketId,
           price: price,
           quantity: quantity,
-          unitType: unitType,
+          unitType: storedUnitType,
           pricePerQuantity: price / quantity,
           packageQuantityAmount: quantity,
-          packageQuantityUnit: unitType,
-          normalizedMeasurementUnit: normalizeUnitTypeForComparison(unitType),
+          packageQuantityUnit: storedUnitType,
+          normalizedMeasurementUnit: normalizeUnitTypeForComparison(
+            storedUnitType,
+          ),
           dateAdded: item.dateAdded,
           isCurrentPrice: item.isCurrentPrice,
           barcode: item.barcode,
@@ -1453,6 +1519,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   items: const [
                     DropdownMenuItem(value: 'kg', child: Text('kg')),
                     DropdownMenuItem(value: 'L', child: Text('L')),
+                    DropdownMenuItem(value: 'unit', child: Text('unit')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -1488,30 +1555,27 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
-      final resolvedFamilyId =
-          await widget.repository.resolveProductFamilyIdByName(familyName);
       final refreshedFamilies = await widget.repository.getProductFamilies(
         onlyActive: true,
       );
-      final selectedFamily = refreshedFamilies.firstWhere(
-        (f) => f.id == resolvedFamilyId,
-        orElse: () => ProductFamily(name: familyName),
+      final existingFamily = _findExistingFamilyByName(
+        families: refreshedFamilies,
+        familyName: familyName,
       );
-      final shoppingUnit = selectedFamily.shoppingUnit;
-      if (shoppingUnit != null &&
-          normalizeUnitTypeForComparison(shoppingUnit) !=
-              normalizeUnitTypeForComparison(unitType)) {
+      final selectedFamily = existingFamily ?? ProductFamily(name: familyName);
+      final familyError = _validateItemForFamily(
+        family: selectedFamily,
+        quantity: quantity,
+        unitType: unitType,
+      );
+      if (familyError != null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Unit type is incompatible with family shopping unit',
-              ),
-            ),
-          );
+          _showValidationSnackBar(context, familyError);
         }
         return;
       }
+
+      final storedUnitType = normalizeUnitTypeForStorage(unitType);
 
       if (item == null) {
         await widget.repository.saveQuickProductItem(
@@ -1520,9 +1584,11 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
           supermarketId: supermarketId,
           price: price,
           quantity: quantity,
-          unitType: unitType,
+          unitType: storedUnitType,
         );
       } else {
+        final resolvedFamilyId = existingFamily?.id ??
+            await widget.repository.resolveProductFamilyIdByName(familyName);
         await widget.repository.saveProductItem(
           ProductItem(
             id: item.id,
@@ -1532,11 +1598,13 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
             supermarketId: supermarketId,
             price: price,
             quantity: quantity,
-            unitType: unitType,
+            unitType: storedUnitType,
             pricePerQuantity: quantity == 0 ? 0 : price / quantity,
             packageQuantityAmount: quantity,
-            packageQuantityUnit: unitType,
-            normalizedMeasurementUnit: normalizeUnitTypeForComparison(unitType),
+            packageQuantityUnit: storedUnitType,
+            normalizedMeasurementUnit: normalizeUnitTypeForComparison(
+              storedUnitType,
+            ),
             dateAdded: item.dateAdded,
             isCurrentPrice: true,
             barcode: item.barcode,
@@ -1830,7 +1898,7 @@ class _RegisterScannedPriceSheetState
     _quantityController = TextEditingController(
       text: widget.prefilledQuantity?.toString() ?? '1',
     );
-    _unitType = widget.prefilledUnitType == 'L' ? 'L' : 'kg';
+    _unitType = normalizeUnitTypeForDisplay(widget.prefilledUnitType ?? 'kg');
 
     if (widget.supermarkets.isEmpty) {
       _supermarketId = 0;
@@ -1870,6 +1938,25 @@ class _RegisterScannedPriceSheetState
       return;
     }
 
+    final families =
+        await widget.repository.getProductFamilies(onlyActive: true);
+    final selectedFamily =
+        _findExistingFamilyByName(families: families, familyName: family) ??
+            ProductFamily(name: family);
+    final familyError = _validateItemForFamily(
+      family: selectedFamily,
+      quantity: quantity,
+      unitType: _unitType,
+    );
+    if (familyError != null) {
+      if (mounted) {
+        _showValidationSnackBar(context, familyError);
+      }
+      return;
+    }
+
+    final storedUnitType = normalizeUnitTypeForStorage(_unitType);
+
     final result = await widget.repository.registerScannedPrice(
       barcode: widget.barcode,
       productName: name,
@@ -1877,7 +1964,7 @@ class _RegisterScannedPriceSheetState
       supermarketId: _supermarketId,
       price: price,
       quantity: quantity,
-      unitType: _unitType,
+      unitType: storedUnitType,
     );
     if (!mounted) return;
     Navigator.of(context).pop(result);
@@ -1949,6 +2036,7 @@ class _RegisterScannedPriceSheetState
                 items: const [
                   DropdownMenuItem(value: 'kg', child: Text('kg')),
                   DropdownMenuItem(value: 'L', child: Text('L')),
+                  DropdownMenuItem(value: 'unit', child: Text('unit')),
                 ],
                 onChanged: (value) {
                   if (value != null) {

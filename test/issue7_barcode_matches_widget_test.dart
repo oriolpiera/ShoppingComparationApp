@@ -125,12 +125,56 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('invalid scanned item does not resolve or save family first', (
+    tester,
+  ) async {
+    final repository = _FakeRepo(
+      families: const [
+        ProductFamily(id: 2, name: 'Milk', shoppingUnit: 'liter'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProductItemsPage(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tag));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Barcode'), 'X-NEW');
+    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Family'), 'Milk');
+    await tester.enterText(find.widgetWithText(TextField, 'Price'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, 'Quantity'), '6');
+    await tester.tap(find.text('kg').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('unit').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.resolveCalls, 0);
+    expect(repository.registerScannedPriceCalls, 0);
+  });
 }
 
 class _FakeRepo implements PersistenceRepository {
-  _FakeRepo({this.matchesByBarcode = const {}});
+  _FakeRepo({
+    this.matchesByBarcode = const {},
+    this.families = const [ProductFamily(id: 1, name: 'Milk')],
+  });
 
   final Map<String, List<BarcodeMatchResult>> matchesByBarcode;
+  final List<ProductFamily> families;
+  int resolveCalls = 0;
+  int registerScannedPriceCalls = 0;
 
   @override
   Future<int> addOrIncrementShoppingListEntry({
@@ -158,7 +202,7 @@ class _FakeRepo implements PersistenceRepository {
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
   }) async =>
-      [const ProductFamily(id: 1, name: 'Milk')];
+      families;
 
   @override
   Future<List<ProductItem>> getProductItems({
@@ -213,11 +257,16 @@ class _FakeRepo implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
-  }) async =>
-      const ScannedPriceRegistrationResult(created: false);
+  }) async {
+    registerScannedPriceCalls += 1;
+    return const ScannedPriceRegistrationResult(created: false);
+  }
 
   @override
-  Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
+  Future<int> resolveProductFamilyIdByName(String familyName) async {
+    resolveCalls += 1;
+    return 1;
+  }
 
   @override
   Future<int> saveProductFamily(ProductFamily family) async => 1;

@@ -25,20 +25,23 @@ void main() {
   });
 
   group('unit type rules', () {
-    test('display uses L for liter and kg otherwise', () {
+    test('display keeps canonical unit labels', () {
       expect(normalizeUnitTypeForDisplay(' l '), 'L');
       expect(normalizeUnitTypeForDisplay('kg'), 'kg');
-      expect(normalizeUnitTypeForDisplay('ml'), 'kg');
+      expect(normalizeUnitTypeForDisplay('ml'), 'ml');
+      expect(normalizeUnitTypeForDisplay('unit'), 'unit');
     });
 
-    test('comparison is trim + lowercase', () {
+    test('comparison canonicalizes known aliases', () {
       expect(normalizeUnitTypeForComparison(' L '), 'l');
       expect(normalizeUnitTypeForComparison('Kg'), 'kg');
+      expect(normalizeUnitTypeForComparison('piece'), 'unit');
     });
 
-    test('storage trims only', () {
+    test('storage uses canonical persisted values', () {
       expect(normalizeUnitTypeForStorage(' L '), 'L');
       expect(normalizeUnitTypeForStorage(' kg '), 'kg');
+      expect(normalizeUnitTypeForStorage('piece'), 'unit');
     });
   });
 }

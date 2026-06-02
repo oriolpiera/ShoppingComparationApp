@@ -120,7 +120,7 @@ class AppDriftDatabase extends _$AppDriftDatabase {
   AppDriftDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -199,6 +199,33 @@ class AppDriftDatabase extends _$AppDriftDatabase {
             } catch (_) {
               // Column may already exist from fresh-schema creation or prior run.
             }
+          }
+
+          if (from < 5) {
+            await customStatement('''
+              UPDATE product_family
+              SET shopping_unit = CASE lower(trim(coalesce(shopping_unit, '')))
+                WHEN 'kg' THEN 'kilogram'
+                WHEN 'kilogram' THEN 'kilogram'
+                WHEN 'l' THEN 'liter'
+                WHEN 'liter' THEN 'liter'
+                WHEN 'unit' THEN 'piece'
+                WHEN 'piece' THEN 'piece'
+                ELSE shopping_unit
+              END
+              WHERE shopping_unit IS NOT NULL;
+            ''');
+            await customStatement('''
+              UPDATE product_family
+              SET purchase_mode = CASE lower(trim(coalesce(purchase_mode, '')))
+                WHEN 'fresh' THEN 'weighted'
+                WHEN 'weighted' THEN 'weighted'
+                WHEN 'packaged' THEN 'packaged'
+                WHEN 'piece' THEN 'piece'
+                ELSE purchase_mode
+              END
+              WHERE purchase_mode IS NOT NULL;
+            ''');
           }
         },
       );
