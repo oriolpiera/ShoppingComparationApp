@@ -44,6 +44,9 @@ jobs:
 
           git checkout -b "${BRANCH}"
 
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           BUILD_NUMBER=$(git rev-list --count HEAD)
           sed -i "s/^version: .*/version: ${VERSION}+${BUILD_NUMBER}/" pubspec.yaml
 
