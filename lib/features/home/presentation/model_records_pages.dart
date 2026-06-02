@@ -1449,7 +1449,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
             item == null
-                ? (defaultFreshCapture ? 'Add fresh product' : 'Add product')
+                ? (isFreshCapture ? 'Add fresh product' : 'Add product')
                 : 'Edit product',
           ),
           content: SingleChildScrollView(
