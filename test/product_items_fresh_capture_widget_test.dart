@@ -80,7 +80,8 @@ class _CapturingRepo implements PersistenceRepository {
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
-  }) async => 1;
+  }) async =>
+      1;
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
@@ -88,7 +89,8 @@ class _CapturingRepo implements PersistenceRepository {
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
-  ) async => [];
+  ) async =>
+      [];
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
@@ -99,14 +101,16 @@ class _CapturingRepo implements PersistenceRepository {
   @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
-  }) async => const [];
+  }) async =>
+      const [];
 
   @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
     bool onlyCurrentPrice = true,
-  }) async => [];
+  }) async =>
+      [];
 
   @override
   Future<List<ExternalStoreMapping>> getExternalStoreMappings() async => [];
@@ -121,7 +125,8 @@ class _CapturingRepo implements PersistenceRepository {
   @override
   Future<int> saveExternalPriceObservation(
     ExternalPriceObservation observation,
-  ) async => 1;
+  ) async =>
+      1;
 
   @override
   Future<void> updateExternalObservationReviewStatus({
@@ -132,15 +137,16 @@ class _CapturingRepo implements PersistenceRepository {
   @override
   Future<int> confirmExternalObservationLocally({
     required int observationId,
-  }) async => 1;
+  }) async =>
+      1;
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
-    Supermarket(id: 1, name: 'Market'),
-  ];
+        Supermarket(id: 1, name: 'Market'),
+      ];
 
   @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
@@ -151,7 +157,8 @@ class _CapturingRepo implements PersistenceRepository {
     required double price,
     required double quantity,
     required String unitType,
-  }) async => const ScannedPriceRegistrationResult(created: false);
+  }) async =>
+      const ScannedPriceRegistrationResult(created: false);
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;

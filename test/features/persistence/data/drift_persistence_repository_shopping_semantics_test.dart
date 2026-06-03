@@ -153,5 +153,4 @@ void main() {
     expect(families.single.shoppingUnit, 'liter');
     expect(families.single.purchaseMode, 'packaged');
   });
-
 }

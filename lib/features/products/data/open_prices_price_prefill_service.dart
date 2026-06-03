@@ -54,7 +54,9 @@ class OpenPricesPricePrefillService {
         final price = _parsePrice(item['price']);
         final observedAt = _parseObservedAt(item['date']);
         final currency = _parseCurrency(item['currency']);
-        if (price == null || observedAt == null || currency != _supportedCurrency) {
+        if (price == null ||
+            observedAt == null ||
+            currency != _supportedCurrency) {
           continue;
         }
 
