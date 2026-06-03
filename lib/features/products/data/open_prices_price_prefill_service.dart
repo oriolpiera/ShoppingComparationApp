@@ -12,6 +12,8 @@ class OpenPricesPricePrefill {
 }
 
 class OpenPricesPricePrefillService {
+  static const _supportedCurrency = 'EUR';
+
   OpenPricesPricePrefillService({OpenPricesGetRequest? getRequest})
       : _getRequest = getRequest ?? _defaultGetRequest;
 
@@ -51,7 +53,10 @@ class OpenPricesPricePrefillService {
         if (item is! Map<String, dynamic>) continue;
         final price = _parsePrice(item['price']);
         final observedAt = _parseObservedAt(item['date']);
-        if (price == null || observedAt == null) continue;
+        final currency = _parseCurrency(item['currency']);
+        if (price == null || observedAt == null || currency != _supportedCurrency) {
+          continue;
+        }
 
         if (bestItem == null) {
           bestItem = item;
@@ -88,6 +93,12 @@ class OpenPricesPricePrefillService {
   DateTime? _parseObservedAt(Object? value) {
     if (value is! String || value.trim().isEmpty) return null;
     return DateTime.tryParse(value.trim());
+  }
+
+  String? _parseCurrency(Object? value) {
+    if (value is! String) return null;
+    final normalized = value.trim().toUpperCase();
+    return normalized.isEmpty ? null : normalized;
   }
 
   String _locationSortValue(Map<String, dynamic> item) {

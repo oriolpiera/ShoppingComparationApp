@@ -8,7 +8,7 @@ void main() {
           OpenPricesPricePrefillService(getRequest: (_) async => null);
 
       final prefill = service.parsePricePrefillFromResponse(
-        '{"items":[{"price":0.76,"date":"2025-06-24","location":{"osm_display_name":"Paris"}},{"price":0.99,"date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
+        '{"items":[{"price":0.76,"currency":"EUR","date":"2025-06-24","location":{"osm_display_name":"Paris"}},{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
       );
 
       expect(prefill, isNotNull);
@@ -20,7 +20,19 @@ void main() {
           OpenPricesPricePrefillService(getRequest: (_) async => null);
 
       final prefill = service.parsePricePrefillFromResponse(
-        '{"items":[{"price":1.20,"date":"2026-04-07","location":{"osm_display_name":"Paris"}},{"price":0.99,"date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
+        '{"items":[{"price":1.20,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Paris"}},{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
+      );
+
+      expect(prefill, isNotNull);
+      expect(prefill!.price, 0.99);
+    });
+
+    test('ignores non-EUR price suggestions', () {
+      final service =
+          OpenPricesPricePrefillService(getRequest: (_) async => null);
+
+      final prefill = service.parsePricePrefillFromResponse(
+        '{"items":[{"price":5.49,"currency":"USD","date":"2026-05-01","location":{"osm_display_name":"New York"}},{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
       );
 
       expect(prefill, isNotNull);
@@ -32,7 +44,7 @@ void main() {
           OpenPricesPricePrefillService(getRequest: (_) async => null);
 
       final prefill = service.parsePricePrefillFromResponse(
-        '{"items":[{"price":null,"date":"2026-04-07"},{"price":0.99,"date":null}]}',
+        '{"items":[{"price":null,"currency":"EUR","date":"2026-04-07"},{"price":0.99,"currency":"EUR","date":null},{"price":1.99,"currency":"USD","date":"2026-05-01"}]}',
       );
 
       expect(prefill, isNull);

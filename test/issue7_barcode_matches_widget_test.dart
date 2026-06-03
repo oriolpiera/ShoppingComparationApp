@@ -91,7 +91,7 @@ void main() {
     );
     final pricePrefillService = OpenPricesPricePrefillService(
       getRequest: (_) async =>
-          '{"items":[{"price":0.99,"date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
+          '{"items":[{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
     );
 
     await tester.pumpWidget(
