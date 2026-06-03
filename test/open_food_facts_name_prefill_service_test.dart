@@ -48,6 +48,23 @@ void main() {
       expect(prefill.packageUnitHint, 'kg');
     });
 
+    test('falls back to product_name when localized field is missing', () {
+      final service = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async => null,
+      );
+
+      final prefill = service.parseProductPrefillFromResponse(
+        '{"status":1,"product":{"product_name":"Default Name","brands":"Acme","quantity":"200 g"}}',
+        preferredLanguageCodes: const ['ca'],
+      );
+
+      expect(prefill, isNotNull);
+      expect(prefill!.productName, 'Default Name');
+      expect(prefill.familySuggestion, 'Default Name');
+      expect(prefill.packageQuantityHint, 0.2);
+      expect(prefill.packageUnitHint, 'kg');
+    });
+
     test('requests localized product_name fields for preferred languages',
         () async {
       Uri? requestedUri;
