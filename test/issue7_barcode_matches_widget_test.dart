@@ -15,6 +15,10 @@ import 'package:shopping_comparation_app/features/products/data/open_food_facts_
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
 void main() {
+  tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.clearLocaleTestValue();
+  });
+
   testWidgets('scan flow no-match offers Create Product Item and Re-scan', (
     tester,
   ) async {
@@ -73,6 +77,44 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('0.5'), findsOneWidget);
+  });
+
+  testWidgets('scan flow prefers system locale for Open Food Facts name', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localeTestValue = const Locale('ca');
+
+    final repository = _FakeRepo();
+    final prefillService = OpenFoodFactsNamePrefillService(
+      getRequest: (_) async =>
+          '{"status":1,"product":{"product_name":"Paahdettu maap\u00e4hkin\u00e4","product_name_ca":"Cacauets pelats fregits sense sal","brands":"Alesto","quantity":"200 g"}}',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProductItemsPage(
+          repository: repository,
+          namePrefillService: prefillService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tag));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Barcode'), '20615420');
+    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Cacauets pelats fregits sense sal'),
+      findsAtLeastNWidgets(1),
+    );
+    expect(find.text('Paahdettu maapähkinä'), findsNothing);
   });
 
   testWidgets('existing family prefill does not show OFF helper text', (
