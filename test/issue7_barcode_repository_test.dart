@@ -34,6 +34,8 @@ void main() {
     db = AppDriftDatabase();
     repository = DriftPersistenceRepository.fromDatabase(db);
     await db.customStatement('DELETE FROM shopping_list;');
+    await db.customStatement('DELETE FROM price_record;');
+    await db.customStatement('DELETE FROM catalog_product;');
     await db.customStatement('DELETE FROM product_item;');
     await db.customStatement('DELETE FROM product_family;');
     await db.customStatement('DELETE FROM supermarket;');
@@ -159,5 +161,196 @@ void main() {
     expect(currentMatches.first.productItem.price, 6.0);
     expect(barcodeRows.length, 2);
     expect(barcodeRows.where((row) => row.isCurrentPrice).length, 1);
+  });
+
+  test(
+      'deactivating one supermarket price does not hide shared catalog product in others',
+      () async {
+    final marketAId = await repository.saveSupermarket(
+      Supermarket(name: 'A', isActive: true),
+    );
+    final marketBId = await repository.saveSupermarket(
+      Supermarket(name: 'B', isActive: true),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Peanuts',
+      familyName: 'Peanuts',
+      supermarketId: marketAId,
+      price: 1.5,
+      quantity: 1,
+      unitType: 'kg',
+      barcode: 'SHARED-1',
+    );
+    await repository.saveQuickProductItem(
+      productName: 'Peanuts',
+      familyName: 'Peanuts',
+      supermarketId: marketBId,
+      price: 1.6,
+      quantity: 1,
+      unitType: 'kg',
+      barcode: 'SHARED-1',
+    );
+
+    final before = await repository.getProductItems(onlyCurrentPrice: true);
+    final marketAItem =
+        before.singleWhere((item) => item.supermarketId == marketAId);
+
+    await repository.saveProductItem(
+      ProductItem(
+        id: marketAItem.id,
+        name: marketAItem.name,
+        isActive: false,
+        productFamilyId: marketAItem.productFamilyId,
+        supermarketId: marketAItem.supermarketId,
+        price: marketAItem.price,
+        quantity: marketAItem.quantity,
+        unitType: marketAItem.unitType,
+        pricePerQuantity: marketAItem.pricePerQuantity,
+        dateAdded: marketAItem.dateAdded,
+        isCurrentPrice: marketAItem.isCurrentPrice,
+        barcode: marketAItem.barcode,
+        packageQuantityAmount: marketAItem.packageQuantityAmount,
+        packageQuantityUnit: marketAItem.packageQuantityUnit,
+        normalizedMeasurementUnit: marketAItem.normalizedMeasurementUnit,
+      ),
+    );
+
+    final after = await repository.getProductItems(onlyCurrentPrice: true);
+    expect(
+        after.where((item) => item.supermarketId == marketAId && item.isActive),
+        isEmpty);
+    expect(
+      after
+          .where((item) => item.supermarketId == marketBId && item.isActive)
+          .length,
+      1,
+    );
+    expect(
+      (await repository.findCurrentActiveByBarcode('SHARED-1'))
+          .where((match) => match.productItem.supermarketId == marketBId)
+          .length,
+      1,
+    );
+    expect(
+      (await repository.findCurrentActiveByBarcode('SHARED-1'))
+          .where((match) => match.productItem.supermarketId == marketAId),
+      isEmpty,
+    );
+  });
+
+  test('editing a product into an existing identity throws a conflict error',
+      () async {
+    final marketId = await repository.saveSupermarket(
+      Supermarket(name: 'A', isActive: true),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Milk Whole',
+      familyName: 'Milk',
+      supermarketId: marketId,
+      price: 1.5,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'BAR-1',
+    );
+    await repository.saveQuickProductItem(
+      productName: 'Milk Skim',
+      familyName: 'Milk',
+      supermarketId: marketId,
+      price: 1.6,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'BAR-2',
+    );
+
+    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    final second = items.singleWhere((item) => item.barcode == 'BAR-2');
+
+    expect(
+      () => repository.saveProductItem(
+        ProductItem(
+          id: second.id,
+          name: second.name,
+          isActive: second.isActive,
+          productFamilyId: second.productFamilyId,
+          supermarketId: second.supermarketId,
+          price: second.price,
+          quantity: second.quantity,
+          unitType: second.unitType,
+          pricePerQuantity: second.pricePerQuantity,
+          dateAdded: second.dateAdded,
+          isCurrentPrice: second.isCurrentPrice,
+          barcode: 'BAR-1',
+          packageQuantityAmount: second.packageQuantityAmount,
+          packageQuantityUnit: second.packageQuantityUnit,
+          normalizedMeasurementUnit: second.normalizedMeasurementUnit,
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test(
+      'saving a new inactive current price does not deactivate the shared catalog product',
+      () async {
+    final marketAId = await repository.saveSupermarket(
+      Supermarket(name: 'A', isActive: true),
+    );
+    final marketBId = await repository.saveSupermarket(
+      Supermarket(name: 'B', isActive: true),
+    );
+    final familyId = await repository.saveProductFamily(
+      const ProductFamily(name: 'Milk', isActive: true),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Milk',
+      familyName: 'Milk',
+      supermarketId: marketAId,
+      price: 1.5,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'CAT-SHARED-1',
+    );
+
+    await repository.saveProductItem(
+      ProductItem(
+        name: 'Milk',
+        isActive: false,
+        productFamilyId: familyId,
+        supermarketId: marketBId,
+        price: 1.6,
+        quantity: 1,
+        unitType: 'L',
+        pricePerQuantity: 1.6,
+        dateAdded: DateTime(2026, 2, 1),
+        isCurrentPrice: true,
+        barcode: 'CAT-SHARED-1',
+        packageQuantityAmount: 1,
+        packageQuantityUnit: 'L',
+        normalizedMeasurementUnit: 'l',
+      ),
+    );
+
+    final currentItems =
+        await repository.getProductItems(onlyCurrentPrice: true);
+    expect(
+      currentItems
+          .where((item) => item.supermarketId == marketAId && item.isActive)
+          .length,
+      1,
+    );
+    expect(
+      currentItems
+          .where((item) => item.supermarketId == marketBId && item.isActive),
+      isEmpty,
+    );
+    expect(
+      (await repository.findCurrentActiveByBarcode('CAT-SHARED-1'))
+          .where((match) => match.productItem.supermarketId == marketAId)
+          .length,
+      1,
+    );
   });
 }

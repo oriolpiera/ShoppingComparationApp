@@ -127,7 +127,8 @@ void main() {
       confirmed.reviewStatus,
       ExternalObservationReviewStatus.acceptedForComparison,
     );
-    expect(confirmed.localProductItemId, productItemId);
+    expect(confirmed.localProductItemId, isNull);
+    expect(confirmed.localPriceRecordId, productItemId);
   });
 
   test(

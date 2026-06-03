@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
+import '../../../../core/normalization/catalog_product_identity.dart';
 import '../../../../core/normalization/family_unit_normalization.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
@@ -147,71 +148,444 @@ class DriftPersistenceRepository implements PersistenceRepository {
     );
   }
 
+  Future<List<ProductItem>> _getDerivedProductItems({
+    int? productFamilyId,
+    int? supermarketId,
+    bool onlyCurrentPrice = true,
+    String? barcode,
+  }) async {
+    final filters = <String>[];
+    final variables = <Variable<Object>>[];
+
+    if (productFamilyId != null) {
+      filters.add('cp.product_family_id = ?');
+      variables.add(Variable.withInt(productFamilyId));
+    }
+    if (supermarketId != null) {
+      filters.add('pr.supermarket_id = ?');
+      variables.add(Variable.withInt(supermarketId));
+    }
+    if (barcode != null && barcode.trim().isNotEmpty) {
+      filters.add('cp.barcode = ?');
+      variables.add(Variable.withString(barcode.trim()));
+    }
+    if (onlyCurrentPrice) {
+      filters.add(_isCurrentPriceSql(alias: 'pr'));
+    }
+
+    final whereClause = filters.isEmpty ? '' : 'WHERE ${filters.join(' AND ')}';
+
+    final rows = await dao.db.customSelect(
+      '''
+      SELECT
+        pr.id AS price_record_id,
+        cp.nom AS product_name,
+        cp.actiu AS catalog_active,
+        cp.product_family_id,
+        cp.barcode,
+        cp.package_quantity_amount,
+        cp.package_quantity_unit,
+        cp.normalized_measurement_unit,
+        pr.supermarket_id,
+        pr.price,
+        pr.observed_at,
+        pr.actiu AS price_record_active,
+        pr.external_observation_id,
+        CASE WHEN ${_isCurrentPriceSql(alias: 'pr')} THEN 1 ELSE 0 END AS is_current_price
+      FROM price_record pr
+      JOIN catalog_product cp ON cp.id = pr.catalog_product_id
+      $whereClause
+      ORDER BY pr.observed_at DESC, pr.id DESC;
+      ''',
+      variables: variables,
+    ).get();
+
+    return rows.map(
+      (row) {
+        final quantity =
+            (row.data['package_quantity_amount'] as num?)?.toDouble() ?? 0;
+        final price = row.read<double>('price');
+        final unitType = (row.data['package_quantity_unit'] as String?) ??
+            (row.data['normalized_measurement_unit'] as String?) ??
+            'kg';
+        return ProductItem(
+          id: row.read<int>('price_record_id'),
+          name: row.read<String>('product_name'),
+          isActive: (row.data['catalog_active'] as int? ?? 0) == 1 &&
+              (row.data['price_record_active'] as int? ?? 0) == 1,
+          productFamilyId: row.read<int>('product_family_id'),
+          supermarketId: row.read<int>('supermarket_id'),
+          price: price,
+          quantity: quantity,
+          unitType: unitType,
+          pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+          dateAdded: DateTime.fromMillisecondsSinceEpoch(
+            (row.data['observed_at'] as int?) ?? 0,
+          ),
+          isCurrentPrice: (row.data['is_current_price'] as int? ?? 0) == 1,
+          barcode: row.data['barcode'] as String?,
+          packageQuantityAmount: quantity,
+          packageQuantityUnit: unitType,
+          normalizedMeasurementUnit:
+              row.data['normalized_measurement_unit'] as String?,
+          externalObservationId: row.data['external_observation_id'] as int?,
+        );
+      },
+    ).toList();
+  }
+
+  String _isCurrentPriceSql({required String alias}) {
+    return '''
+      NOT EXISTS (
+        SELECT 1
+        FROM price_record newer
+        WHERE newer.catalog_product_id = $alias.catalog_product_id
+          AND newer.supermarket_id = $alias.supermarket_id
+          AND (
+            newer.observed_at > $alias.observed_at OR
+            (newer.observed_at = $alias.observed_at AND newer.id > $alias.id)
+          )
+      )
+    ''';
+  }
+
+  Future<_PriceRecordSnapshot?> _getPriceRecordById(int priceRecordId) async {
+    final row = await dao.db.customSelect(
+      '''
+      SELECT
+        pr.id,
+        pr.catalog_product_id,
+        pr.supermarket_id,
+        pr.price,
+        pr.observed_at,
+        pr.actiu,
+        pr.external_observation_id,
+        cp.nom,
+        cp.actiu AS catalog_actiu,
+        cp.product_family_id,
+        cp.barcode,
+        cp.package_quantity_amount,
+        cp.package_quantity_unit,
+        cp.normalized_measurement_unit
+      FROM price_record pr
+      JOIN catalog_product cp ON cp.id = pr.catalog_product_id
+      WHERE pr.id = ?
+      LIMIT 1;
+      ''',
+      variables: [Variable.withInt(priceRecordId)],
+    ).getSingleOrNull();
+    if (row == null) return null;
+
+    return _PriceRecordSnapshot(
+      id: row.read<int>('id'),
+      catalogProductId: row.read<int>('catalog_product_id'),
+      supermarketId: row.read<int>('supermarket_id'),
+      price: row.read<double>('price'),
+      observedAt: DateTime.fromMillisecondsSinceEpoch(
+        (row.data['observed_at'] as int?) ?? 0,
+      ),
+      isActive: (row.data['actiu'] as int? ?? 0) == 1,
+      catalogIsActive: (row.data['catalog_actiu'] as int? ?? 0) == 1,
+      externalObservationId: row.data['external_observation_id'] as int?,
+      name: row.read<String>('nom'),
+      productFamilyId: row.read<int>('product_family_id'),
+      barcode: row.data['barcode'] as String?,
+      packageQuantityAmount:
+          (row.data['package_quantity_amount'] as num?)?.toDouble(),
+      packageQuantityUnit: row.data['package_quantity_unit'] as String?,
+      normalizedMeasurementUnit:
+          row.data['normalized_measurement_unit'] as String?,
+    );
+  }
+
+  Future<_PriceRecordSnapshot?> _getLatestPriceRecord({
+    required int catalogProductId,
+    required int supermarketId,
+  }) async {
+    final row = await dao.db.customSelect(
+      '''
+      SELECT
+        pr.id,
+        pr.catalog_product_id,
+        pr.supermarket_id,
+        pr.price,
+        pr.observed_at,
+        pr.actiu,
+        pr.external_observation_id,
+        cp.nom,
+        cp.actiu AS catalog_actiu,
+        cp.product_family_id,
+        cp.barcode,
+        cp.package_quantity_amount,
+        cp.package_quantity_unit,
+        cp.normalized_measurement_unit
+      FROM price_record pr
+      JOIN catalog_product cp ON cp.id = pr.catalog_product_id
+      WHERE pr.catalog_product_id = ? AND pr.supermarket_id = ?
+      ORDER BY pr.observed_at DESC, pr.id DESC
+      LIMIT 1;
+      ''',
+      variables: [
+        Variable.withInt(catalogProductId),
+        Variable.withInt(supermarketId),
+      ],
+    ).getSingleOrNull();
+    if (row == null) return null;
+
+    return _PriceRecordSnapshot(
+      id: row.read<int>('id'),
+      catalogProductId: row.read<int>('catalog_product_id'),
+      supermarketId: row.read<int>('supermarket_id'),
+      price: row.read<double>('price'),
+      observedAt: DateTime.fromMillisecondsSinceEpoch(
+        (row.data['observed_at'] as int?) ?? 0,
+      ),
+      isActive: (row.data['actiu'] as int? ?? 0) == 1,
+      catalogIsActive: (row.data['catalog_actiu'] as int? ?? 0) == 1,
+      externalObservationId: row.data['external_observation_id'] as int?,
+      name: row.read<String>('nom'),
+      productFamilyId: row.read<int>('product_family_id'),
+      barcode: row.data['barcode'] as String?,
+      packageQuantityAmount:
+          (row.data['package_quantity_amount'] as num?)?.toDouble(),
+      packageQuantityUnit: row.data['package_quantity_unit'] as String?,
+      normalizedMeasurementUnit:
+          row.data['normalized_measurement_unit'] as String?,
+    );
+  }
+
+  Future<int> _upsertCatalogProduct({
+    required String name,
+    required int productFamilyId,
+    required String? barcode,
+    required double packageQuantityAmount,
+    required String packageQuantityUnit,
+    required String normalizedMeasurementUnit,
+    required bool isActive,
+    required bool overwriteExisting,
+    int? existingCatalogProductId,
+  }) async {
+    final identityKey = buildCatalogProductIdentityKey(
+      productFamilyId: productFamilyId,
+      name: name,
+      quantity: packageQuantityAmount,
+      unitType: packageQuantityUnit,
+      barcode: barcode,
+    );
+
+    if (existingCatalogProductId != null) {
+      final conflicting = await dao.db.customSelect(
+        'SELECT id FROM catalog_product WHERE identity_key = ? AND id != ? LIMIT 1;',
+        variables: [
+          Variable.withString(identityKey),
+          Variable.withInt(existingCatalogProductId),
+        ],
+      ).getSingleOrNull();
+      if (conflicting != null) {
+        throw StateError(
+          'Catalog product identity conflict for key $identityKey',
+        );
+      }
+    }
+
+    final existing = existingCatalogProductId != null
+        ? await dao.db.customSelect(
+            'SELECT id FROM catalog_product WHERE id = ? LIMIT 1;',
+            variables: [Variable.withInt(existingCatalogProductId)],
+          ).getSingleOrNull()
+        : await dao.db.customSelect(
+            'SELECT id, actiu FROM catalog_product WHERE identity_key = ? LIMIT 1;',
+            variables: [Variable.withString(identityKey)],
+          ).getSingleOrNull();
+
+    if (existing != null) {
+      final catalogProductId = existing.read<int>('id');
+      if (!overwriteExisting) return catalogProductId;
+      final nextCatalogIsActive =
+          (existing.data['actiu'] as int? ?? 0) == 1 || isActive;
+      await dao.db.customStatement(
+        '''
+        UPDATE catalog_product
+        SET nom = ?, actiu = ?, product_family_id = ?, barcode = ?,
+            package_quantity_amount = ?, package_quantity_unit = ?,
+            normalized_measurement_unit = ?, identity_key = ?
+        WHERE id = ?;
+        ''',
+        [
+          name.trim(),
+          nextCatalogIsActive ? 1 : 0,
+          productFamilyId,
+          barcode?.trim().isEmpty == true ? null : barcode?.trim(),
+          packageQuantityAmount,
+          packageQuantityUnit,
+          normalizedMeasurementUnit,
+          identityKey,
+          catalogProductId,
+        ],
+      );
+      return catalogProductId;
+    }
+
+    await dao.db.customStatement(
+      '''
+      INSERT INTO catalog_product (
+        nom, actiu, product_family_id, barcode,
+        package_quantity_amount, package_quantity_unit,
+        normalized_measurement_unit, identity_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      ''',
+      [
+        name.trim(),
+        isActive ? 1 : 0,
+        productFamilyId,
+        barcode?.trim().isEmpty == true ? null : barcode?.trim(),
+        packageQuantityAmount,
+        packageQuantityUnit,
+        normalizedMeasurementUnit,
+        identityKey,
+      ],
+    );
+    final inserted = await dao.db
+        .customSelect(
+          'SELECT last_insert_rowid() AS id;',
+        )
+        .getSingle();
+    return inserted.read<int>('id');
+  }
+
+  Future<int> _insertPriceRecord({
+    required int catalogProductId,
+    required int supermarketId,
+    required double price,
+    required DateTime observedAt,
+    required bool isActive,
+    int? externalObservationId,
+  }) async {
+    await dao.db.customStatement(
+      '''
+      INSERT INTO price_record (
+        catalog_product_id, supermarket_id, price, observed_at, actiu,
+        external_observation_id
+      ) VALUES (?, ?, ?, ?, ?, ?);
+      ''',
+      [
+        catalogProductId,
+        supermarketId,
+        price,
+        observedAt.millisecondsSinceEpoch,
+        isActive ? 1 : 0,
+        externalObservationId,
+      ],
+    );
+    final inserted = await dao.db
+        .customSelect(
+          'SELECT last_insert_rowid() AS id;',
+        )
+        .getSingle();
+    return inserted.read<int>('id');
+  }
+
   @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
     bool onlyCurrentPrice = true,
   }) async {
-    final rows = await dao.getProductItems(
+    return _getDerivedProductItems(
       productFamilyId: productFamilyId,
       supermarketId: supermarketId,
       onlyCurrentPrice: onlyCurrentPrice,
     );
-
-    return rows
-        .map(
-          (row) => ProductItem(
-            id: row.id,
-            name: row.nom,
-            isActive: row.actiu,
-            productFamilyId: row.productFamilyId,
-            supermarketId: row.supermarketId,
-            price: row.price,
-            quantity: row.quantity,
-            unitType: row.unitType,
-            pricePerQuantity: row.pricePerQuantity,
-            dateAdded: row.dateAdded,
-            isCurrentPrice: row.isCurrentPrice,
-            barcode: row.barcode,
-            packageQuantityAmount: row.packageQuantityAmount,
-            packageQuantityUnit: row.packageQuantityUnit,
-            normalizedMeasurementUnit: row.normalizedMeasurementUnit,
-            externalObservationId: row.externalObservationId,
-          ),
-        )
-        .toList();
   }
 
   @override
-  Future<int> saveProductItem(ProductItem item) {
-    return dao.saveProductItem(
-      ProductItemTableCompanion(
-        id: item.id == null ? const Value.absent() : Value(item.id!),
-        nom: Value(item.name),
-        actiu: Value(item.isActive),
-        productFamilyId: Value(item.productFamilyId),
-        supermarketId: Value(item.supermarketId),
-        price: Value(item.price),
-        quantity: Value(item.quantity),
-        unitType: Value(item.unitType),
-        pricePerQuantity: Value(item.pricePerQuantity),
-        packageQuantityAmount: Value(item.packageQuantityAmount),
-        packageQuantityUnit: Value(item.packageQuantityUnit),
-        normalizedMeasurementUnit: Value(item.normalizedMeasurementUnit),
-        dateAdded: Value(item.dateAdded),
-        isCurrentPrice: Value(item.isCurrentPrice),
-        barcode: Value(item.barcode),
-        externalObservationId: Value(item.externalObservationId),
-      ),
+  Future<int> saveProductItem(ProductItem item) async {
+    final normalizedUnitType = normalizeUnitTypeForStorage(item.unitType);
+    final normalizedMeasurementUnit = item.normalizedMeasurementUnit ??
+        normalizeUnitTypeForComparison(normalizedUnitType);
+    final quantity = item.packageQuantityAmount ?? item.quantity;
+    final barcode = item.barcode?.trim();
+
+    if (item.id != null) {
+      final existing = await _getPriceRecordById(item.id!);
+      if (existing == null) {
+        throw StateError('Price record not found: ${item.id}');
+      }
+
+      final nextCatalogProductId = await _upsertCatalogProduct(
+        name: item.name,
+        productFamilyId: item.productFamilyId,
+        barcode: barcode,
+        packageQuantityAmount: quantity,
+        packageQuantityUnit: normalizedUnitType,
+        normalizedMeasurementUnit: normalizedMeasurementUnit,
+        isActive: existing.catalogIsActive,
+        overwriteExisting: true,
+        existingCatalogProductId: existing.catalogProductId,
+      );
+
+      await dao.db.customStatement(
+        '''
+        UPDATE price_record
+        SET catalog_product_id = ?, supermarket_id = ?, price = ?, observed_at = ?,
+            actiu = ?, external_observation_id = ?
+        WHERE id = ?;
+        ''',
+        [
+          nextCatalogProductId,
+          item.supermarketId,
+          item.price,
+          item.dateAdded.millisecondsSinceEpoch,
+          item.isActive ? 1 : 0,
+          item.externalObservationId,
+          item.id,
+        ],
+      );
+      return item.id!;
+    }
+
+    final catalogProductId = await _upsertCatalogProduct(
+      name: item.name,
+      productFamilyId: item.productFamilyId,
+      barcode: barcode,
+      packageQuantityAmount: quantity,
+      packageQuantityUnit: normalizedUnitType,
+      normalizedMeasurementUnit: normalizedMeasurementUnit,
+      isActive: item.isActive,
+      overwriteExisting: item.isCurrentPrice,
+    );
+
+    var observedAt = item.dateAdded;
+    if (!item.isCurrentPrice) {
+      final latest = await _getLatestPriceRecord(
+        catalogProductId: catalogProductId,
+        supermarketId: item.supermarketId,
+      );
+      if (latest != null && !observedAt.isBefore(latest.observedAt)) {
+        observedAt =
+            latest.observedAt.subtract(const Duration(milliseconds: 1));
+      }
+    }
+
+    return _insertPriceRecord(
+      catalogProductId: catalogProductId,
+      supermarketId: item.supermarketId,
+      price: item.price,
+      observedAt: observedAt,
+      isActive: item.isActive,
+      externalObservationId: item.externalObservationId,
     );
   }
 
   @override
   Future<int?> getLastUsedSupermarketId() async {
-    final rows = await dao.getProductItems(onlyCurrentPrice: false);
-    if (rows.isEmpty) return null;
-    return rows.first.supermarketId;
+    final row = await dao.db
+        .customSelect(
+          'SELECT supermarket_id FROM price_record ORDER BY observed_at DESC, id DESC LIMIT 1;',
+        )
+        .getSingleOrNull();
+    if (row == null) return null;
+    return row.read<int>('supermarket_id');
   }
 
   @override
@@ -226,61 +600,46 @@ class DriftPersistenceRepository implements PersistenceRepository {
     String? barcode,
   }) async {
     final trimmedName = productName.trim();
+    final storedUnitType = normalizeUnitTypeForStorage(unitType);
     final familyId = await _resolveProductFamilyIdByName(
       familyName,
       shoppingUnit: inferShoppingUnitFromUnitType(unitType),
       purchaseMode: purchaseMode ?? inferPurchaseModeFromUnitType(unitType),
     );
 
-    final currentRows = await dao.getProductItems(
+    final catalogProductId = await _upsertCatalogProduct(
+      name: trimmedName,
       productFamilyId: familyId,
-      supermarketId: supermarketId,
-      onlyCurrentPrice: true,
+      barcode: barcode,
+      packageQuantityAmount: quantity,
+      packageQuantityUnit: storedUnitType,
+      normalizedMeasurementUnit: normalizeUnitTypeForComparison(storedUnitType),
+      isActive: true,
+      overwriteExisting: true,
     );
 
-    final normalizedProduct = normalizeFamilyKey(trimmedName);
-    for (final row in currentRows) {
-      if (normalizeFamilyKey(row.nom) == normalizedProduct) {
-        await dao.saveProductItem(
-          ProductItemTableCompanion(
-            id: Value(row.id),
-            nom: Value(row.nom),
-            actiu: Value(row.actiu),
-            productFamilyId: Value(row.productFamilyId),
-            supermarketId: Value(row.supermarketId),
-            price: Value(row.price),
-            quantity: Value(row.quantity),
-            unitType: Value(row.unitType),
-            pricePerQuantity: Value(row.pricePerQuantity),
-            packageQuantityAmount: Value(row.packageQuantityAmount),
-            packageQuantityUnit: Value(row.packageQuantityUnit),
-            normalizedMeasurementUnit: Value(row.normalizedMeasurementUnit),
-            dateAdded: Value(row.dateAdded),
-            isCurrentPrice: const Value(false),
-            barcode: Value(row.barcode),
-            externalObservationId: Value(row.externalObservationId),
-          ),
-        );
+    final latest = await _getLatestPriceRecord(
+      catalogProductId: catalogProductId,
+      supermarketId: supermarketId,
+    );
+    if (latest != null &&
+        latest.isActive &&
+        (latest.price - price).abs() < _priceEpsilon) {
+      final existingQuantity = latest.packageQuantityAmount ?? quantity;
+      final existingUnit = latest.packageQuantityUnit ?? storedUnitType;
+      if ((existingQuantity - quantity).abs() < _priceEpsilon &&
+          normalizeUnitTypeForComparison(existingUnit) ==
+              normalizeUnitTypeForComparison(storedUnitType)) {
+        return latest.id;
       }
     }
 
-    return saveProductItem(
-      ProductItem(
-        name: trimmedName,
-        isActive: true,
-        productFamilyId: familyId,
-        supermarketId: supermarketId,
-        price: price,
-        quantity: quantity,
-        unitType: normalizeUnitTypeForStorage(unitType),
-        pricePerQuantity: quantity == 0 ? 0 : price / quantity,
-        packageQuantityAmount: quantity,
-        packageQuantityUnit: normalizeUnitTypeForStorage(unitType),
-        normalizedMeasurementUnit: normalizeUnitTypeForComparison(unitType),
-        dateAdded: DateTime.now(),
-        isCurrentPrice: true,
-        barcode: barcode,
-      ),
+    return _insertPriceRecord(
+      catalogProductId: catalogProductId,
+      supermarketId: supermarketId,
+      price: price,
+      observedAt: DateTime.now(),
+      isActive: true,
     );
   }
 
@@ -291,8 +650,12 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final normalized = barcode.trim();
     if (normalized.isEmpty) return const [];
 
-    final rows = await dao.getCurrentActiveItemsByBarcode(normalized);
-    if (rows.isEmpty) return const [];
+    final items = await _getDerivedProductItems(
+      onlyCurrentPrice: true,
+      barcode: normalized,
+    );
+    final activeItems = items.where((item) => item.isActive).toList();
+    if (activeItems.isEmpty) return const [];
 
     final families = await getProductFamilies(onlyActive: false);
     final supermarkets = await getSupermarkets(onlyActive: false);
@@ -306,29 +669,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         if (market.id != null) market.id!: market.name,
     };
 
-    final items = rows
-        .map(
-          (row) => ProductItem(
-            id: row.id,
-            name: row.nom,
-            isActive: row.actiu,
-            productFamilyId: row.productFamilyId,
-            supermarketId: row.supermarketId,
-            price: row.price,
-            quantity: row.quantity,
-            unitType: row.unitType,
-            pricePerQuantity: row.pricePerQuantity,
-            dateAdded: row.dateAdded,
-            isCurrentPrice: row.isCurrentPrice,
-            barcode: row.barcode,
-            packageQuantityAmount: row.packageQuantityAmount,
-            packageQuantityUnit: row.packageQuantityUnit,
-            normalizedMeasurementUnit: row.normalizedMeasurementUnit,
-            externalObservationId: row.externalObservationId,
-          ),
-        )
-        .toList()
-      ..sort((a, b) {
+    final sortedItems = [...activeItems]..sort((a, b) {
         final byCurrent =
             (b.isCurrentPrice ? 1 : 0) - (a.isCurrentPrice ? 1 : 0);
         if (byCurrent != 0) return byCurrent;
@@ -342,7 +683,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         return a.price.compareTo(b.price);
       });
 
-    return items
+    return sortedItems
         .map(
           (item) => BarcodeMatchResult(
             productItem: item,
@@ -373,79 +714,49 @@ class DriftPersistenceRepository implements PersistenceRepository {
       );
     }
 
-    final currentMatches = await dao.getCurrentActiveItemsByBarcode(
-      normalizedBarcode,
+    final familyId = await _resolveProductFamilyIdByName(
+      familyName,
+      shoppingUnit: inferShoppingUnitFromUnitType(unitType),
+      purchaseMode: inferPurchaseModeFromUnitType(unitType),
     );
     final unit = normalizeUnitTypeForStorage(unitType);
+    final catalogProductId = await _upsertCatalogProduct(
+      name: productName.trim(),
+      productFamilyId: familyId,
+      barcode: normalizedBarcode,
+      packageQuantityAmount: quantity,
+      packageQuantityUnit: unit,
+      normalizedMeasurementUnit: normalizeUnitTypeForComparison(unit),
+      isActive: true,
+      overwriteExisting: true,
+    );
 
-    final currentSameMarket = currentMatches
-        .where((row) => row.supermarketId == supermarketId)
-        .toList();
+    final latest = await _getLatestPriceRecord(
+      catalogProductId: catalogProductId,
+      supermarketId: supermarketId,
+    );
 
-    final sameTupleExists = currentSameMarket.any((row) {
-      return (row.price - price).abs() < _priceEpsilon &&
-          (row.quantity - quantity).abs() < _priceEpsilon &&
-          normalizeUnitTypeForComparison(row.unitType) ==
-              normalizeUnitTypeForComparison(unit);
-    });
-
-    if (sameTupleExists) {
+    if (latest != null &&
+        latest.isActive &&
+        (latest.price - price).abs() < _priceEpsilon &&
+        ((latest.packageQuantityAmount ?? quantity) - quantity).abs() <
+            _priceEpsilon &&
+        normalizeUnitTypeForComparison(latest.packageQuantityUnit ?? unit) ==
+            normalizeUnitTypeForComparison(unit)) {
       return const ScannedPriceRegistrationResult(
         created: false,
         message:
-            'Price already current in this supermarket. No new Product Item created.',
+            'Price already current in this supermarket. No new price record created.',
       );
     }
 
-    await dao.db.transaction(() async {
-      for (final row in currentSameMarket) {
-        await dao.saveProductItem(
-          ProductItemTableCompanion(
-            id: Value(row.id),
-            nom: Value(row.nom),
-            actiu: Value(row.actiu),
-            productFamilyId: Value(row.productFamilyId),
-            supermarketId: Value(row.supermarketId),
-            price: Value(row.price),
-            quantity: Value(row.quantity),
-            unitType: Value(row.unitType),
-            pricePerQuantity: Value(row.pricePerQuantity),
-            packageQuantityAmount: Value(row.packageQuantityAmount),
-            packageQuantityUnit: Value(row.packageQuantityUnit),
-            normalizedMeasurementUnit: Value(row.normalizedMeasurementUnit),
-            dateAdded: Value(row.dateAdded),
-            isCurrentPrice: const Value(false),
-            barcode: Value(row.barcode),
-            externalObservationId: Value(row.externalObservationId),
-          ),
-        );
-      }
-
-      final familyId = await _resolveProductFamilyIdByName(
-        familyName,
-        shoppingUnit: inferShoppingUnitFromUnitType(unitType),
-        purchaseMode: inferPurchaseModeFromUnitType(unitType),
-      );
-      await saveProductItem(
-        ProductItem(
-          name: productName.trim(),
-          isActive: true,
-          productFamilyId: familyId,
-          supermarketId: supermarketId,
-          price: price,
-          quantity: quantity,
-          unitType: unit,
-          pricePerQuantity: quantity == 0 ? 0 : price / quantity,
-          packageQuantityAmount: quantity,
-          packageQuantityUnit: unit,
-          normalizedMeasurementUnit: normalizeUnitTypeForComparison(unit),
-          dateAdded: DateTime.now(),
-          isCurrentPrice: true,
-          barcode: normalizedBarcode,
-          externalObservationId: null,
-        ),
-      );
-    });
+    await _insertPriceRecord(
+      catalogProductId: catalogProductId,
+      supermarketId: supermarketId,
+      price: price,
+      observedAt: DateTime.now(),
+      isActive: true,
+    );
 
     return const ScannedPriceRegistrationResult(
       created: true,
@@ -501,6 +812,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
               row.reviewStatus,
             ),
             localProductItemId: row.localProductItemId,
+            localPriceRecordId: row.localPriceRecordId,
           ),
         )
         .toList();
@@ -539,6 +851,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
         localProductItemId: existing != null
             ? Value(existing.localProductItemId)
             : Value(observation.localProductItemId),
+        localPriceRecordId: existing != null
+            ? Value(existing.localPriceRecordId)
+            : Value(observation.localPriceRecordId),
       ),
     );
   }
@@ -576,6 +891,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         observedAt: Value(row.observedAt),
         reviewStatus: Value(newStatus.storageValue),
         localProductItemId: Value(row.localProductItemId),
+        localPriceRecordId: Value(row.localPriceRecordId),
       ),
     );
   }
@@ -592,10 +908,10 @@ class DriftPersistenceRepository implements PersistenceRepository {
         throw StateError('External observation not found: $observationId');
       }
 
-      if (observation.localProductItemId != null) {
+      if (observation.localPriceRecordId != null) {
         throw StateError(
           'Observation $observationId is already confirmed '
-          'with local product item ${observation.localProductItemId}',
+          'with local price record ${observation.localPriceRecordId}',
         );
       }
 
@@ -660,7 +976,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
           reviewStatus: Value(
             ExternalObservationReviewStatus.acceptedForComparison.storageValue,
           ),
-          localProductItemId: Value(productItemId),
+          localProductItemId: Value(observation.localProductItemId),
+          localPriceRecordId: Value(productItemId),
         ),
       );
 
@@ -757,14 +1074,14 @@ class DriftPersistenceRepository implements PersistenceRepository {
               row.reviewStatus ==
                   ExternalObservationReviewStatus
                       .acceptedForComparison.storageValue &&
-              row.localProductItemId == null,
+              row.localPriceRecordId == null,
         )
         .map((row) {
           final mapping = mappingByExternalStoreId[row.externalStoreId];
           final familyId = familyIdByName[normalizeFamilyKey(row.familyName)];
           if (mapping == null || familyId == null) return null;
           return ProductItem(
-            id: row.localProductItemId,
+            id: row.localPriceRecordId,
             name: row.productName,
             productFamilyId: familyId,
             supermarketId: mapping.supermarketId,
@@ -817,4 +1134,38 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
     return result;
   }
+}
+
+class _PriceRecordSnapshot {
+  const _PriceRecordSnapshot({
+    required this.id,
+    required this.catalogProductId,
+    required this.supermarketId,
+    required this.price,
+    required this.observedAt,
+    required this.isActive,
+    required this.catalogIsActive,
+    required this.externalObservationId,
+    required this.name,
+    required this.productFamilyId,
+    required this.barcode,
+    required this.packageQuantityAmount,
+    required this.packageQuantityUnit,
+    required this.normalizedMeasurementUnit,
+  });
+
+  final int id;
+  final int catalogProductId;
+  final int supermarketId;
+  final double price;
+  final DateTime observedAt;
+  final bool isActive;
+  final bool catalogIsActive;
+  final int? externalObservationId;
+  final String name;
+  final int productFamilyId;
+  final String? barcode;
+  final double? packageQuantityAmount;
+  final String? packageQuantityUnit;
+  final String? normalizedMeasurementUnit;
 }

@@ -1,6 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../normalization/catalog_product_identity.dart';
+import '../normalization/family_unit_normalization.dart';
+
 part 'drift_database.g.dart';
 
 class SupermarketTable extends Table {
@@ -48,8 +51,42 @@ class ProductItemTable extends Table {
   BoolColumn get isCurrentPrice =>
       boolean().withDefault(const Constant(true))();
   TextColumn get barcode => text().nullable()();
-  IntColumn get externalObservationId =>
-      integer().nullable().references(ExternalPriceObservationTable, #id)();
+  IntColumn get externalObservationId => integer().nullable()();
+}
+
+class CatalogProductTable extends Table {
+  @override
+  String get tableName => 'catalog_product';
+
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get nom => text()();
+  BoolColumn get actiu => boolean().withDefault(const Constant(true))();
+  IntColumn get productFamilyId =>
+      integer().references(ProductFamilyTable, #id)();
+  TextColumn get barcode => text().nullable()();
+  RealColumn get packageQuantityAmount => real().nullable()();
+  TextColumn get packageQuantityUnit => text().nullable()();
+  TextColumn get normalizedMeasurementUnit => text().nullable()();
+  TextColumn get identityKey => text()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {identityKey},
+      ];
+}
+
+class PriceRecordTable extends Table {
+  @override
+  String get tableName => 'price_record';
+
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get catalogProductId =>
+      integer().references(CatalogProductTable, #id)();
+  IntColumn get supermarketId => integer().references(SupermarketTable, #id)();
+  RealColumn get price => real()();
+  DateTimeColumn get observedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get actiu => boolean().withDefault(const Constant(true))();
+  IntColumn get externalObservationId => integer().nullable()();
 }
 
 class ExternalStoreMappingTable extends Table {
@@ -84,8 +121,8 @@ class ExternalPriceObservationTable extends Table {
   DateTimeColumn get observedAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get reviewStatus =>
       text().withDefault(const Constant('unreviewed'))();
-  IntColumn get localProductItemId =>
-      integer().nullable().references(ProductItemTable, #id)();
+  IntColumn get localProductItemId => integer().nullable()();
+  IntColumn get localPriceRecordId => integer().nullable()();
 
   @override
   List<Set<Column<Object>>> get uniqueKeys => [
@@ -110,6 +147,8 @@ class ShoppingListTable extends Table {
     SupermarketTable,
     ProductFamilyTable,
     ProductItemTable,
+    CatalogProductTable,
+    PriceRecordTable,
     ShoppingListTable,
     ExternalStoreMappingTable,
     ExternalPriceObservationTable,
@@ -120,7 +159,7 @@ class AppDriftDatabase extends _$AppDriftDatabase {
   AppDriftDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -226,6 +265,178 @@ class AppDriftDatabase extends _$AppDriftDatabase {
               END
               WHERE purchase_mode IS NOT NULL;
             ''');
+          }
+
+          if (from < 6) {
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS catalog_product (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                nom TEXT NOT NULL,
+                actiu INTEGER NOT NULL DEFAULT 1,
+                product_family_id INTEGER NOT NULL REFERENCES product_family (id),
+                barcode TEXT NULL,
+                package_quantity_amount REAL NULL,
+                package_quantity_unit TEXT NULL,
+                normalized_measurement_unit TEXT NULL,
+                identity_key TEXT NOT NULL UNIQUE
+              );
+            ''');
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS price_record (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                catalog_product_id INTEGER NOT NULL REFERENCES catalog_product (id),
+                supermarket_id INTEGER NOT NULL REFERENCES supermarket (id),
+                price REAL NOT NULL,
+                observed_at INTEGER NOT NULL,
+                actiu INTEGER NOT NULL DEFAULT 1,
+                external_observation_id INTEGER NULL
+              );
+            ''');
+
+            try {
+              await customStatement(
+                'ALTER TABLE external_price_observation ADD COLUMN local_price_record_id INTEGER NULL;',
+              );
+            } catch (_) {
+              // Column may already exist.
+            }
+
+            final oldRows = await customSelect('''
+              SELECT id, nom, actiu, product_family_id, supermarket_id, price,
+                     quantity, unit_type, package_quantity_amount,
+                     package_quantity_unit, normalized_measurement_unit,
+                     date_added, barcode, external_observation_id
+              FROM product_item
+              ORDER BY id ASC;
+            ''').get();
+
+            final catalogIdByIdentity = <String, int>{};
+            final priceRecordIdByLegacyItemId = <int, int>{};
+
+            for (final row in oldRows) {
+              final legacyId = row.read<int>('id');
+              final name = row.read<String>('nom');
+              final isActive = (row.data['actiu'] as int? ?? 0) == 1;
+              final familyId = row.read<int>('product_family_id');
+              final supermarketId = row.read<int>('supermarket_id');
+              final price = row.read<double>('price');
+              final quantity =
+                  (row.data['package_quantity_amount'] as num?)?.toDouble() ??
+                      row.read<double>('quantity');
+              final unitType = normalizeUnitTypeForStorage(
+                (row.data['package_quantity_unit'] as String?) ??
+                    row.read<String>('unit_type'),
+              );
+              final normalizedMeasurementUnit =
+                  (row.data['normalized_measurement_unit'] as String?) ??
+                      normalizeUnitTypeForComparison(unitType);
+              final barcode = (row.data['barcode'] as String?)?.trim();
+              final externalObservationId =
+                  (row.data['external_observation_id'] as int?);
+              final observedAt = DateTime.fromMillisecondsSinceEpoch(
+                (row.data['date_added'] as int?) ?? 0,
+              );
+
+              final identityKey = buildCatalogProductIdentityKey(
+                productFamilyId: familyId,
+                name: name,
+                quantity: quantity,
+                unitType: unitType,
+                barcode: barcode,
+              );
+
+              var catalogId = catalogIdByIdentity[identityKey];
+              if (catalogId == null) {
+                final existingCatalog = await customSelect(
+                  'SELECT id, actiu FROM catalog_product WHERE identity_key = ? LIMIT 1;',
+                  variables: [Variable.withString(identityKey)],
+                ).getSingleOrNull();
+                if (existingCatalog != null) {
+                  catalogId = existingCatalog.read<int>('id');
+                  final catalogIsActive =
+                      (existingCatalog.data['actiu'] as int? ?? 0) == 1;
+                  if (isActive && !catalogIsActive) {
+                    await customStatement(
+                      'UPDATE catalog_product SET actiu = 1 WHERE id = ?;',
+                      [catalogId],
+                    );
+                  }
+                } else {
+                  await customStatement(
+                    '''
+                    INSERT INTO catalog_product (
+                      nom, actiu, product_family_id, barcode,
+                      package_quantity_amount, package_quantity_unit,
+                      normalized_measurement_unit, identity_key
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                    ''',
+                    [
+                      name,
+                      isActive ? 1 : 0,
+                      familyId,
+                      (barcode == null || barcode.isEmpty) ? null : barcode,
+                      quantity,
+                      unitType,
+                      normalizedMeasurementUnit,
+                      identityKey,
+                    ],
+                  );
+                  final insertedCatalog = await customSelect(
+                    'SELECT last_insert_rowid() AS id;',
+                  ).getSingle();
+                  catalogId = insertedCatalog.read<int>('id');
+                }
+                catalogIdByIdentity[identityKey] = catalogId;
+              } else if (isActive) {
+                await customStatement(
+                  'UPDATE catalog_product SET actiu = 1 WHERE id = ?;',
+                  [catalogId],
+                );
+              }
+
+              await customStatement(
+                '''
+                INSERT INTO price_record (
+                  catalog_product_id, supermarket_id, price, observed_at, actiu,
+                  external_observation_id
+                ) VALUES (?, ?, ?, ?, ?, ?);
+                ''',
+                [
+                  catalogId,
+                  supermarketId,
+                  price,
+                  observedAt.millisecondsSinceEpoch,
+                  isActive ? 1 : 0,
+                  externalObservationId,
+                ],
+              );
+              final insertedPriceRecord = await customSelect(
+                'SELECT last_insert_rowid() AS id;',
+              ).getSingle();
+              priceRecordIdByLegacyItemId[legacyId] =
+                  insertedPriceRecord.read<int>('id');
+            }
+
+            final linkedObservations = await customSelect('''
+              SELECT id, local_product_item_id
+              FROM external_price_observation
+              WHERE local_product_item_id IS NOT NULL;
+            ''').get();
+
+            for (final row in linkedObservations) {
+              final legacyItemId = row.read<int>('local_product_item_id');
+              final priceRecordId = priceRecordIdByLegacyItemId[legacyItemId];
+              if (priceRecordId == null) continue;
+
+              await customStatement(
+                '''
+                UPDATE external_price_observation
+                SET local_price_record_id = ?
+                WHERE id = ?;
+                ''',
+                [priceRecordId, row.read<int>('id')],
+              );
+            }
           }
         },
       );
