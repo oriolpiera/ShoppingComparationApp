@@ -204,7 +204,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
         final quantity =
             (row.data['package_quantity_amount'] as num?)?.toDouble() ?? 0;
         final price = row.read<double>('price');
-        final unitType = (row.data['package_quantity_unit'] as String?) ?? 'kg';
+        final unitType = (row.data['package_quantity_unit'] as String?) ??
+            (row.data['normalized_measurement_unit'] as String?) ??
+            'kg';
         return ProductItem(
           id: row.read<int>('price_record_id'),
           name: row.read<String>('product_name'),
@@ -461,21 +463,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
     return inserted.read<int>('id');
   }
 
-  Future<void> _setCatalogProductSupermarketActive({
-    required int catalogProductId,
-    required int supermarketId,
-    required bool isActive,
-  }) async {
-    await dao.db.customStatement(
-      '''
-      UPDATE price_record
-      SET actiu = ?
-      WHERE catalog_product_id = ? AND supermarket_id = ?;
-      ''',
-      [isActive ? 1 : 0, catalogProductId, supermarketId],
-    );
-  }
-
   String _buildCatalogProductIdentityKey({
     required int productFamilyId,
     required String name,
@@ -529,14 +516,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
         overwriteExisting: true,
         existingCatalogProductId: existing.catalogProductId,
       );
-
-      if (!item.isActive) {
-        await _setCatalogProductSupermarketActive(
-          catalogProductId: nextCatalogProductId,
-          supermarketId: item.supermarketId,
-          isActive: false,
-        );
-      }
 
       await dao.db.customStatement(
         '''
@@ -989,7 +968,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
           reviewStatus: Value(
             ExternalObservationReviewStatus.acceptedForComparison.storageValue,
           ),
-          localProductItemId: Value(productItemId),
+          localProductItemId: Value(observation.localProductItemId),
           localPriceRecordId: Value(productItemId),
         ),
       );
