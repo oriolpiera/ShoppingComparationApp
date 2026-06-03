@@ -23,6 +23,7 @@ Main goals:
 ### Always
 
 * Read existing code patterns before introducing new abstractions
+* Read `CONTEXT.md` before making significant domain, naming, or workflow changes
 * Prefer incremental changes over large rewrites
 * Keep files small and focused
 * Reuse existing widgets and utilities whenever possible
@@ -49,6 +50,24 @@ Main goals:
 * Add generated files manually
 * Introduce unnecessary singleton patterns
 * Use deprecated Flutter APIs when stable alternatives exist
+* Push implementation fixes directly to `main` as the intended workflow
+
+---
+
+## GitHub workflow
+
+Default workflow for code changes:
+
+1. Create or confirm a GitHub issue first
+2. Implement the change on a branch
+3. Open a pull request linked to the issue
+4. Stop before merge unless the user explicitly asks otherwise
+
+Rules:
+
+* Prefer `Issue -> PR -> user merges to main`
+* Do not treat direct push to `main` as the normal path
+* If a fix accidentally lands on `main`, create a retrospective issue for traceability
 
 ---
 
@@ -353,7 +372,24 @@ If uncertain:
 
 ## Documentation references
 
-Agents working on this repository must read and follow the documentation inside the `docs/` directory before making significant architectural or testing changes.
+Agents working on this repository must read and follow the project context and the documentation inside the `docs/` directory before making significant architectural, domain, naming, or testing changes.
+
+### Domain context
+
+Canonical file:
+
+```text
+CONTEXT.md
+```
+
+Use this file for:
+
+* Domain vocabulary
+* Naming decisions
+* Relationship rules
+* Resolved product and shopping concepts
+
+Do not create or rely on duplicate lowercase `context.md` files. `CONTEXT.md` is the source of truth.
 
 ### Architecture
 
@@ -411,4 +447,3 @@ When existing code conflicts with the documented architecture:
 * Prefer incremental migration
 * Avoid massive rewrites
 * Discuss large architectural changes before implementing them
-
