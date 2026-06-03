@@ -34,6 +34,24 @@ Example (current `home` feature):
 - Root screen delegated to `HomePage`
 - Base folders are ready for adding new features without mixing UI and business logic
 
+## Local checks
+
+This repo includes a local `.pre-commit-config.yaml` with:
+- `dart format --output=none --set-exit-if-changed`
+- `flutter analyze --no-fatal-infos`
+
+Notes:
+- `dart format` is enforced in check mode, so it fails if a file would be reformatted.
+- `flutter analyze` currently ignores `info` diagnostics in pre-commit because the repo still has 4 inherited `use_build_context_synchronously` infos in `lib/features/home/presentation/model_records_pages.dart`.
+- To run the hooks locally, make sure `pre-commit` is available in your shell. In this environment that means activating `pyenv` env `py3` first.
+
+Example:
+
+```bash
+pyenv activate py3
+pre-commit run --all-files
+```
+
 ## PR web preview workflow
 
 Pull requests trigger `.github/workflows/preview.yml`, which runs:

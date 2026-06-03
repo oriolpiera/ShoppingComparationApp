@@ -342,6 +342,17 @@ flutter analyze
 flutter test
 ```
 
+Local pre-commit note:
+
+- `.pre-commit-config.yaml` runs `dart format --output=none --set-exit-if-changed`
+- `.pre-commit-config.yaml` runs `flutter analyze --no-fatal-infos`
+
+Why `--no-fatal-infos` is used:
+
+- the repo currently has 4 inherited `info` diagnostics in `lib/features/home/presentation/model_records_pages.dart`
+- pre-commit should block real analyzer errors without failing every commit on those known legacy infos
+- once those infos are fixed, the flag should be removed
+
 ---
 
 # Bugfix policy
@@ -405,4 +416,3 @@ Good tests are:
 * Behavior-focused
 
 Tests are part of the product codebase and must receive the same quality standards as production code.
-
