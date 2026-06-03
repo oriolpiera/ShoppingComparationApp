@@ -372,6 +372,21 @@ class DriftPersistenceRepository implements PersistenceRepository {
       barcode: barcode,
     );
 
+    if (existingCatalogProductId != null) {
+      final conflicting = await dao.db.customSelect(
+        'SELECT id FROM catalog_product WHERE identity_key = ? AND id != ? LIMIT 1;',
+        variables: [
+          Variable.withString(identityKey),
+          Variable.withInt(existingCatalogProductId),
+        ],
+      ).getSingleOrNull();
+      if (conflicting != null) {
+        throw StateError(
+          'Catalog product identity conflict for key $identityKey',
+        );
+      }
+    }
+
     final existing = existingCatalogProductId != null
         ? await dao.db.customSelect(
             'SELECT id FROM catalog_product WHERE id = ? LIMIT 1;',

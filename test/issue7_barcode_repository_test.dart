@@ -233,4 +233,56 @@ void main() {
       1,
     );
   });
+
+  test('editing a product into an existing identity throws a conflict error',
+      () async {
+    final marketId = await repository.saveSupermarket(
+      Supermarket(name: 'A', isActive: true),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Milk Whole',
+      familyName: 'Milk',
+      supermarketId: marketId,
+      price: 1.5,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'BAR-1',
+    );
+    await repository.saveQuickProductItem(
+      productName: 'Milk Skim',
+      familyName: 'Milk',
+      supermarketId: marketId,
+      price: 1.6,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'BAR-2',
+    );
+
+    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    final second = items.singleWhere((item) => item.barcode == 'BAR-2');
+
+    expect(
+      () => repository.saveProductItem(
+        ProductItem(
+          id: second.id,
+          name: second.name,
+          isActive: second.isActive,
+          productFamilyId: second.productFamilyId,
+          supermarketId: second.supermarketId,
+          price: second.price,
+          quantity: second.quantity,
+          unitType: second.unitType,
+          pricePerQuantity: second.pricePerQuantity,
+          dateAdded: second.dateAdded,
+          isCurrentPrice: second.isCurrentPrice,
+          barcode: 'BAR-1',
+          packageQuantityAmount: second.packageQuantityAmount,
+          packageQuantityUnit: second.packageQuantityUnit,
+          normalizedMeasurementUnit: second.normalizedMeasurementUnit,
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
 }
