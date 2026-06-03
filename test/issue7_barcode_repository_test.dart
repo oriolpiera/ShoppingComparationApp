@@ -34,6 +34,8 @@ void main() {
     db = AppDriftDatabase();
     repository = DriftPersistenceRepository.fromDatabase(db);
     await db.customStatement('DELETE FROM shopping_list;');
+    await db.customStatement('DELETE FROM price_record;');
+    await db.customStatement('DELETE FROM catalog_product;');
     await db.customStatement('DELETE FROM product_item;');
     await db.customStatement('DELETE FROM product_family;');
     await db.customStatement('DELETE FROM supermarket;');

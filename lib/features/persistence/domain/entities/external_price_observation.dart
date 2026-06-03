@@ -40,6 +40,7 @@ class ExternalPriceObservation {
     required this.observedAt,
     this.reviewStatus = ExternalObservationReviewStatus.unreviewed,
     this.localProductItemId,
+    this.localPriceRecordId,
   });
 
   final int? id;
@@ -55,4 +56,5 @@ class ExternalPriceObservation {
   final DateTime observedAt;
   final ExternalObservationReviewStatus reviewStatus;
   final int? localProductItemId;
+  final int? localPriceRecordId;
 }
