@@ -260,6 +260,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         pr.actiu,
         pr.external_observation_id,
         cp.nom,
+        cp.actiu AS catalog_actiu,
         cp.product_family_id,
         cp.barcode,
         cp.package_quantity_amount,
@@ -283,6 +284,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         (row.data['observed_at'] as int?) ?? 0,
       ),
       isActive: (row.data['actiu'] as int? ?? 0) == 1,
+      catalogIsActive: (row.data['catalog_actiu'] as int? ?? 0) == 1,
       externalObservationId: row.data['external_observation_id'] as int?,
       name: row.read<String>('nom'),
       productFamilyId: row.read<int>('product_family_id'),
@@ -310,6 +312,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         pr.actiu,
         pr.external_observation_id,
         cp.nom,
+        cp.actiu AS catalog_actiu,
         cp.product_family_id,
         cp.barcode,
         cp.package_quantity_amount,
@@ -337,6 +340,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         (row.data['observed_at'] as int?) ?? 0,
       ),
       isActive: (row.data['actiu'] as int? ?? 0) == 1,
+      catalogIsActive: (row.data['catalog_actiu'] as int? ?? 0) == 1,
       externalObservationId: row.data['external_observation_id'] as int?,
       name: row.read<String>('nom'),
       productFamilyId: row.read<int>('product_family_id'),
@@ -512,7 +516,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         packageQuantityAmount: quantity,
         packageQuantityUnit: normalizedUnitType,
         normalizedMeasurementUnit: normalizedMeasurementUnit,
-        isActive: item.isActive,
+        isActive: existing.catalogIsActive,
         overwriteExisting: true,
         existingCatalogProductId: existing.catalogProductId,
       );
@@ -1136,6 +1140,7 @@ class _PriceRecordSnapshot {
     required this.price,
     required this.observedAt,
     required this.isActive,
+    required this.catalogIsActive,
     required this.externalObservationId,
     required this.name,
     required this.productFamilyId,
@@ -1151,6 +1156,7 @@ class _PriceRecordSnapshot {
   final double price;
   final DateTime observedAt;
   final bool isActive;
+  final bool catalogIsActive;
   final int? externalObservationId;
   final String name;
   final int productFamilyId;
