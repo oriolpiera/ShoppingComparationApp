@@ -666,7 +666,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
       onlyCurrentPrice: true,
       barcode: normalized,
     );
-    if (items.isEmpty) return const [];
+    final activeItems = items.where((item) => item.isActive).toList();
+    if (activeItems.isEmpty) return const [];
 
     final families = await getProductFamilies(onlyActive: false);
     final supermarkets = await getSupermarkets(onlyActive: false);
@@ -680,7 +681,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         if (market.id != null) market.id!: market.name,
     };
 
-    final sortedItems = [...items]..sort((a, b) {
+    final sortedItems = [...activeItems]..sort((a, b) {
         final byCurrent =
             (b.isCurrentPrice ? 1 : 0) - (a.isCurrentPrice ? 1 : 0);
         if (byCurrent != 0) return byCurrent;

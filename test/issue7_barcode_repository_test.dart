@@ -232,6 +232,11 @@ void main() {
           .length,
       1,
     );
+    expect(
+      (await repository.findCurrentActiveByBarcode('SHARED-1'))
+          .where((match) => match.productItem.supermarketId == marketAId),
+      isEmpty,
+    );
   });
 
   test('editing a product into an existing identity throws a conflict error',
