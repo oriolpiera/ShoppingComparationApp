@@ -1693,7 +1693,10 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
     }
 
     final prefill = await widget.namePrefillService
-        .tryGetProductPrefillByBarcode(widget.barcode);
+        .tryGetProductPrefillByBarcode(
+      widget.barcode,
+      preferredLanguageCodes: _preferredOffLanguageCodes(),
+    );
     return _BarcodeLookupData(
       matches: matches,
       prefilledName: prefill?.productName,
@@ -1701,6 +1704,11 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
       prefilledQuantity: prefill?.packageQuantityHint,
       prefilledUnitType: prefill?.packageUnitHint,
     );
+  }
+
+  List<String> _preferredOffLanguageCodes() {
+    final locale = WidgetsBinding.instance.platformDispatcher.locale;
+    return [locale.languageCode];
   }
 
   Future<void> _refresh() async {

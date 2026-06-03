@@ -25,38 +25,66 @@ class OpenFoodFactsNamePrefillService {
 
   final OpenFoodFactsGetRequest _getRequest;
 
-  Future<String?> tryGetProductNameByBarcode(String barcode) async {
-    final prefill = await tryGetProductPrefillByBarcode(barcode);
+  Future<String?> tryGetProductNameByBarcode(
+    String barcode, {
+    Iterable<String> preferredLanguageCodes = const [],
+  }) async {
+    final prefill = await tryGetProductPrefillByBarcode(
+      barcode,
+      preferredLanguageCodes: preferredLanguageCodes,
+    );
     return prefill?.productName;
   }
 
   Future<OpenFoodFactsProductPrefill?> tryGetProductPrefillByBarcode(
-    String barcode,
-  ) async {
+    String barcode, {
+    Iterable<String> preferredLanguageCodes = const [],
+  }) async {
     final normalizedBarcode = barcode.trim();
     if (normalizedBarcode.isEmpty) return null;
+    final normalizedLanguageCodes = _normalizeLanguageCodes(
+      preferredLanguageCodes,
+    );
+    final fields = <String>[
+      'product_name',
+      for (final code in normalizedLanguageCodes) 'product_name_$code',
+      'brands',
+      'quantity',
+    ];
 
     final uri = Uri.https(
       'world.openfoodfacts.org',
       '/api/v2/product/$normalizedBarcode',
-      {'fields': 'product_name,brands,quantity'},
+      {'fields': fields.join(',')},
     );
 
     try {
       final body = await _getRequest(uri);
       if (body == null || body.isEmpty) return null;
 
-      return parseProductPrefillFromResponse(body);
+      return parseProductPrefillFromResponse(
+        body,
+        preferredLanguageCodes: normalizedLanguageCodes,
+      );
     } catch (_) {
       return null;
     }
   }
 
-  String? parseProductNameFromResponse(String body) {
-    return parseProductPrefillFromResponse(body)?.productName;
+  String? parseProductNameFromResponse(
+    String body, {
+    Iterable<String> preferredLanguageCodes = const [],
+  }) {
+    return parseProductPrefillFromResponse(
+      body,
+      preferredLanguageCodes: preferredLanguageCodes,
+    )?.productName;
   }
 
-  OpenFoodFactsProductPrefill? parseProductPrefillFromResponse(String body) {
+  OpenFoodFactsProductPrefill? parseProductPrefillFromResponse(
+    String body, {
+    Iterable<String> preferredLanguageCodes = const [],
+  }) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is! Map<String, dynamic>) return null;
@@ -67,7 +95,10 @@ class OpenFoodFactsNamePrefillService {
       final product = decoded['product'];
       if (product is! Map<String, dynamic>) return null;
 
-      final productName = _normalizeString(product['product_name']);
+      final productName = _resolveProductName(
+        product,
+        preferredLanguageCodes: preferredLanguageCodes,
+      );
       final brand = _normalizeString(
         product['brands'],
       )?.split(',').first.trim();
@@ -113,6 +144,32 @@ class OpenFoodFactsNamePrefillService {
         .trim();
 
     return cleaned.isEmpty ? null : cleaned;
+  }
+
+  String? _resolveProductName(
+    Map<String, dynamic> product, {
+    required Iterable<String> preferredLanguageCodes,
+  }) {
+    for (final code in _normalizeLanguageCodes(preferredLanguageCodes)) {
+      final localizedName = _normalizeString(product['product_name_$code']);
+      if (localizedName != null) return localizedName;
+    }
+
+    return _normalizeString(product['product_name']);
+  }
+
+  List<String> _normalizeLanguageCodes(Iterable<String> codes) {
+    final normalized = <String>[];
+    for (final rawCode in codes) {
+      final trimmed = rawCode.trim();
+      if (trimmed.isEmpty) continue;
+      final baseCode = trimmed.split(RegExp(r'[-_]')).first.toLowerCase();
+      if (!RegExp(r'^[a-z]{2,3}$').hasMatch(baseCode)) continue;
+      if (!normalized.contains(baseCode)) {
+        normalized.add(baseCode);
+      }
+    }
+    return normalized;
   }
 
   _QuantityHint? _parseQuantityHint(String? raw) {

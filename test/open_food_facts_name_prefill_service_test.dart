@@ -31,6 +31,46 @@ void main() {
       expect(prefill.packageUnitHint, 'kg');
     });
 
+    test('prefers localized product_name for the requested language', () {
+      final service = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async => null,
+      );
+
+      final prefill = service.parseProductPrefillFromResponse(
+        '{"status":1,"product":{"product_name":"Paahdettu maap\u00e4hkin\u00e4","product_name_ca":"Cacauets pelats fregits sense sal","brands":"Alesto","quantity":"200 g"}}',
+        preferredLanguageCodes: const ['ca-ES'],
+      );
+
+      expect(prefill, isNotNull);
+      expect(prefill!.productName, 'Cacauets pelats fregits sense sal');
+      expect(prefill.familySuggestion, 'Cacauets pelats fregits sense sal');
+      expect(prefill.packageQuantityHint, 0.2);
+      expect(prefill.packageUnitHint, 'kg');
+    });
+
+    test('requests localized product_name fields for preferred languages',
+        () async {
+      Uri? requestedUri;
+      final service = OpenFoodFactsNamePrefillService(
+        getRequest: (uri) async {
+          requestedUri = uri;
+          return '{"status":1,"product":{"product_name":"Default Name","product_name_ca":"Nom localitzat"}}';
+        },
+      );
+
+      final name = await service.tryGetProductNameByBarcode(
+        '12345',
+        preferredLanguageCodes: const ['ca_ES'],
+      );
+
+      expect(name, 'Nom localitzat');
+      expect(requestedUri, isNotNull);
+      expect(
+        requestedUri!.queryParameters['fields'],
+        contains('product_name_ca'),
+      );
+    });
+
     test('returns null when product not found', () {
       final service = OpenFoodFactsNamePrefillService(
         getRequest: (_) async => null,
