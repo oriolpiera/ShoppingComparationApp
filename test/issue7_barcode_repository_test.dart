@@ -290,4 +290,67 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  test(
+      'saving a new inactive current price does not deactivate the shared catalog product',
+      () async {
+    final marketAId = await repository.saveSupermarket(
+      Supermarket(name: 'A', isActive: true),
+    );
+    final marketBId = await repository.saveSupermarket(
+      Supermarket(name: 'B', isActive: true),
+    );
+    final familyId = await repository.saveProductFamily(
+      const ProductFamily(name: 'Milk', isActive: true),
+    );
+
+    await repository.saveQuickProductItem(
+      productName: 'Milk',
+      familyName: 'Milk',
+      supermarketId: marketAId,
+      price: 1.5,
+      quantity: 1,
+      unitType: 'L',
+      barcode: 'CAT-SHARED-1',
+    );
+
+    await repository.saveProductItem(
+      ProductItem(
+        name: 'Milk',
+        isActive: false,
+        productFamilyId: familyId,
+        supermarketId: marketBId,
+        price: 1.6,
+        quantity: 1,
+        unitType: 'L',
+        pricePerQuantity: 1.6,
+        dateAdded: DateTime(2026, 2, 1),
+        isCurrentPrice: true,
+        barcode: 'CAT-SHARED-1',
+        packageQuantityAmount: 1,
+        packageQuantityUnit: 'L',
+        normalizedMeasurementUnit: 'l',
+      ),
+    );
+
+    final currentItems =
+        await repository.getProductItems(onlyCurrentPrice: true);
+    expect(
+      currentItems
+          .where((item) => item.supermarketId == marketAId && item.isActive)
+          .length,
+      1,
+    );
+    expect(
+      currentItems
+          .where((item) => item.supermarketId == marketBId && item.isActive),
+      isEmpty,
+    );
+    expect(
+      (await repository.findCurrentActiveByBarcode('CAT-SHARED-1'))
+          .where((match) => match.productItem.supermarketId == marketAId)
+          .length,
+      1,
+    );
+  });
 }

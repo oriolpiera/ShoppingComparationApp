@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
+import '../../../../core/normalization/catalog_product_identity.dart';
 import '../../../../core/normalization/family_unit_normalization.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
@@ -364,7 +365,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
     required bool overwriteExisting,
     int? existingCatalogProductId,
   }) async {
-    final identityKey = _buildCatalogProductIdentityKey(
+    final identityKey = buildCatalogProductIdentityKey(
       productFamilyId: productFamilyId,
       name: name,
       quantity: packageQuantityAmount,
@@ -393,13 +394,15 @@ class DriftPersistenceRepository implements PersistenceRepository {
             variables: [Variable.withInt(existingCatalogProductId)],
           ).getSingleOrNull()
         : await dao.db.customSelect(
-            'SELECT id FROM catalog_product WHERE identity_key = ? LIMIT 1;',
+            'SELECT id, actiu FROM catalog_product WHERE identity_key = ? LIMIT 1;',
             variables: [Variable.withString(identityKey)],
           ).getSingleOrNull();
 
     if (existing != null) {
       final catalogProductId = existing.read<int>('id');
       if (!overwriteExisting) return catalogProductId;
+      final nextCatalogIsActive =
+          (existing.data['actiu'] as int? ?? 0) == 1 || isActive;
       await dao.db.customStatement(
         '''
         UPDATE catalog_product
@@ -410,7 +413,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         ''',
         [
           name.trim(),
-          isActive ? 1 : 0,
+          nextCatalogIsActive ? 1 : 0,
           productFamilyId,
           barcode?.trim().isEmpty == true ? null : barcode?.trim(),
           packageQuantityAmount,
@@ -480,21 +483,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
         )
         .getSingle();
     return inserted.read<int>('id');
-  }
-
-  String _buildCatalogProductIdentityKey({
-    required int productFamilyId,
-    required String name,
-    required double quantity,
-    required String unitType,
-    required String? barcode,
-  }) {
-    final normalizedBarcode = barcode?.trim() ?? '';
-    if (normalizedBarcode.isNotEmpty) {
-      return 'barcode:$normalizedBarcode';
-    }
-
-    return 'fallback:$productFamilyId|${normalizeFamilyKey(name)}|${quantity.toStringAsFixed(6)}|${normalizeUnitTypeForStorage(unitType)}';
   }
 
   @override

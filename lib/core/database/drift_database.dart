@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../normalization/catalog_product_identity.dart';
 import '../normalization/family_unit_normalization.dart';
 
 part 'drift_database.g.dart';
@@ -336,7 +337,7 @@ class AppDriftDatabase extends _$AppDriftDatabase {
                 (row.data['date_added'] as int?) ?? 0,
               );
 
-              final identityKey = _buildCatalogProductIdentityKey(
+              final identityKey = buildCatalogProductIdentityKey(
                 productFamilyId: familyId,
                 name: name,
                 quantity: quantity,
@@ -439,24 +440,6 @@ class AppDriftDatabase extends _$AppDriftDatabase {
           }
         },
       );
-}
-
-String _buildCatalogProductIdentityKey({
-  required int productFamilyId,
-  required String name,
-  required double quantity,
-  required String unitType,
-  required String? barcode,
-}) {
-  final normalizedBarcode = barcode?.trim() ?? '';
-  if (normalizedBarcode.isNotEmpty) {
-    return 'barcode:$normalizedBarcode';
-  }
-
-  final normalizedName = normalizeFamilyKey(name);
-  final normalizedQuantity = quantity.toStringAsFixed(6);
-  final normalizedUnit = normalizeUnitTypeForStorage(unitType);
-  return 'fallback:$productFamilyId|$normalizedName|$normalizedQuantity|$normalizedUnit';
 }
 
 QueryExecutor _openConnection() {
