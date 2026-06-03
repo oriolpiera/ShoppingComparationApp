@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'open_food_facts_get_request_native.dart'
-    if (dart.library.js_interop) 'open_food_facts_get_request_web.dart';
+import 'remote_get_request_native.dart'
+    if (dart.library.js_interop) 'remote_get_request_web.dart';
 
 typedef OpenFoodFactsGetRequest = Future<String?> Function(Uri uri);
 
@@ -23,7 +23,7 @@ class OpenFoodFactsProductPrefill {
 
 class OpenFoodFactsNamePrefillService {
   OpenFoodFactsNamePrefillService({OpenFoodFactsGetRequest? getRequest})
-    : _getRequest = getRequest ?? _defaultGetRequest;
+      : _getRequest = getRequest ?? _defaultGetRequest;
 
   final OpenFoodFactsGetRequest _getRequest;
 
@@ -209,8 +209,7 @@ class OpenFoodFactsNamePrefillService {
     return normalized.isEmpty ? null : normalized;
   }
 
-  static Future<String?> _defaultGetRequest(Uri uri) =>
-      openFoodFactsGetRequest(uri);
+  static Future<String?> _defaultGetRequest(Uri uri) => remoteGetRequest(uri);
 }
 
 class _QuantityHint {

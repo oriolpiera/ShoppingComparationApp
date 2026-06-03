@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-Future<String?> openFoodFactsGetRequest(Uri uri) async {
+Future<String?> remoteGetRequest(Uri uri) async {
   const requestTimeout = Duration(seconds: 4);
   final client = HttpClient();
   client.connectionTimeout = requestTimeout;
@@ -21,7 +21,8 @@ Future<String?> openFoodFactsGetRequest(Uri uri) async {
       }
 
       return utf8.decoder.bind(response).join();
-    })().timeout(requestTimeout);
+    })()
+        .timeout(requestTimeout);
   } finally {
     client.close(force: true);
   }

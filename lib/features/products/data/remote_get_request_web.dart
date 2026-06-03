@@ -9,12 +9,12 @@ extension type _FetchResponse._(JSObject _) implements JSObject {
   external JSPromise<JSString> text();
 }
 
-Future<String?> openFoodFactsGetRequest(Uri uri) async {
+Future<String?> remoteGetRequest(Uri uri) async {
   const requestTimeout = Duration(seconds: 4);
 
   final response = await _fetch(uri.toString().toJS).toDart.timeout(
-    requestTimeout,
-  );
+        requestTimeout,
+      );
   if (response.status < 200 || response.status >= 300) {
     return null;
   }
