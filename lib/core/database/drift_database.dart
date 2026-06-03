@@ -347,11 +347,19 @@ class AppDriftDatabase extends _$AppDriftDatabase {
               var catalogId = catalogIdByIdentity[identityKey];
               if (catalogId == null) {
                 final existingCatalog = await customSelect(
-                  'SELECT id FROM catalog_product WHERE identity_key = ? LIMIT 1;',
+                  'SELECT id, actiu FROM catalog_product WHERE identity_key = ? LIMIT 1;',
                   variables: [Variable.withString(identityKey)],
                 ).getSingleOrNull();
                 if (existingCatalog != null) {
                   catalogId = existingCatalog.read<int>('id');
+                  final catalogIsActive =
+                      (existingCatalog.data['actiu'] as int? ?? 0) == 1;
+                  if (isActive && !catalogIsActive) {
+                    await customStatement(
+                      'UPDATE catalog_product SET actiu = 1 WHERE id = ?;',
+                      [catalogId],
+                    );
+                  }
                 } else {
                   await customStatement(
                     '''
@@ -378,6 +386,11 @@ class AppDriftDatabase extends _$AppDriftDatabase {
                   catalogId = insertedCatalog.read<int>('id');
                 }
                 catalogIdByIdentity[identityKey] = catalogId;
+              } else if (isActive) {
+                await customStatement(
+                  'UPDATE catalog_product SET actiu = 1 WHERE id = ?;',
+                  [catalogId],
+                );
               }
 
               await customStatement(
