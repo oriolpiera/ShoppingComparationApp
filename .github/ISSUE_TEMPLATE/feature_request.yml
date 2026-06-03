@@ -1,0 +1,60 @@
+name: Feature request
+description: Propose a user-facing improvement or capability.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing an improvement.
+
+        Focus on the user problem first. Implementation should wait until a maintainer adds the `status:approved` label.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true
+        - label: I understand this request should be reviewed before implementation starts.
+          required: true
+  - type: textarea
+    id: problem_description
+    attributes:
+      label: Problem description
+      description: What user problem or pain point are we trying to solve?
+      placeholder: Scanned products without local matches do not show any external price information.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behavior from the user's perspective.
+      placeholder: Show external price candidates for no-match barcode scans and clearly label them as unconfirmed.
+    validations:
+      required: true
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      options:
+        - Barcode scanning
+        - Product management
+        - Price comparison
+        - Persistence
+        - UI/UX
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives_considered
+    attributes:
+      label: Alternatives considered
+      description: Existing workarounds or other approaches you considered.
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Mockups, examples, research notes, or related issue links.
