@@ -1,5 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'open_food_facts_get_request_native.dart'
+    if (dart.library.js_interop) 'open_food_facts_get_request_web.dart';
 
 typedef OpenFoodFactsGetRequest = Future<String?> Function(Uri uri);
 
@@ -207,31 +209,8 @@ class OpenFoodFactsNamePrefillService {
     return normalized.isEmpty ? null : normalized;
   }
 
-  static Future<String?> _defaultGetRequest(Uri uri) async {
-    const requestTimeout = Duration(seconds: 4);
-    final client = HttpClient();
-    client.connectionTimeout = requestTimeout;
-    try {
-      return await (() async {
-        final request = await client.getUrl(uri);
-        request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-        request.headers.set(
-          HttpHeaders.userAgentHeader,
-          'ShoppingComparationApp/1.0 (barcode metadata enrichment)',
-        );
-
-        final response = await request.close();
-
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          return null;
-        }
-
-        return utf8.decoder.bind(response).join();
-      })().timeout(requestTimeout);
-    } finally {
-      client.close(force: true);
-    }
-  }
+  static Future<String?> _defaultGetRequest(Uri uri) =>
+      openFoodFactsGetRequest(uri);
 }
 
 class _QuantityHint {
