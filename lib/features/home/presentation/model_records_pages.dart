@@ -1949,7 +1949,7 @@ class _RegisterScannedPriceSheetState
       text: widget.prefilledFamily ?? '',
     );
     _priceController = TextEditingController(
-      text: widget.prefilledPrice?.toString() ?? '',
+      text: widget.prefilledPrice?.toStringAsFixed(2) ?? '',
     );
     _quantityController = TextEditingController(
       text: widget.prefilledQuantity?.toString() ?? '1',
