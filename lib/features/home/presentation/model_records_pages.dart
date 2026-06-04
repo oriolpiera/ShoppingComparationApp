@@ -157,13 +157,12 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
                               isActive: false,
                             ),
                           );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Supermarket deleted'),
-                              ),
-                            );
-                          }
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Supermarket deleted'),
+                            ),
+                          );
                         }
 
                         _refresh();
@@ -345,13 +344,12 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               purchaseMode: item.purchaseMode,
                             ),
                           );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Product family deleted'),
-                              ),
-                            );
-                          }
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Product family deleted'),
+                            ),
+                          );
                         } else if (action ==
                             _ProductFamilyDetailsAction
                                 .deleteAndInactivateItems) {
@@ -389,15 +387,14 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               purchaseMode: item.purchaseMode,
                             ),
                           );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Product family and active Product Items deleted',
-                                ),
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Product family and active Product Items deleted',
                               ),
-                            );
-                          }
+                            ),
+                          );
                         }
 
                         _refresh();
@@ -1357,11 +1354,10 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                               barcode: item.barcode,
                             ),
                           );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Product deleted')),
-                            );
-                          }
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Product deleted')),
+                          );
                         }
 
                         _refresh();

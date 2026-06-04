@@ -9,7 +9,7 @@ repos:
 
       - id: flutter-analyze
         name: Flutter Analyze
-        entry: flutter analyze --no-fatal-infos
+        entry: env -u GIT_DIR -u GIT_WORK_TREE flutter analyze --no-fatal-infos
         language: system
         types: [dart]
         pass_filenames: false

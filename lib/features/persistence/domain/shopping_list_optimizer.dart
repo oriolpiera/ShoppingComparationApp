@@ -67,13 +67,22 @@ ShoppingOptimizationResult optimizeShoppingList({
       if (family.id != null && family.isActive) family.id!,
   };
 
-  final bestByFamily = <int, ProductItem>{};
+  final latestByFamilyAndSupermarket = <(int, int), ProductItem>{};
   for (final item in items.where(
     (i) =>
         i.isActive &&
         i.isCurrentPrice &&
         activeFamilyIds.contains(i.productFamilyId),
   )) {
+    final key = (item.productFamilyId, item.supermarketId);
+    final current = latestByFamilyAndSupermarket[key];
+    if (current == null || isMoreRecentShoppingCandidate(item, current)) {
+      latestByFamilyAndSupermarket[key] = item;
+    }
+  }
+
+  final bestByFamily = <int, ProductItem>{};
+  for (final item in latestByFamilyAndSupermarket.values) {
     final current = bestByFamily[item.productFamilyId];
     if (current == null || isBetterOptimizedItem(item, current)) {
       bestByFamily[item.productFamilyId] = item;
@@ -142,6 +151,15 @@ ShoppingOptimizationResult optimizeShoppingList({
     groups: groups,
     pendingEntries: pendingEntries,
   );
+}
+
+bool isMoreRecentShoppingCandidate(ProductItem candidate, ProductItem current) {
+  final byDate = candidate.dateAdded.compareTo(current.dateAdded);
+  if (byDate != 0) return byDate > 0;
+
+  final candidateId = candidate.id ?? -1;
+  final currentId = current.id ?? -1;
+  return candidateId > currentId;
 }
 
 bool isBetterOptimizedItem(ProductItem candidate, ProductItem current) {

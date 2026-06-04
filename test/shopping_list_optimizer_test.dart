@@ -107,10 +107,7 @@ void main() {
           3: ProductFamily(id: 3, name: 'Cheese', isActive: false),
           4: ProductFamily(id: 4, name: 'Eggs', isActive: true),
         },
-        supermarketNameById: const {
-          1: 'Zeta Market',
-          2: 'Alpha Market',
-        },
+        supermarketNameById: const {1: 'Zeta Market', 2: 'Alpha Market'},
         items: [
           _item(
             id: 2,
@@ -156,8 +153,10 @@ void main() {
       );
 
       expect(result.groups.map((g) => g.supermarketName), ['Alpha Market']);
-      expect(
-          result.groups.single.entries.map((e) => e.productFamilyId), [1, 2]);
+      expect(result.groups.single.entries.map((e) => e.productFamilyId), [
+        1,
+        2,
+      ]);
 
       expect(result.pendingEntries.map((e) => e.productFamilyId), [3, 4]);
       expect(
@@ -173,6 +172,51 @@ void main() {
         isFalse,
       );
     });
+
+    test(
+      'prefers the latest candidate within the same supermarket before comparing markets',
+      () {
+        final result = optimizeShoppingList(
+          shoppingList: const [
+            ShoppingListEntry(id: 10, productFamilyId: 1, quantity: 1),
+          ],
+          familyById: const {
+            1: ProductFamily(id: 1, name: 'Milk', isActive: true),
+          },
+          supermarketNameById: const {1: 'Alpha Market', 2: 'Beta Market'},
+          items: [
+            _item(
+              id: 1,
+              familyId: 1,
+              marketId: 1,
+              price: 1.0,
+              ppq: 1.0,
+              date: DateTime(2026, 1, 1),
+            ),
+            _item(
+              id: 2,
+              familyId: 1,
+              marketId: 1,
+              price: 2.0,
+              ppq: 2.0,
+              date: DateTime(2026, 1, 2),
+            ),
+            _item(
+              id: 3,
+              familyId: 1,
+              marketId: 2,
+              price: 1.5,
+              ppq: 1.5,
+              date: DateTime(2026, 1, 1),
+            ),
+          ],
+        );
+
+        expect(result.groups, hasLength(1));
+        expect(result.groups.single.supermarketName, 'Beta Market');
+        expect(result.groups.single.entries.single.bestItem.id, 3);
+      },
+    );
   });
 }
 
