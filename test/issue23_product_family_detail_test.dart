@@ -10,6 +10,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/pr
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/shopping_list_optimizer.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
@@ -354,6 +355,9 @@ class _FakeRepository implements PersistenceRepository {
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
+  Future<List<ShoppingListEntry>> getShoppingNeedEntries() => getShoppingList();
+
+  @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
 
   @override
@@ -373,6 +377,10 @@ class _FakeRepository implements PersistenceRepository {
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
 
   @override
+  Future<int> saveShoppingNeedEntry(ShoppingListEntry entry) =>
+      saveShoppingListEntry(entry);
+
+  @override
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
@@ -380,7 +388,29 @@ class _FakeRepository implements PersistenceRepository {
       1;
 
   @override
+  Future<int> addOrIncrementShoppingNeedEntry({
+    required int productFamilyId,
+    int quantity = 1,
+  }) =>
+      addOrIncrementShoppingListEntry(
+        productFamilyId: productFamilyId,
+        quantity: quantity,
+      );
+
+  @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
+
+  @override
+  Future<void> deleteShoppingNeedEntries(List<int> entryIds) =>
+      deleteShoppingListEntries(entryIds);
+
+  @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() =>
+      getProductFamilies();
+
+  @override
+  Future<ShoppingOptimizationResult> getOptimizedShoppingNeedEntries() async =>
+      const ShoppingOptimizationResult(groups: [], pendingEntries: []);
 
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
