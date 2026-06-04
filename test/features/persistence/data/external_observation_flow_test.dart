@@ -84,6 +84,56 @@ void main() {
     expect(optimized.single.items.single.sourceTag, 'OpenPrices');
   });
 
+  test('accepted observations participate in shopping need seam optimization',
+      () async {
+    final supermarketId = await repository.saveSupermarket(
+      Supermarket(name: 'Local Market'),
+    );
+    final familyId = await repository.saveProductFamily(
+      const ProductFamily(name: 'Milk'),
+    );
+    await repository.saveShoppingListEntry(
+      ShoppingListEntry(productFamilyId: familyId, quantity: 1),
+    );
+    await repository.saveExternalStoreMapping(
+      ExternalStoreMapping(
+        externalStoreId: 'store-need-1',
+        externalStoreName: 'Open Store',
+        supermarketId: supermarketId,
+      ),
+    );
+
+    final observationId = await repository.saveExternalPriceObservation(
+      ExternalPriceObservation(
+        openPricesId: 'op-need-1',
+        productName: 'Milk seam candidate',
+        familyName: 'Milk',
+        externalStoreId: 'store-need-1',
+        externalStoreName: 'Open Store',
+        price: 0.9,
+        quantity: 1,
+        unitType: 'l',
+        pricePerQuantity: 0.9,
+        observedAt: DateTime(2026, 1, 2),
+      ),
+    );
+
+    await repository.updateExternalObservationReviewStatus(
+      observationId: observationId,
+      newStatus: ExternalObservationReviewStatus.acceptedForComparison,
+    );
+
+    final optimized = await repository.getOptimizedShoppingNeedEntries();
+    expect(optimized.groups, hasLength(1));
+    expect(optimized.groups.single.entries, hasLength(1));
+    expect(optimized.groups.single.entries.single.bestItem.name,
+        'Milk seam candidate');
+    expect(
+      optimized.groups.single.entries.single.bestItem.isOpenPricesSource,
+      isTrue,
+    );
+  });
+
   test(
       'confirming external observation creates local product item with source link',
       () async {
