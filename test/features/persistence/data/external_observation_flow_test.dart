@@ -163,6 +163,11 @@ void main() {
       ),
     );
 
+    await repository.updateExternalObservationReviewStatus(
+      observationId: observationId,
+      newStatus: ExternalObservationReviewStatus.acceptedForComparison,
+    );
+
     final productItemId = await repository.confirmExternalObservationLocally(
       observationId: observationId,
     );
@@ -179,6 +184,47 @@ void main() {
     );
     expect(confirmed.localProductItemId, isNull);
     expect(confirmed.localPriceRecordId, productItemId);
+  });
+
+  test('missing mapping rejection leaves no local product item behind',
+      () async {
+    final observationId = await repository.saveExternalPriceObservation(
+      ExternalPriceObservation(
+        openPricesId: 'op-3-missing-mapping',
+        productName: 'Bread',
+        familyName: 'Bread',
+        externalStoreId: 'store-1',
+        externalStoreName: 'Open Store',
+        price: 2.0,
+        quantity: 1,
+        unitType: 'kg',
+        pricePerQuantity: 2.0,
+        observedAt: DateTime(2026, 1, 3),
+      ),
+    );
+
+    await repository.updateExternalObservationReviewStatus(
+      observationId: observationId,
+      newStatus: ExternalObservationReviewStatus.acceptedForComparison,
+    );
+
+    expect(
+      () => repository.confirmExternalObservationLocally(
+        observationId: observationId,
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    expect(items, isEmpty);
+
+    final confirmed = (await repository.getExternalPriceObservations())
+        .singleWhere((o) => o.id == observationId);
+    expect(confirmed.localPriceRecordId, isNull);
+    expect(
+      confirmed.reviewStatus,
+      ExternalObservationReviewStatus.acceptedForComparison,
+    );
   });
 
   test(
@@ -216,9 +262,36 @@ void main() {
       ),
     );
 
+    await repository.updateExternalObservationReviewStatus(
+      observationId: observationId,
+      newStatus: ExternalObservationReviewStatus.acceptedForComparison,
+    );
+
     await repository.confirmExternalObservationLocally(
       observationId: observationId,
     );
+
+    final itemsAfterFirstConfirmation = await repository.getProductItems(
+      onlyCurrentPrice: true,
+    );
+    expect(itemsAfterFirstConfirmation, hasLength(1));
+    final confirmedItemId = itemsAfterFirstConfirmation.single.id;
+
+    expect(
+      () => repository.confirmExternalObservationLocally(
+        observationId: observationId,
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    final itemsAfterRejectedSecondConfirmation =
+        await repository.getProductItems(onlyCurrentPrice: true);
+    expect(itemsAfterRejectedSecondConfirmation, hasLength(1));
+    expect(itemsAfterRejectedSecondConfirmation.single.id, confirmedItemId);
+
+    final confirmed = (await repository.getExternalPriceObservations())
+        .singleWhere((o) => o.id == observationId);
+    expect(confirmed.localPriceRecordId, confirmedItemId);
 
     final optimized = await repository.getOptimizedShoppingList();
     expect(optimized, hasLength(1));

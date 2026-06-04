@@ -11,6 +11,7 @@ import '../../domain/entities/barcode_match_result.dart';
 import '../../domain/entities/catalog_product.dart';
 import '../../domain/entities/external_price_observation.dart';
 import '../../domain/entities/external_store_mapping.dart';
+import '../../domain/external_observation_confirmation.dart';
 import '../../domain/entities/price_record.dart';
 import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
@@ -23,6 +24,9 @@ import '../../domain/repositories/persistence_repository.dart';
 class DriftPersistenceRepository implements PersistenceRepository {
   final PersistenceDao dao;
   static const double _priceEpsilon = 1e-9;
+  static const ExternalObservationConfirmationPlanner
+      _externalObservationConfirmationPlanner =
+      ExternalObservationConfirmationPlanner();
 
   DriftPersistenceRepository(this.dao);
 
@@ -1011,56 +1015,47 @@ class DriftPersistenceRepository implements PersistenceRepository {
         throw StateError('External observation not found: $observationId');
       }
 
-      if (observation.localPriceRecordId != null) {
-        throw StateError(
-          'Observation $observationId is already confirmed '
-          'with local price record ${observation.localPriceRecordId}',
-        );
-      }
-
-      final currentStatus =
-          ExternalObservationReviewStatusCodec.fromStorageValue(
-        observation.reviewStatus,
-      );
-      if (!canTransitionReviewStatus(
-        from: currentStatus,
-        to: ExternalObservationReviewStatus.acceptedForComparison,
-      )) {
-        throw StateError(
-          'Invalid review status transition: $currentStatus -> ${ExternalObservationReviewStatus.acceptedForComparison}',
-        );
-      }
-
       final mapping = await dao.getExternalStoreMappingByExternalId(
         observation.externalStoreId,
       );
-      if (mapping == null) {
-        throw StateError(
-          'Missing external store mapping for ${observation.externalStoreId}',
-        );
-      }
 
+      final confirmationObservation = ExternalPriceObservation(
+        id: observation.id,
+        openPricesId: observation.openPricesId,
+        productName: observation.productName,
+        familyName: observation.familyName,
+        externalStoreId: observation.externalStoreId,
+        externalStoreName: observation.externalStoreName,
+        price: observation.price,
+        quantity: observation.quantity,
+        unitType: observation.unitType,
+        pricePerQuantity: observation.pricePerQuantity,
+        observedAt: observation.observedAt,
+        reviewStatus: ExternalObservationReviewStatusCodec.fromStorageValue(
+          observation.reviewStatus,
+        ),
+        localProductItemId: observation.localProductItemId,
+        localPriceRecordId: observation.localPriceRecordId,
+      );
       final familyId = await resolveProductFamilyIdByName(
         observation.familyName,
       );
+      final confirmationPlan =
+          _externalObservationConfirmationPlanner.buildPlan(
+        observation: confirmationObservation,
+        mapping: mapping == null
+            ? null
+            : ExternalStoreMapping(
+                id: mapping.id,
+                externalStoreId: mapping.externalStoreId,
+                externalStoreName: mapping.externalStoreName,
+                supermarketId: mapping.supermarketId,
+              ),
+        productFamilyId: familyId,
+        confirmedAt: DateTime.now(),
+      );
       final productItemId = await saveProductItem(
-        ProductItem(
-          name: observation.productName,
-          productFamilyId: familyId,
-          supermarketId: mapping.supermarketId,
-          price: observation.price,
-          quantity: observation.quantity,
-          unitType: observation.unitType,
-          pricePerQuantity: observation.pricePerQuantity,
-          packageQuantityAmount: observation.quantity,
-          packageQuantityUnit: observation.unitType,
-          normalizedMeasurementUnit: normalizeUnitTypeForComparison(
-            observation.unitType,
-          ),
-          dateAdded: DateTime.now(),
-          isCurrentPrice: true,
-          externalObservationId: observation.id,
-        ),
+        confirmationPlan.localPriceRecord,
       );
 
       await dao.saveExternalPriceObservation(
