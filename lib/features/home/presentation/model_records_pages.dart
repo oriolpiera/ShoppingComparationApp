@@ -2180,6 +2180,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                     familyName: entry.productFamilyName,
                     quantity: entry.quantity,
                     bestItem: entry.bestItem,
+                    estimatedCost: entry.estimatedCost,
                   ),
                 )
                 .toList(),
@@ -2376,7 +2377,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
             ? (row.isInactiveFamily
                 ? 'Inactive family'
                 : 'Pending best product item')
-            : '${row.bestItem!.name} · €/u ${row.bestItem!.pricePerQuantity.toStringAsFixed(2)} · est. €${(row.quantity * row.bestItem!.pricePerQuantity).toStringAsFixed(2)}',
+            : '${row.bestItem!.name} · €/u ${row.bestItem!.pricePerQuantity.toStringAsFixed(2)} · est. €${row.estimatedCost.toStringAsFixed(2)}',
         style: TextStyle(color: textColor),
       ),
       trailing: _selectionMode
@@ -2453,10 +2454,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                     final groupTotal = group.value.fold<double>(
                       0,
                       (sum, row) =>
-                          sum +
-                          (row.bestItem == null
-                              ? 0
-                              : row.quantity * row.bestItem!.pricePerQuantity),
+                          sum + (row.bestItem == null ? 0 : row.estimatedCost),
                     );
                     return ExpansionTile(
                       initiallyExpanded: true,
@@ -2491,6 +2489,7 @@ class _ShoppingRow {
     required this.familyId,
     required this.familyName,
     required this.quantity,
+    this.estimatedCost = 0,
     this.bestItem,
     this.isInactiveFamily = false,
   });
@@ -2499,6 +2498,7 @@ class _ShoppingRow {
   final int familyId;
   final String familyName;
   final int quantity;
+  final double estimatedCost;
   final ProductItem? bestItem;
   final bool isInactiveFamily;
 }
