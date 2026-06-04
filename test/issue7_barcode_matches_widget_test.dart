@@ -75,9 +75,12 @@ void main() {
     expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
     expect(find.text('Greek Yogurt'), findsOneWidget);
     expect(
-      find.text('Suggested from Open Food Facts. Please confirm or edit.'),
+      find.textContaining(
+        'Suggested from Open Food Facts. Please confirm or edit.',
+      ),
       findsOneWidget,
     );
+    expect(find.textContaining('Suggestions from 3 chars'), findsOneWidget);
     expect(find.text('0.5'), findsOneWidget);
   });
 
@@ -143,7 +146,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.widgetWithText(TextField, 'Barcode'), '20615420');
+      find.widgetWithText(TextField, 'Barcode'),
+      '20615420',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Search'));
     await tester.pumpAndSettle();
 
@@ -208,6 +213,41 @@ void main() {
     );
   });
 
+  testWidgets('scan flow family field shows autocomplete suggestions', (
+    tester,
+  ) async {
+    final repository = _FakeRepo(
+      families: const [
+        ProductFamily(id: 1, name: 'Milk'),
+        ProductFamily(id: 2, name: 'Millet'),
+        ProductFamily(id: 3, name: 'Bread'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ProductItemsPage(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tag));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Barcode'), 'X-NEW');
+    await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Family'), 'Mil');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Suggestions from 3 chars'), findsOneWidget);
+    expect(find.text('Milk'), findsOneWidget);
+    expect(find.text('Millet'), findsOneWidget);
+    expect(find.text('Bread'), findsNothing);
+  });
+
   testWidgets('invalid scanned item does not resolve or save family first', (
     tester,
   ) async {
@@ -257,6 +297,12 @@ class _FakeRepo implements PersistenceRepository {
   final List<ProductFamily> families;
   int resolveCalls = 0;
   int registerScannedPriceCalls = 0;
+
+  @override
+  Future<String> exportBackupJson() async => '{}';
+
+  @override
+  Future<void> importBackupJson(String jsonPayload) async {}
 
   @override
   Future<int> addOrIncrementShoppingListEntry({

@@ -187,6 +187,51 @@ void main() {
     });
 
     test(
+      'prefers the latest candidate within the same supermarket before comparing markets',
+      () {
+        final result = optimizeShoppingList(
+          shoppingList: const [
+            ShoppingListEntry(id: 10, productFamilyId: 1, quantity: 1),
+          ],
+          familyById: const {
+            1: ProductFamily(id: 1, name: 'Milk', isActive: true),
+          },
+          supermarketNameById: const {1: 'Alpha Market', 2: 'Beta Market'},
+          items: [
+            _item(
+              id: 1,
+              familyId: 1,
+              marketId: 1,
+              price: 1.0,
+              ppq: 1.0,
+              date: DateTime(2026, 1, 1),
+            ),
+            _item(
+              id: 2,
+              familyId: 1,
+              marketId: 1,
+              price: 2.0,
+              ppq: 2.0,
+              date: DateTime(2026, 1, 2),
+            ),
+            _item(
+              id: 3,
+              familyId: 1,
+              marketId: 2,
+              price: 1.5,
+              ppq: 1.5,
+              date: DateTime(2026, 1, 1),
+            ),
+          ],
+        );
+
+        expect(result.groups, hasLength(1));
+        expect(result.groups.single.supermarketName, 'Beta Market');
+        expect(result.groups.single.entries.single.bestItem.id, 3);
+      },
+    );
+
+    test(
       'chooses cheapest whole-package purchase instead of lowest unit price',
       () {
         final result = optimizeShoppingList(

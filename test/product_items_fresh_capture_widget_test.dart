@@ -77,6 +77,12 @@ class _CapturingRepo implements PersistenceRepository {
   _QuickCaptureCall? lastQuickCapture;
 
   @override
+  Future<String> exportBackupJson() async => '{}';
+
+  @override
+  Future<void> importBackupJson(String jsonPayload) async {}
+
+  @override
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,

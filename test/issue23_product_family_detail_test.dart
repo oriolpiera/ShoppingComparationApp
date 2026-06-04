@@ -197,6 +197,55 @@ void main() {
 
     expect(find.text('inactive supermarket'), findsOneWidget);
   });
+
+  testWidgets('deletes product item from family details drill-down', (
+    tester,
+  ) async {
+    final repository = _FakeRepository(
+      families: [const ProductFamily(id: 1, name: 'Tea')],
+      supermarkets: [Supermarket(id: 1, name: 'Store', isActive: true)],
+      items: [
+        ProductItem(
+          id: 1,
+          name: 'Green Tea',
+          isActive: true,
+          productFamilyId: 1,
+          supermarketId: 1,
+          price: 2.5,
+          quantity: 1,
+          unitType: 'kg',
+          pricePerQuantity: 2.5,
+          dateAdded: DateTime(2026, 1, 1),
+          isCurrentPrice: true,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_buildApp(repository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Tea'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Store · Green Tea'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    final deleteDialog = find.byType(AlertDialog);
+    await tester.tap(
+      find.descendant(
+        of: deleteDialog,
+        matching: find.widgetWithText(FilledButton, 'Delete'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.savedItems, hasLength(1));
+    expect(repository.savedItems.single.isActive, isFalse);
+    expect(find.text('Product family details'), findsOneWidget);
+  });
 }
 
 Widget _buildApp(PersistenceRepository repository) {
@@ -215,6 +264,13 @@ class _FakeRepository implements PersistenceRepository {
   final List<Supermarket> supermarkets;
 
   final List<ProductFamily> savedFamilies = [];
+  final List<ProductItem> savedItems = [];
+
+  @override
+  Future<String> exportBackupJson() async => '{}';
+
+  @override
+  Future<void> importBackupJson(String jsonPayload) async {}
 
   @override
   Future<List<ProductFamily>> getProductFamilies({
@@ -255,7 +311,10 @@ class _FakeRepository implements PersistenceRepository {
   }
 
   @override
-  Future<int> saveProductItem(ProductItem item) async => item.id ?? 1;
+  Future<int> saveProductItem(ProductItem item) async {
+    savedItems.add(item);
+    return item.id ?? 1;
+  }
 
   @override
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
