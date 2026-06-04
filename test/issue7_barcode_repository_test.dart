@@ -120,8 +120,8 @@ void main() {
 
     final matches = await repository.findCurrentActiveByBarcode('ABC');
     expect(result.created, false);
-    expect(result.catalogProduct.barcode, 'ABC');
-    expect(result.priceRecord.price, 2);
+    expect(result.catalogProduct?.barcode, 'ABC');
+    expect(result.priceRecord?.price, 2);
     expect(matches.length, 1);
     expect(
       (await db
@@ -137,6 +137,24 @@ void main() {
           .read<int>('c'),
       1,
     );
+  });
+
+  test('registerScannedPrice with empty barcode returns no domain objects',
+      () async {
+    final result = await repository.registerScannedPrice(
+      barcode: '   ',
+      productName: 'Yogurt',
+      familyName: 'Yogurt',
+      supermarketId: 1,
+      price: 2,
+      quantity: 1,
+      unitType: 'kg',
+    );
+
+    expect(result.created, false);
+    expect(result.catalogProduct, isNull);
+    expect(result.priceRecord, isNull);
+    expect(result.message, 'Barcode is required.');
   });
 
   test('registerScannedPrice rolls over previous current item on change',
@@ -178,8 +196,8 @@ void main() {
     expect(currentMatches.length, 1);
     expect(currentMatches.first.catalogProduct.barcode, 'ROLLOVER-1');
     expect(currentMatches.first.priceRecord.price, 6.0);
-    expect(result.catalogProduct.id, currentMatches.first.catalogProduct.id);
-    expect(result.priceRecord.id, currentMatches.first.priceRecord.id);
+    expect(result.catalogProduct?.id, currentMatches.first.catalogProduct.id);
+    expect(result.priceRecord?.id, currentMatches.first.priceRecord.id);
     expect(barcodeRows.length, 2);
     expect(barcodeRows.where((row) => row.isCurrentPrice).length, 1);
     expect(

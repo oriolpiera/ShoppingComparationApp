@@ -25,6 +25,11 @@ class BarcodeMatchResult {
   double get pricePerQuantity =>
       quantity == 0 ? 0 : priceRecord.price / quantity;
 
+  /// Compatibility read model for legacy UI code.
+  ///
+  /// This getter assumes the backing query already filtered to the latest
+  /// active supermarket price for the catalog product, so `isCurrentPrice`
+  /// is intentionally hardcoded to `true` here.
   ProductItem get productItem => ProductItem(
         id: priceRecord.id,
         name: catalogProduct.name,

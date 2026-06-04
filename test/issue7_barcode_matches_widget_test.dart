@@ -342,27 +342,7 @@ class _FakeRepo implements ProductItemsRepository {
     required String unitType,
   }) async {
     registerScannedPriceCalls += 1;
-    return ScannedPriceRegistrationResult(
-      created: false,
-      catalogProduct: CatalogProduct(
-        id: 1,
-        name: 'Scanned',
-        isActive: true,
-        productFamilyId: 1,
-        barcode: 'fake',
-        packageQuantityAmount: 1,
-        packageQuantityUnit: 'kg',
-        normalizedMeasurementUnit: 'kg',
-        identityKey: 'barcode:fake',
-      ),
-      priceRecord: PriceRecord(
-        id: 1,
-        catalogProductId: 1,
-        supermarketId: 1,
-        price: 1,
-        observedAt: DateTime(2026, 1, 1),
-      ),
-    );
+    return const ScannedPriceRegistrationResult(created: false);
   }
 
   @override

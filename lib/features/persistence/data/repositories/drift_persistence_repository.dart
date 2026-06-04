@@ -763,25 +763,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final normalizedBarcode = barcode.trim();
     final trimmedProductName = productName.trim();
     if (normalizedBarcode.isEmpty) {
-      return ScannedPriceRegistrationResult(
+      return const ScannedPriceRegistrationResult(
         created: false,
-        catalogProduct: CatalogProduct(
-          name: trimmedProductName,
-          isActive: true,
-          productFamilyId: 0,
-          barcode: null,
-          packageQuantityAmount: quantity,
-          packageQuantityUnit: null,
-          normalizedMeasurementUnit: null,
-          identityKey: 'invalid:missing-barcode',
-        ),
-        priceRecord: PriceRecord(
-          catalogProductId: 0,
-          supermarketId: supermarketId,
-          price: price,
-          observedAt: DateTime.fromMillisecondsSinceEpoch(0),
-          isActive: false,
-        ),
         message: 'Barcode is required.',
       );
     }
