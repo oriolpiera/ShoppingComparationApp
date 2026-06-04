@@ -208,8 +208,8 @@ void main() {
       newStatus: ExternalObservationReviewStatus.acceptedForComparison,
     );
 
-    expect(
-      () => repository.confirmExternalObservationLocally(
+    await expectLater(
+      repository.confirmExternalObservationLocally(
         observationId: observationId,
       ),
       throwsA(isA<StateError>()),
@@ -277,8 +277,8 @@ void main() {
     expect(itemsAfterFirstConfirmation, hasLength(1));
     final confirmedItemId = itemsAfterFirstConfirmation.single.id;
 
-    expect(
-      () => repository.confirmExternalObservationLocally(
+    await expectLater(
+      repository.confirmExternalObservationLocally(
         observationId: observationId,
       ),
       throwsA(isA<StateError>()),
@@ -328,8 +328,8 @@ void main() {
       ),
     );
 
-    expect(
-      () => repository.confirmExternalObservationLocally(
+    await expectLater(
+      repository.confirmExternalObservationLocally(
         observationId: observationId,
       ),
       throwsA(isA<StateError>()),
