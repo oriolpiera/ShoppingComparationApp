@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../../../core/database/drift_database_provider.dart';
+import '../../backup/presentation/data_backup_page.dart';
 import '../../demo/data/demo_seed_service.dart';
 import '../../persistence/data/repositories/drift_persistence_repository.dart';
 import 'model_records_pages.dart';
@@ -61,6 +62,11 @@ class _HomePageState extends State<HomePage> {
             title: const Text('Shopping list'),
             onTap: () =>
                 _open(context, ShoppingListPage(repository: repository)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('Data backup'),
+            onTap: () => _open(context, DataBackupPage(repository: repository)),
           ),
         ],
       ),

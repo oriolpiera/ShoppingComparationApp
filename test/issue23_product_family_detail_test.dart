@@ -217,6 +217,12 @@ class _FakeRepository implements PersistenceRepository {
   final List<ProductFamily> savedFamilies = [];
 
   @override
+  Future<String> exportBackupJson() async => '{}';
+
+  @override
+  Future<void> importBackupJson(String jsonPayload) async {}
+
+  @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
   }) async {
