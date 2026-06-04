@@ -70,7 +70,7 @@ void main() {
       ) VALUES (1, 'Whole milk', 1, 1, 1, 1.5, 1.0, 'l', 1.5, 0, 1, 'B1');
     ''');
     setupDb.execute('PRAGMA user_version = 2;');
-    setupDb.dispose();
+    setupDb.close();
 
     db = AppDriftDatabase.forTesting(NativeDatabase(file));
 

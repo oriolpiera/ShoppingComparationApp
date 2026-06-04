@@ -98,7 +98,7 @@ void main() {
       "INSERT INTO product_family (id, nom, actiu, shopping_unit, purchase_mode) VALUES (3, 'Milk', 1, 'L', 'packaged');",
     );
     setupDb.execute('PRAGMA user_version = 4;');
-    setupDb.dispose();
+    setupDb.close();
 
     db = AppDriftDatabase.forTesting(NativeDatabase(file));
 

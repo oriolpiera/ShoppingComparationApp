@@ -64,7 +64,7 @@ void main() {
       );
     ''');
     setupDb.execute('PRAGMA user_version = 3;');
-    setupDb.dispose();
+    setupDb.close();
 
     db = AppDriftDatabase.forTesting(NativeDatabase(file));
 
