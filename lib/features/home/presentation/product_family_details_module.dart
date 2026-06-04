@@ -79,10 +79,34 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
       ),
     );
 
-    if (!mounted || action != ProductItemDetailsAction.edit) return;
+    if (!mounted) return;
 
-    await _editProductItem(item);
-    setState(() => _future = _load());
+    if (action == ProductItemDetailsAction.edit) {
+      await _editProductItem(item);
+    } else if (action == ProductItemDetailsAction.delete) {
+      await widget.repository.saveProductItem(
+        ProductItem(
+          id: item.id,
+          name: item.name,
+          isActive: false,
+          productFamilyId: item.productFamilyId,
+          supermarketId: item.supermarketId,
+          price: item.price,
+          quantity: item.quantity,
+          unitType: item.unitType,
+          pricePerQuantity: item.pricePerQuantity,
+          dateAdded: item.dateAdded,
+          isCurrentPrice: item.isCurrentPrice,
+          barcode: item.barcode,
+        ),
+      );
+    } else {
+      return;
+    }
+
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<void> _editProductItem(ProductItem item) async {
