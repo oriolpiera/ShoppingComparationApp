@@ -542,7 +542,7 @@ class ProductItemsPage extends StatefulWidget {
         pricePrefillService =
             pricePrefillService ?? OpenPricesPricePrefillService();
 
-  final PersistenceRepository repository;
+  final ProductItemsRepository repository;
   final OpenFoodFactsNamePrefillService namePrefillService;
   final OpenPricesPricePrefillService pricePrefillService;
 

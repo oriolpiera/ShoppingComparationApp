@@ -3,13 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/features/home/presentation/model_records_pages.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/external_store_mapping.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
 import 'package:shopping_comparation_app/features/products/data/open_food_facts_name_prefill_service.dart';
 import 'package:shopping_comparation_app/features/products/data/open_prices_price_prefill_service.dart';
@@ -287,7 +283,7 @@ void main() {
   });
 }
 
-class _FakeRepo implements PersistenceRepository {
+class _FakeRepo implements ProductItemsRepository {
   _FakeRepo({
     this.matchesByBarcode = const {},
     this.families = const [ProductFamily(id: 1, name: 'Milk')],
@@ -299,22 +295,6 @@ class _FakeRepo implements PersistenceRepository {
   int registerScannedPriceCalls = 0;
 
   @override
-  Future<String> exportBackupJson() async => '{}';
-
-  @override
-  Future<void> importBackupJson(String jsonPayload) async {}
-
-  @override
-  Future<int> addOrIncrementShoppingListEntry({
-    required int productFamilyId,
-    int quantity = 1,
-  }) async =>
-      1;
-
-  @override
-  Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
-
-  @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
   ) async =>
@@ -322,9 +302,6 @@ class _FakeRepo implements PersistenceRepository {
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
-
-  @override
-  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
 
   @override
   Future<List<ProductFamily>> getProductFamilies({
@@ -339,37 +316,6 @@ class _FakeRepo implements PersistenceRepository {
     bool onlyCurrentPrice = true,
   }) async =>
       [];
-
-  @override
-  Future<List<ExternalStoreMapping>> getExternalStoreMappings() async => [];
-
-  @override
-  Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping) async => 1;
-
-  @override
-  Future<List<ExternalPriceObservation>> getExternalPriceObservations() async =>
-      [];
-
-  @override
-  Future<int> saveExternalPriceObservation(
-    ExternalPriceObservation observation,
-  ) async =>
-      1;
-
-  @override
-  Future<void> updateExternalObservationReviewStatus({
-    required int observationId,
-    required ExternalObservationReviewStatus newStatus,
-  }) async {}
-
-  @override
-  Future<int> confirmExternalObservationLocally({
-    required int observationId,
-  }) async =>
-      1;
-
-  @override
-  Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
@@ -397,9 +343,6 @@ class _FakeRepo implements PersistenceRepository {
   }
 
   @override
-  Future<int> saveProductFamily(ProductFamily family) async => 1;
-
-  @override
   Future<int> saveProductItem(ProductItem item) async => 1;
 
   @override
@@ -414,10 +357,4 @@ class _FakeRepo implements PersistenceRepository {
     String? barcode,
   }) async =>
       1;
-
-  @override
-  Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
-
-  @override
-  Future<int> saveSupermarket(Supermarket supermarket) async => 1;
 }

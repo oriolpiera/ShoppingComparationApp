@@ -3,13 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/features/home/presentation/model_records_pages.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/external_store_mapping.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
@@ -73,24 +69,8 @@ class _QuickCaptureCall {
   final String? barcode;
 }
 
-class _CapturingRepo implements PersistenceRepository {
+class _CapturingRepo implements ProductItemsRepository {
   _QuickCaptureCall? lastQuickCapture;
-
-  @override
-  Future<String> exportBackupJson() async => '{}';
-
-  @override
-  Future<void> importBackupJson(String jsonPayload) async {}
-
-  @override
-  Future<int> addOrIncrementShoppingListEntry({
-    required int productFamilyId,
-    int quantity = 1,
-  }) async =>
-      1;
-
-  @override
-  Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
 
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
@@ -100,9 +80,6 @@ class _CapturingRepo implements PersistenceRepository {
 
   @override
   Future<int?> getLastUsedSupermarketId() async => 1;
-
-  @override
-  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
 
   @override
   Future<List<ProductFamily>> getProductFamilies({
@@ -117,37 +94,6 @@ class _CapturingRepo implements PersistenceRepository {
     bool onlyCurrentPrice = true,
   }) async =>
       [];
-
-  @override
-  Future<List<ExternalStoreMapping>> getExternalStoreMappings() async => [];
-
-  @override
-  Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping) async => 1;
-
-  @override
-  Future<List<ExternalPriceObservation>> getExternalPriceObservations() async =>
-      [];
-
-  @override
-  Future<int> saveExternalPriceObservation(
-    ExternalPriceObservation observation,
-  ) async =>
-      1;
-
-  @override
-  Future<void> updateExternalObservationReviewStatus({
-    required int observationId,
-    required ExternalObservationReviewStatus newStatus,
-  }) async {}
-
-  @override
-  Future<int> confirmExternalObservationLocally({
-    required int observationId,
-  }) async =>
-      1;
-
-  @override
-  Future<List<ShoppingListEntry>> getShoppingList() async => [];
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
@@ -168,9 +114,6 @@ class _CapturingRepo implements PersistenceRepository {
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
-
-  @override
-  Future<int> saveProductFamily(ProductFamily family) async => 1;
 
   @override
   Future<int> saveProductItem(ProductItem item) async => 1;
@@ -198,10 +141,4 @@ class _CapturingRepo implements PersistenceRepository {
     );
     return 1;
   }
-
-  @override
-  Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
-
-  @override
-  Future<int> saveSupermarket(Supermarket supermarket) async => 1;
 }

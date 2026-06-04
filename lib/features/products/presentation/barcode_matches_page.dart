@@ -19,7 +19,7 @@ class BarcodeMatchesPage extends StatefulWidget {
     required this.pricePrefillService,
   });
 
-  final PersistenceRepository repository;
+  final BarcodeLookupRepository repository;
   final String barcode;
   final OpenFoodFactsNamePrefillService namePrefillService;
   final OpenPricesPricePrefillService pricePrefillService;
@@ -245,7 +245,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
     this.prefilledUnitType,
   });
 
-  final PersistenceRepository repository;
+  final BarcodeLookupRepository repository;
   final String barcode;
   final List<ProductFamily> families;
   final List<Supermarket> supermarkets;
