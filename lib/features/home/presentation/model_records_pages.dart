@@ -83,6 +83,7 @@ Widget _buildFamilyAutocompleteField({
         decoration: InputDecoration(
           labelText: 'Family',
           helperText: _buildFamilyFieldHelperText(extraContext: helperText),
+          helperMaxLines: 2,
         ),
       );
     },
