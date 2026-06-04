@@ -1231,8 +1231,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
         batch.deleteAll(dao.db.shoppingListTable);
         batch.deleteAll(dao.db.priceRecordTable);
         batch.deleteAll(dao.db.catalogProductTable);
-        batch.deleteAll(dao.db.externalPriceObservationTable);
-        batch.deleteAll(dao.db.externalStoreMappingTable);
         batch.deleteAll(dao.db.productItemTable);
         batch.deleteAll(dao.db.productFamilyTable);
         batch.deleteAll(dao.db.supermarketTable);

@@ -64,7 +64,7 @@ class _DataBackupPageState extends State<DataBackupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Paste a previously exported JSON backup below to replace the current app data.',
+                    'Paste a previously exported JSON backup below to replace the backed-up supermarkets, product families, products, price history, and shopping list.',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 12),
@@ -87,7 +87,7 @@ class _DataBackupPageState extends State<DataBackupPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Warning: importing replaces the existing saved data. This cannot be undone.',
+                    'Warning: importing replaces the backed-up saved data in this app. Data not included in the backup file is kept as-is. This cannot be undone.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.error,
                         ),
@@ -126,7 +126,7 @@ class _DataBackupPageState extends State<DataBackupPage> {
         return AlertDialog(
           title: const Text('Replace current data?'),
           content: const Text(
-            'Importing a backup replaces the current supermarkets, product families, saved products, and shopping list.',
+            'Importing a backup replaces the current supermarkets, product families, saved products, price history, and shopping list included in the backup file. Other stored data remains unchanged.',
           ),
           actions: [
             TextButton(

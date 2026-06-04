@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/core/database/drift_database.dart';
 import 'package:shopping_comparation_app/features/persistence/data/repositories/drift_persistence_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/external_store_mapping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
@@ -114,5 +116,65 @@ void main() {
       () => repository.importBackupJson(invalidJson),
       throwsA(isA<FormatException>()),
     );
+  });
+
+  test('keeps external mappings and observations not included in backup',
+      () async {
+    final supermarketId = await repository.saveSupermarket(
+      Supermarket(name: 'Market', isActive: true),
+    );
+    final familyId = await repository.saveProductFamily(
+      const ProductFamily(name: 'Rice'),
+    );
+
+    await repository.saveExternalStoreMapping(
+      ExternalStoreMapping(
+        externalStoreId: 'store-1',
+        externalStoreName: 'OpenPrices Market',
+        supermarketId: supermarketId,
+      ),
+    );
+    await repository.saveExternalPriceObservation(
+      ExternalPriceObservation(
+        openPricesId: 'obs-1',
+        productName: 'Rice bag',
+        familyName: 'Rice',
+        externalStoreId: 'store-1',
+        externalStoreName: 'OpenPrices Market',
+        price: 2.3,
+        quantity: 1,
+        unitType: 'kg',
+        pricePerQuantity: 2.3,
+        observedAt: DateTime(2026, 1, 1),
+      ),
+    );
+
+    await repository.saveProductItem(
+      ProductItem(
+        name: 'Rice bag',
+        productFamilyId: familyId,
+        supermarketId: supermarketId,
+        price: 2.4,
+        quantity: 1,
+        unitType: 'kg',
+        pricePerQuantity: 2.4,
+        packageQuantityAmount: 1,
+        packageQuantityUnit: 'kg',
+        normalizedMeasurementUnit: 'kg',
+        dateAdded: DateTime(2026, 1, 1),
+      ),
+    );
+
+    final backupJson = await repository.exportBackupJson();
+
+    await repository.importBackupJson(backupJson);
+
+    final mappings = await repository.getExternalStoreMappings();
+    final observations = await repository.getExternalPriceObservations();
+
+    expect(mappings, hasLength(1));
+    expect(mappings.single.externalStoreId, 'store-1');
+    expect(observations, hasLength(1));
+    expect(observations.single.openPricesId, 'obs-1');
   });
 }
