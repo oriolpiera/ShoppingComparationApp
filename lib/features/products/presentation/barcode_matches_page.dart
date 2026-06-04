@@ -324,8 +324,11 @@ class _RegisterScannedPriceSheetState
       return;
     }
 
+    final refreshedFamilies = await widget.repository.getProductFamilies(
+      onlyActive: true,
+    );
     final selectedFamily = findExistingFamilyByName(
-          families: widget.families,
+          families: refreshedFamilies,
           familyName: family,
         ) ??
         ProductFamily(name: family);
