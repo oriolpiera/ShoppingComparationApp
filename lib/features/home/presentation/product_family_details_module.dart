@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../application/product_family_comparison_module.dart';
+import 'product_family_presentation_helpers.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
@@ -155,14 +156,14 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
-      final familyError = _validateItemForFamily(
+      final familyError = validateItemForFamily(
         family: widget.item,
         quantity: quantity,
         unitType: unitType,
       );
       if (familyError != null) {
         if (mounted) {
-          _showValidationSnackBar(context, familyError);
+          showValidationSnackBar(context, familyError);
         }
         return;
       }
@@ -292,16 +293,16 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _DetailRow(label: 'Name', value: widget.item.name),
-              _DetailRow(
+              DetailRow(label: 'Name', value: widget.item.name),
+              DetailRow(
                 label: 'Active',
                 value: widget.item.isActive ? 'Yes' : 'No',
               ),
-              _DetailRow(
+              DetailRow(
                 label: 'Current active items count',
                 value: '${comparisonView.items.length}',
               ),
-              _DetailRow(
+              DetailRow(
                 label: 'Best unit price',
                 value: comparisonView.bestUnitPrice == null
                     ? '—'
@@ -506,26 +507,26 @@ class ProductItemDetailsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _DetailRow(label: 'Name', value: item.name),
-          _DetailRow(label: 'Family', value: familyName),
-          _DetailRow(label: 'Supermarket', value: supermarketName),
-          _DetailRow(
+          DetailRow(label: 'Name', value: item.name),
+          DetailRow(label: 'Family', value: familyName),
+          DetailRow(label: 'Supermarket', value: supermarketName),
+          DetailRow(
             label: 'Price',
             value: '€${item.price.toStringAsFixed(2)}',
           ),
-          _DetailRow(label: 'Quantity', value: item.quantity.toString()),
-          _DetailRow(label: 'Unit type', value: item.unitType),
-          _DetailRow(
+          DetailRow(label: 'Quantity', value: item.quantity.toString()),
+          DetailRow(label: 'Unit type', value: item.unitType),
+          DetailRow(
             label: 'Price per quantity',
             value: item.pricePerQuantity.toStringAsFixed(2),
           ),
-          _DetailRow(label: 'Date added', value: formattedDateAdded),
-          _DetailRow(label: 'Active', value: _yesNo(item.isActive)),
-          _DetailRow(
+          DetailRow(label: 'Date added', value: formattedDateAdded),
+          DetailRow(label: 'Active', value: _yesNo(item.isActive)),
+          DetailRow(
             label: 'Current price',
             value: _yesNo(item.isCurrentPrice),
           ),
-          _DetailRow(
+          DetailRow(
             label: 'Barcode',
             value: (item.barcode == null || item.barcode!.trim().isEmpty)
                 ? '—'
@@ -577,55 +578,4 @@ class _ProductFamilyDetailsData {
   final List<ProductItem> items;
   final Map<int, Supermarket> supermarketById;
   final int activeItemCount;
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-}
-
-String? _validateItemForFamily({
-  required ProductFamily family,
-  required double quantity,
-  required String unitType,
-}) {
-  final shoppingUnit =
-      family.shoppingUnit ?? inferShoppingUnitFromUnitType(unitType);
-  final purchaseMode =
-      family.purchaseMode ?? inferPurchaseModeFromUnitType(unitType);
-
-  return validateItemSemantics(
-    shoppingUnit: shoppingUnit,
-    purchaseMode: purchaseMode,
-    packageQuantityAmount: quantity,
-    packageQuantityUnit: unitType,
-  );
-}
-
-void _showValidationSnackBar(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }

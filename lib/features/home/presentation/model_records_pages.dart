@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../../../core/scanner/mobile_scanner_port.dart';
+import 'product_family_presentation_helpers.dart';
 import 'product_family_details_module.dart';
 import '../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../products/data/open_prices_price_prefill_service.dart';
@@ -14,28 +15,6 @@ import '../../persistence/domain/entities/shopping_list_entry.dart';
 import '../../persistence/domain/shopping_list_optimizer.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
-
-String? _validateItemForFamily({
-  required ProductFamily family,
-  required double quantity,
-  required String unitType,
-}) {
-  final shoppingUnit =
-      family.shoppingUnit ?? inferShoppingUnitFromUnitType(unitType);
-  final purchaseMode =
-      family.purchaseMode ?? inferPurchaseModeFromUnitType(unitType);
-
-  return validateItemSemantics(
-    shoppingUnit: shoppingUnit,
-    purchaseMode: purchaseMode,
-    packageQuantityAmount: quantity,
-    packageQuantityUnit: unitType,
-  );
-}
-
-void _showValidationSnackBar(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-}
 
 String? _buildFamilyFieldHelperText({String? extraContext}) {
   const suggestionHint = 'Suggestions from 3 chars';
@@ -535,7 +514,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
       );
       if (familyError != null) {
         if (mounted) {
-          _showValidationSnackBar(context, familyError);
+          showValidationSnackBar(context, familyError);
         }
         return;
       }
@@ -577,14 +556,14 @@ class _SupermarketDetailsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _DetailRow(label: 'Name', value: item.name),
-          _DetailRow(
+          DetailRow(label: 'Name', value: item.name),
+          DetailRow(
             label: 'Address',
             value: item.address?.trim().isEmpty == true
                 ? '—'
                 : (item.address ?? '—'),
           ),
-          _DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
+          DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
           const SizedBox(height: 24),
           FilledButton.tonalIcon(
             onPressed: () async {
@@ -1125,14 +1104,14 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         familyName: familyName,
       );
       final selectedFamily = existingFamily ?? ProductFamily(name: familyName);
-      final familyError = _validateItemForFamily(
+      final familyError = validateItemForFamily(
         family: selectedFamily,
         quantity: quantity,
         unitType: unitType,
       );
       if (familyError != null) {
         if (mounted) {
-          _showValidationSnackBar(context, familyError);
+          showValidationSnackBar(context, familyError);
         }
         return;
       }
@@ -1535,14 +1514,14 @@ class _RegisterScannedPriceSheetState
     final selectedFamily =
         _findExistingFamilyByName(families: families, familyName: family) ??
             ProductFamily(name: family);
-    final familyError = _validateItemForFamily(
+    final familyError = validateItemForFamily(
       family: selectedFamily,
       quantity: quantity,
       unitType: _unitType,
     );
     if (familyError != null) {
       if (mounted) {
-        _showValidationSnackBar(context, familyError);
+        showValidationSnackBar(context, familyError);
       }
       return;
     }
@@ -2046,35 +2025,6 @@ class _ShoppingListViewData {
   final List<MapEntry<String, List<_ShoppingRow>>> groupedRows;
   final List<_ShoppingRow> pendingRows;
   final List<ProductFamily> activeFamilyOptions;
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
 }
 
 class _ProductContext {
