@@ -10,6 +10,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/pr
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/shopping_list_optimizer.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
@@ -120,6 +121,16 @@ class _FakeBackupRepository implements PersistenceRepository {
       1;
 
   @override
+  Future<int> addOrIncrementShoppingNeedEntry({
+    required int productFamilyId,
+    int quantity = 1,
+  }) =>
+      addOrIncrementShoppingListEntry(
+        productFamilyId: productFamilyId,
+        quantity: quantity,
+      );
+
+  @override
   Future<int> confirmExternalObservationLocally({
     required int observationId,
   }) async =>
@@ -127,6 +138,10 @@ class _FakeBackupRepository implements PersistenceRepository {
 
   @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
+
+  @override
+  Future<void> deleteShoppingNeedEntries(List<int> entryIds) =>
+      deleteShoppingListEntries(entryIds);
 
   @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
@@ -148,6 +163,14 @@ class _FakeBackupRepository implements PersistenceRepository {
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
 
   @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() =>
+      getProductFamilies();
+
+  @override
+  Future<ShoppingOptimizationResult> getOptimizedShoppingNeedEntries() async =>
+      const ShoppingOptimizationResult(groups: [], pendingEntries: []);
+
+  @override
   Future<List<ProductFamily>> getProductFamilies(
           {bool onlyActive = true}) async =>
       [];
@@ -162,6 +185,9 @@ class _FakeBackupRepository implements PersistenceRepository {
 
   @override
   Future<List<ShoppingListEntry>> getShoppingList() async => [];
+
+  @override
+  Future<List<ShoppingListEntry>> getShoppingNeedEntries() => getShoppingList();
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async =>
@@ -212,6 +238,10 @@ class _FakeBackupRepository implements PersistenceRepository {
 
   @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
+
+  @override
+  Future<int> saveShoppingNeedEntry(ShoppingListEntry entry) =>
+      saveShoppingListEntry(entry);
 
   @override
   Future<int> saveSupermarket(Supermarket supermarket) async => 1;

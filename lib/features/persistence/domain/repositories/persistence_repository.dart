@@ -6,6 +6,7 @@ import '../entities/product_family.dart';
 import '../entities/product_item.dart';
 import '../entities/scanned_price_registration_result.dart';
 import '../entities/shopping_list_entry.dart';
+import 'shopping_list_repository.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 
 abstract class BarcodeLookupRepository {
@@ -44,7 +45,8 @@ abstract class ProductItemsRepository extends BarcodeLookupRepository {
   });
 }
 
-abstract class PersistenceRepository extends ProductItemsRepository {
+abstract class PersistenceRepository extends ProductItemsRepository
+    implements ShoppingListRepository {
   Future<String> exportBackupJson();
   Future<void> importBackupJson(String jsonPayload);
 

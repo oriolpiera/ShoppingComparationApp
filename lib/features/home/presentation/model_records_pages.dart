@@ -12,8 +12,8 @@ import '../../products/presentation/product_item_capture_form_support.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
-import '../../persistence/domain/shopping_list_optimizer.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../../persistence/domain/repositories/shopping_list_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
 
 class SupermarketsPage extends StatefulWidget {
@@ -1098,7 +1098,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
 class ShoppingListPage extends StatefulWidget {
   const ShoppingListPage({super.key, required this.repository});
 
-  final PersistenceRepository repository;
+  final ShoppingListRepository repository;
 
   @override
   State<ShoppingListPage> createState() => _ShoppingListPageState();
@@ -1118,33 +1118,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
   }
 
   Future<_ShoppingListViewData> _load() async {
-    final entries = await widget.repository.getShoppingList();
-    final families = await widget.repository.getProductFamilies(
-      onlyActive: false,
-    );
-    final activeFamilies = await widget.repository.getProductFamilies();
-    final items = await widget.repository.getProductItems(
-      onlyCurrentPrice: true,
-    );
-    final supermarkets = await widget.repository.getSupermarkets(
-      onlyActive: true,
-    );
-
-    final familyById = {
-      for (final family in families)
-        if (family.id != null) family.id!: family,
-    };
-    final marketNameById = {
-      for (final market in supermarkets)
-        if (market.id != null) market.id!: market.name,
-    };
-
-    final optimization = optimizeShoppingList(
-      shoppingList: entries,
-      familyById: familyById,
-      supermarketNameById: marketNameById,
-      items: items,
-    );
+    final optimization =
+        await widget.repository.getOptimizedShoppingNeedEntries();
+    final activeFamilies = await widget.repository.getActiveShoppingFamilies();
 
     final sortedGroups = optimization.groups
         .map(
@@ -1198,7 +1174,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   Future<void> _updateQuantity(_ShoppingRow row, int delta) async {
     final nextUnits = (row.quantity + delta).clamp(0, 9999);
-    await widget.repository.saveShoppingListEntry(
+    await widget.repository.saveShoppingNeedEntry(
       ShoppingListEntry(
         id: row.entryId < 0 ? null : row.entryId,
         productFamilyId: row.familyId,
@@ -1259,7 +1235,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
     final quantity = int.tryParse(quantityController.text.trim());
     if (save == true && quantity != null && quantity > 0) {
-      await widget.repository.addOrIncrementShoppingListEntry(
+      await widget.repository.addOrIncrementShoppingNeedEntry(
         productFamilyId: selectedFamilyId,
         quantity: quantity,
       );
@@ -1290,7 +1266,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     );
 
     if (confirmed == true) {
-      await widget.repository.deleteShoppingListEntries(
+      await widget.repository.deleteShoppingNeedEntries(
         _selectedEntryIds.toList(),
       );
       setState(() {

@@ -1009,6 +1009,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
   }
 
   @override
+  Future<List<ShoppingListEntry>> getShoppingNeedEntries() {
+    return getShoppingList();
+  }
+
+  @override
   Future<int> saveShoppingListEntry(ShoppingListEntry entry) {
     return dao.saveShoppingListEntry(
       ShoppingListTableCompanion(
@@ -1018,6 +1023,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
         productItemId: const Value.absent(),
       ),
     );
+  }
+
+  @override
+  Future<int> saveShoppingNeedEntry(ShoppingListEntry entry) {
+    return saveShoppingListEntry(entry);
   }
 
   @override
@@ -1052,13 +1062,34 @@ class DriftPersistenceRepository implements PersistenceRepository {
   }
 
   @override
+  Future<int> addOrIncrementShoppingNeedEntry({
+    required int productFamilyId,
+    int quantity = 1,
+  }) {
+    return addOrIncrementShoppingListEntry(
+      productFamilyId: productFamilyId,
+      quantity: quantity,
+    );
+  }
+
+  @override
   Future<void> deleteShoppingListEntries(List<int> entryIds) {
     return dao.deleteShoppingListEntriesByIds(entryIds);
   }
 
   @override
-  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async {
-    final shoppingList = await getShoppingList();
+  Future<void> deleteShoppingNeedEntries(List<int> entryIds) {
+    return deleteShoppingListEntries(entryIds);
+  }
+
+  @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() {
+    return getProductFamilies();
+  }
+
+  @override
+  Future<ShoppingOptimizationResult> getOptimizedShoppingNeedEntries() async {
+    final shoppingList = await getShoppingNeedEntries();
     final families = await getProductFamilies(onlyActive: false);
     final supermarkets = await getSupermarkets(onlyActive: true);
     final items = await getProductItems(onlyCurrentPrice: true);
@@ -1114,7 +1145,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
       for (final market in supermarkets)
         if (market.id != null) market.id!: market.name,
     };
-    final optimization = optimizeShoppingList(
+
+    return optimizeShoppingList(
       shoppingList: shoppingList,
       familyById: familyById,
       supermarketNameById: supermarketNameById,
@@ -1123,6 +1155,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
         ...acceptedExternalItems.where((i) => i.productFamilyId > 0),
       ],
     );
+  }
+
+  @override
+  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async {
+    final optimization = await getOptimizedShoppingNeedEntries();
 
     final result = optimization.groups
         .map(
