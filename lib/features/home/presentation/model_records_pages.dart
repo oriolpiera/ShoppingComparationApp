@@ -157,8 +157,8 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
                               isActive: false,
                             ),
                           );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(this.context).showSnackBar(
                             const SnackBar(
                               content: Text('Supermarket deleted'),
                             ),
@@ -344,8 +344,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               purchaseMode: item.purchaseMode,
                             ),
                           );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(this.context).showSnackBar(
                             const SnackBar(
                               content: Text('Product family deleted'),
                             ),
@@ -387,8 +387,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               purchaseMode: item.purchaseMode,
                             ),
                           );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(this.context).showSnackBar(
                             const SnackBar(
                               content: Text(
                                 'Product family and active Product Items deleted',
@@ -1354,8 +1354,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                               barcode: item.barcode,
                             ),
                           );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(this.context).showSnackBar(
                             const SnackBar(content: Text('Product deleted')),
                           );
                         }
