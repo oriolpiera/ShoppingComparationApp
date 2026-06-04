@@ -1,30 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/normalization/family_unit_normalization.dart';
-import '../../persistence/domain/entities/product_family.dart';
-
-String? validateItemForFamily({
-  required ProductFamily family,
-  required double quantity,
-  required String unitType,
-}) {
-  final shoppingUnit =
-      family.shoppingUnit ?? inferShoppingUnitFromUnitType(unitType);
-  final purchaseMode =
-      family.purchaseMode ?? inferPurchaseModeFromUnitType(unitType);
-
-  return validateItemSemantics(
-    shoppingUnit: shoppingUnit,
-    purchaseMode: purchaseMode,
-    packageQuantityAmount: quantity,
-    packageQuantityUnit: unitType,
-  );
-}
-
-void showValidationSnackBar(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-}
-
 class DetailRow extends StatelessWidget {
   const DetailRow({super.key, required this.label, required this.value});
 

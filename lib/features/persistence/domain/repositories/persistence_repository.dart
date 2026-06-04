@@ -9,6 +9,9 @@ import '../entities/shopping_list_entry.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 
 abstract class PersistenceRepository {
+  Future<String> exportBackupJson();
+  Future<void> importBackupJson(String jsonPayload);
+
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true});
   Future<int> saveSupermarket(Supermarket supermarket);
 
