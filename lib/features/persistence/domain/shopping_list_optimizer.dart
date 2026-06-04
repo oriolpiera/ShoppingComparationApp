@@ -157,8 +157,8 @@ bool isMoreRecentShoppingCandidate(ProductItem candidate, ProductItem current) {
   final byDate = candidate.dateAdded.compareTo(current.dateAdded);
   if (byDate != 0) return byDate > 0;
 
-  final candidateId = candidate.id ?? -1;
-  final currentId = current.id ?? -1;
+  final candidateId = candidate.id ?? 0;
+  final currentId = current.id ?? 0;
   return candidateId > currentId;
 }
 
