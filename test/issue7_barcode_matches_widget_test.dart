@@ -299,6 +299,12 @@ class _FakeRepo implements PersistenceRepository {
   int registerScannedPriceCalls = 0;
 
   @override
+  Future<String> exportBackupJson() async => '{}';
+
+  @override
+  Future<void> importBackupJson(String jsonPayload) async {}
+
+  @override
   Future<int> addOrIncrementShoppingListEntry({
     required int productFamilyId,
     int quantity = 1,
