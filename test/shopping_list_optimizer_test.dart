@@ -103,7 +103,13 @@ void main() {
         ],
         familyById: const {
           1: ProductFamily(id: 1, name: 'Milk', isActive: true),
-          2: ProductFamily(id: 2, name: 'Bread', isActive: true),
+          2: ProductFamily(
+            id: 2,
+            name: 'Bread',
+            isActive: true,
+            shoppingUnit: 'kilogram',
+            purchaseMode: 'weighted',
+          ),
           3: ProductFamily(id: 3, name: 'Cheese', isActive: false),
           4: ProductFamily(id: 4, name: 'Eggs', isActive: true),
         },
@@ -131,6 +137,7 @@ void main() {
             marketId: 2,
             price: 2.5,
             ppq: 1.1,
+            quantity: 1,
             date: DateTime(2026, 1, 2),
           ),
           _item(
@@ -157,6 +164,12 @@ void main() {
         1,
         2,
       ]);
+      expect(
+        result.groups.single.entries
+            .firstWhere((e) => e.productFamilyId == 2)
+            .estimatedCost,
+        2.5,
+      );
 
       expect(result.pendingEntries.map((e) => e.productFamilyId), [3, 4]);
       expect(
@@ -217,6 +230,128 @@ void main() {
         expect(result.groups.single.entries.single.bestItem.id, 3);
       },
     );
+
+    test(
+      'chooses cheapest whole-package purchase instead of lowest unit price',
+      () {
+        final result = optimizeShoppingList(
+          shoppingList: const [
+            ShoppingListEntry(id: 20, productFamilyId: 1, quantity: 1),
+          ],
+          familyById: const {
+            1: ProductFamily(
+              id: 1,
+              name: 'Juice',
+              shoppingUnit: 'liter',
+              purchaseMode: 'packaged',
+            ),
+          },
+          supermarketNameById: const {1: 'Alpha Market', 2: 'Beta Market'},
+          items: [
+            _item(
+              id: 1,
+              familyId: 1,
+              marketId: 1,
+              price: 1.2,
+              ppq: 1.71,
+              quantity: 700,
+              unitType: 'ml',
+              packageQuantityAmount: 700,
+              packageQuantityUnit: 'ml',
+              normalizedMeasurementUnit: 'ml',
+              date: DateTime(2026, 1, 1),
+            ),
+            _item(
+              id: 2,
+              familyId: 1,
+              marketId: 2,
+              price: 1.1,
+              ppq: 2.2,
+              quantity: 500,
+              unitType: 'ml',
+              packageQuantityAmount: 500,
+              packageQuantityUnit: 'ml',
+              normalizedMeasurementUnit: 'ml',
+              date: DateTime(2026, 1, 2),
+            ),
+          ],
+        );
+
+        final selected = result.groups.single.entries.single;
+        expect(selected.bestItem.id, 2);
+        expect(selected.estimatedCost, 2.2);
+      },
+    );
+
+    test('marks family as pending when candidate units are incompatible', () {
+      final result = optimizeShoppingList(
+        shoppingList: const [
+          ShoppingListEntry(id: 21, productFamilyId: 1, quantity: 1),
+        ],
+        familyById: const {
+          1: ProductFamily(
+            id: 1,
+            name: 'Rice',
+            shoppingUnit: 'kilogram',
+            purchaseMode: 'packaged',
+          ),
+        },
+        supermarketNameById: const {1: 'Alpha Market'},
+        items: [
+          _item(
+            id: 1,
+            familyId: 1,
+            marketId: 1,
+            price: 1,
+            ppq: 1,
+            quantity: 1,
+            unitType: 'L',
+            packageQuantityAmount: 1,
+            packageQuantityUnit: 'L',
+            normalizedMeasurementUnit: 'l',
+            date: DateTime(2026, 1, 1),
+          ),
+        ],
+      );
+
+      expect(result.groups, isEmpty);
+      expect(result.pendingEntries.map((e) => e.productFamilyId), [1]);
+    });
+
+    test('does not throw when a shopping entry quantity is zero', () {
+      final result = optimizeShoppingList(
+        shoppingList: const [
+          ShoppingListEntry(id: 30, productFamilyId: 1, quantity: 0),
+        ],
+        familyById: const {
+          1: ProductFamily(id: 1, name: 'Milk', isActive: true),
+        },
+        supermarketNameById: const {1: 'Alpha Market', 2: 'Beta Market'},
+        items: [
+          _item(
+            id: 1,
+            familyId: 1,
+            marketId: 1,
+            price: 2.0,
+            ppq: 2.0,
+            date: DateTime(2026, 1, 1),
+          ),
+          _item(
+            id: 2,
+            familyId: 1,
+            marketId: 2,
+            price: 1.5,
+            ppq: 1.5,
+            date: DateTime(2026, 1, 2),
+          ),
+        ],
+      );
+
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.supermarketName, 'Beta Market');
+      expect(result.groups.single.entries.single.bestItem.id, 2);
+      expect(result.groups.single.entries.single.estimatedCost, 0);
+    });
   });
 }
 
@@ -226,6 +361,11 @@ ProductItem _item({
   required int marketId,
   required double price,
   required double ppq,
+  double quantity = 1,
+  String unitType = 'kg',
+  double? packageQuantityAmount,
+  String? packageQuantityUnit,
+  String? normalizedMeasurementUnit,
   required DateTime date,
 }) {
   return ProductItem(
@@ -234,9 +374,12 @@ ProductItem _item({
     productFamilyId: familyId,
     supermarketId: marketId,
     price: price,
-    quantity: 1,
-    unitType: 'kg',
+    quantity: quantity,
+    unitType: unitType,
     pricePerQuantity: ppq,
     dateAdded: date,
+    packageQuantityAmount: packageQuantityAmount,
+    packageQuantityUnit: packageQuantityUnit,
+    normalizedMeasurementUnit: normalizedMeasurementUnit,
   );
 }

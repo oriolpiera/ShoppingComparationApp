@@ -7,6 +7,7 @@ class OptimizedShoppingItem {
   final int quantity;
   final ProductItem bestItem;
   final String? sourceTag;
+  final double estimatedCost;
 
   const OptimizedShoppingItem({
     required this.shoppingListEntryId,
@@ -14,10 +15,9 @@ class OptimizedShoppingItem {
     required this.productFamilyName,
     required this.quantity,
     required this.bestItem,
+    required this.estimatedCost,
     this.sourceTag,
   });
-
-  double get estimatedCost => quantity * bestItem.pricePerQuantity;
 }
 
 class OptimizedShoppingGroup {

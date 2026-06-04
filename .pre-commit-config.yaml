@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: dart-format
         name: Dart Format
-        entry: dart format --output=none --set-exit-if-changed
+        entry: env -u GIT_DIR -u GIT_WORK_TREE dart format --output=none --set-exit-if-changed
         language: system
         types: [dart]
 

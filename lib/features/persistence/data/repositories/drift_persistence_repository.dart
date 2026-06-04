@@ -192,8 +192,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
     final whereClause = filters.isEmpty ? '' : 'WHERE ${filters.join(' AND ')}';
 
-    final rows = await dao.db.customSelect(
-      '''
+    final rows = await dao.db.customSelect('''
       SELECT
         pr.id AS price_record_id,
         cp.nom AS product_name,
@@ -213,42 +212,38 @@ class DriftPersistenceRepository implements PersistenceRepository {
       JOIN catalog_product cp ON cp.id = pr.catalog_product_id
       $whereClause
       ORDER BY pr.observed_at DESC, pr.id DESC;
-      ''',
-      variables: variables,
-    ).get();
+      ''', variables: variables).get();
 
-    return rows.map(
-      (row) {
-        final quantity =
-            (row.data['package_quantity_amount'] as num?)?.toDouble() ?? 0;
-        final price = row.read<double>('price');
-        final unitType = (row.data['package_quantity_unit'] as String?) ??
-            (row.data['normalized_measurement_unit'] as String?) ??
-            'kg';
-        return ProductItem(
-          id: row.read<int>('price_record_id'),
-          name: row.read<String>('product_name'),
-          isActive: (row.data['catalog_active'] as int? ?? 0) == 1 &&
-              (row.data['price_record_active'] as int? ?? 0) == 1,
-          productFamilyId: row.read<int>('product_family_id'),
-          supermarketId: row.read<int>('supermarket_id'),
-          price: price,
-          quantity: quantity,
-          unitType: unitType,
-          pricePerQuantity: quantity == 0 ? 0 : price / quantity,
-          dateAdded: DateTime.fromMillisecondsSinceEpoch(
-            (row.data['observed_at'] as int?) ?? 0,
-          ),
-          isCurrentPrice: (row.data['is_current_price'] as int? ?? 0) == 1,
-          barcode: row.data['barcode'] as String?,
-          packageQuantityAmount: quantity,
-          packageQuantityUnit: unitType,
-          normalizedMeasurementUnit:
-              row.data['normalized_measurement_unit'] as String?,
-          externalObservationId: row.data['external_observation_id'] as int?,
-        );
-      },
-    ).toList();
+    return rows.map((row) {
+      final quantity =
+          (row.data['package_quantity_amount'] as num?)?.toDouble() ?? 0;
+      final price = row.read<double>('price');
+      final unitType = (row.data['package_quantity_unit'] as String?) ??
+          (row.data['normalized_measurement_unit'] as String?) ??
+          'kg';
+      return ProductItem(
+        id: row.read<int>('price_record_id'),
+        name: row.read<String>('product_name'),
+        isActive: (row.data['catalog_active'] as int? ?? 0) == 1 &&
+            (row.data['price_record_active'] as int? ?? 0) == 1,
+        productFamilyId: row.read<int>('product_family_id'),
+        supermarketId: row.read<int>('supermarket_id'),
+        price: price,
+        quantity: quantity,
+        unitType: unitType,
+        pricePerQuantity: quantity == 0 ? 0 : price / quantity,
+        dateAdded: DateTime.fromMillisecondsSinceEpoch(
+          (row.data['observed_at'] as int?) ?? 0,
+        ),
+        isCurrentPrice: (row.data['is_current_price'] as int? ?? 0) == 1,
+        barcode: row.data['barcode'] as String?,
+        packageQuantityAmount: quantity,
+        packageQuantityUnit: unitType,
+        normalizedMeasurementUnit:
+            row.data['normalized_measurement_unit'] as String?,
+        externalObservationId: row.data['external_observation_id'] as int?,
+      );
+    }).toList();
   }
 
   String _isCurrentPriceSql({required String alias}) {
@@ -463,9 +458,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
       ],
     );
     final inserted = await dao.db
-        .customSelect(
-          'SELECT last_insert_rowid() AS id;',
-        )
+        .customSelect('SELECT last_insert_rowid() AS id;')
         .getSingle();
     return inserted.read<int>('id');
   }
@@ -495,9 +488,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
       ],
     );
     final inserted = await dao.db
-        .customSelect(
-          'SELECT last_insert_rowid() AS id;',
-        )
+        .customSelect('SELECT last_insert_rowid() AS id;')
         .getSingle();
     return inserted.read<int>('id');
   }
@@ -579,8 +570,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
         supermarketId: item.supermarketId,
       );
       if (latest != null && !observedAt.isBefore(latest.observedAt)) {
-        observedAt =
-            latest.observedAt.subtract(const Duration(milliseconds: 1));
+        observedAt = latest.observedAt.subtract(
+          const Duration(milliseconds: 1),
+        );
       }
     }
 
@@ -1108,6 +1100,11 @@ class DriftPersistenceRepository implements PersistenceRepository {
             pricePerQuantity: row.pricePerQuantity,
             dateAdded: row.observedAt,
             isCurrentPrice: true,
+            packageQuantityAmount: row.quantity,
+            packageQuantityUnit: row.unitType,
+            normalizedMeasurementUnit: normalizeUnitTypeForComparison(
+              row.unitType,
+            ),
             externalObservationId: row.id,
           );
         })
@@ -1140,6 +1137,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
                     productFamilyName: entry.productFamilyName,
                     quantity: entry.quantity,
                     bestItem: entry.bestItem,
+                    estimatedCost: entry.estimatedCost,
                     sourceTag:
                         entry.bestItem.isOpenPricesSource ? 'OpenPrices' : null,
                   ),
