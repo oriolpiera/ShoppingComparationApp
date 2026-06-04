@@ -37,6 +37,58 @@ void _showValidationSnackBar(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
+String? _buildFamilyFieldHelperText({String? extraContext}) {
+  const suggestionHint = 'Suggestions from 3 chars';
+  if (extraContext == null || extraContext.isEmpty) {
+    return suggestionHint;
+  }
+  return '$extraContext\n$suggestionHint';
+}
+
+Widget _buildFamilyAutocompleteField({
+  required TextEditingController familyController,
+  required Iterable<ProductFamily> families,
+  String? helperText,
+}) {
+  return Autocomplete<String>(
+    optionsBuilder: (textEditingValue) {
+      final query = textEditingValue.text.trim();
+      if (query.length < 3) {
+        return const Iterable<String>.empty();
+      }
+      final normalizedQuery = normalizeFamilySearchText(query);
+      final names = families.map((f) => f.name).toSet().toList()..sort();
+      return names
+          .where(
+            (name) => normalizeFamilySearchText(name).contains(normalizedQuery),
+          )
+          .take(8);
+    },
+    onSelected: (selection) {
+      familyController.text = selection;
+    },
+    fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+      if (textController.text != familyController.text) {
+        textController.value = TextEditingValue(
+          text: familyController.text,
+          selection: TextSelection.collapsed(
+            offset: familyController.text.length,
+          ),
+        );
+      }
+      return TextField(
+        controller: textController,
+        focusNode: focusNode,
+        onChanged: (value) => familyController.text = value,
+        decoration: InputDecoration(
+          labelText: 'Family',
+          helperText: _buildFamilyFieldHelperText(extraContext: helperText),
+        ),
+      );
+    },
+  );
+}
+
 ProductFamily? _findExistingFamilyByName({
   required Iterable<ProductFamily> families,
   required String familyName,
@@ -1472,49 +1524,9 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                   controller: nameController,
                   decoration: const InputDecoration(labelText: 'Name'),
                 ),
-                Autocomplete<String>(
-                  optionsBuilder: (textEditingValue) {
-                    final query = textEditingValue.text.trim();
-                    if (query.length < 3) {
-                      return const Iterable<String>.empty();
-                    }
-                    final normalizedQuery = normalizeFamilySearchText(query);
-                    final names = data.families
-                        .map((f) => f.name)
-                        .toSet()
-                        .toList()
-                      ..sort();
-                    return names
-                        .where(
-                          (name) => normalizeFamilySearchText(
-                            name,
-                          ).contains(normalizedQuery),
-                        )
-                        .take(8);
-                  },
-                  onSelected: (selection) {
-                    familyController.text = selection;
-                  },
-                  fieldViewBuilder:
-                      (context, textController, focusNode, onFieldSubmitted) {
-                    if (textController.text != familyController.text) {
-                      textController.value = TextEditingValue(
-                        text: familyController.text,
-                        selection: TextSelection.collapsed(
-                          offset: familyController.text.length,
-                        ),
-                      );
-                    }
-                    return TextField(
-                      controller: textController,
-                      focusNode: focusNode,
-                      onChanged: (value) => familyController.text = value,
-                      decoration: const InputDecoration(
-                        labelText: 'Family',
-                        helperText: 'Suggestions from 3 chars',
-                      ),
-                    );
-                  },
+                _buildFamilyAutocompleteField(
+                  familyController: familyController,
+                  families: data.families,
                 ),
                 DropdownButtonFormField<int>(
                   initialValue: supermarketId,
@@ -1747,6 +1759,7 @@ class _BarcodeMatchesPageState extends State<_BarcodeMatchesPage> {
       builder: (_) => _RegisterScannedPriceSheet(
         repository: widget.repository,
         barcode: widget.barcode,
+        families: data.families,
         supermarkets: data.supermarkets,
         lastUsedSupermarketId: data.lastUsedSupermarketId,
         prefilledName: latest?.productItem.name ?? lookupData.prefilledName,
@@ -1906,6 +1919,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
   const _RegisterScannedPriceSheet({
     required this.repository,
     required this.barcode,
+    required this.families,
     required this.supermarkets,
     required this.lastUsedSupermarketId,
     this.prefilledName,
@@ -1918,6 +1932,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
 
   final PersistenceRepository repository;
   final String barcode;
+  final List<ProductFamily> families;
   final List<Supermarket> supermarkets;
   final int? lastUsedSupermarketId;
   final String? prefilledName;
@@ -2050,14 +2065,12 @@ class _RegisterScannedPriceSheetState
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Name'),
               ),
-              TextField(
-                controller: _familyController,
-                decoration: InputDecoration(
-                  labelText: 'Family',
-                  helperText: widget.isPrefilledFamilyFromOff
-                      ? 'Suggested from Open Food Facts. Please confirm or edit.'
-                      : null,
-                ),
+              _buildFamilyAutocompleteField(
+                familyController: _familyController,
+                families: widget.families,
+                helperText: widget.isPrefilledFamilyFromOff
+                    ? 'Suggested from Open Food Facts. Please confirm or edit.'
+                    : null,
               ),
               DropdownButtonFormField<int>(
                 initialValue: _supermarketId,
