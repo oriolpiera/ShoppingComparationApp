@@ -99,7 +99,7 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
         families: data.families,
         supermarkets: data.supermarkets,
         lastUsedSupermarketId: data.lastUsedSupermarketId,
-        prefilledName: latest?.productItem.name ?? lookupData.prefilledName,
+        prefilledName: latest?.catalogProduct.name ?? lookupData.prefilledName,
         prefilledFamily:
             latest?.familyName ?? lookupData.prefilledFamilySuggestion,
         isPrefilledFamilyFromOff:
@@ -189,11 +189,12 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final match = matches[index];
-                    final item = match.productItem;
                     return ListTile(
-                      title: Text('${match.supermarketName} · ${item.name}'),
+                      title: Text(
+                        '${match.supermarketName} · ${match.catalogProduct.name}',
+                      ),
                       subtitle: Text(
-                        '€${item.price.toStringAsFixed(2)} · ${item.quantity} ${item.unitType} · ${item.pricePerQuantity.toStringAsFixed(2)} €/${item.unitType}',
+                        '€${match.priceRecord.price.toStringAsFixed(2)} · ${match.quantity} ${match.unitType} · ${match.pricePerQuantity.toStringAsFixed(2)} €/${match.unitType}',
                       ),
                     );
                   },

@@ -88,7 +88,9 @@ void main() {
     final matches = await repository.findCurrentActiveByBarcode('X1');
 
     expect(matches.length, 1);
-    expect(matches.first.productItem.name, 'Milk 1');
+    expect(matches.first.catalogProduct.name, 'Milk 1');
+    expect(matches.first.catalogProduct.barcode, 'X1');
+    expect(matches.first.priceRecord.price, 1);
   });
 
   test('registerScannedPrice no-ops when tuple already current', () async {
@@ -118,7 +120,41 @@ void main() {
 
     final matches = await repository.findCurrentActiveByBarcode('ABC');
     expect(result.created, false);
+    expect(result.catalogProduct?.barcode, 'ABC');
+    expect(result.priceRecord?.price, 2);
     expect(matches.length, 1);
+    expect(
+      (await db
+              .customSelect('SELECT COUNT(*) AS c FROM catalog_product;')
+              .getSingle())
+          .read<int>('c'),
+      1,
+    );
+    expect(
+      (await db
+              .customSelect('SELECT COUNT(*) AS c FROM price_record;')
+              .getSingle())
+          .read<int>('c'),
+      1,
+    );
+  });
+
+  test('registerScannedPrice with empty barcode returns no domain objects',
+      () async {
+    final result = await repository.registerScannedPrice(
+      barcode: '   ',
+      productName: 'Yogurt',
+      familyName: 'Yogurt',
+      supermarketId: 1,
+      price: 2,
+      quantity: 1,
+      unitType: 'kg',
+    );
+
+    expect(result.created, false);
+    expect(result.catalogProduct, isNull);
+    expect(result.priceRecord, isNull);
+    expect(result.message, 'Barcode is required.');
   });
 
   test('registerScannedPrice rolls over previous current item on change',
@@ -158,9 +194,28 @@ void main() {
 
     expect(result.created, true);
     expect(currentMatches.length, 1);
-    expect(currentMatches.first.productItem.price, 6.0);
+    expect(currentMatches.first.catalogProduct.barcode, 'ROLLOVER-1');
+    expect(currentMatches.first.priceRecord.price, 6.0);
+    expect(result.catalogProduct?.id, currentMatches.first.catalogProduct.id);
+    expect(result.priceRecord?.id, currentMatches.first.priceRecord.id);
     expect(barcodeRows.length, 2);
     expect(barcodeRows.where((row) => row.isCurrentPrice).length, 1);
+    expect(
+      (await db
+              .customSelect(
+                "SELECT COUNT(*) AS c FROM catalog_product WHERE barcode = 'ROLLOVER-1';",
+              )
+              .getSingle())
+          .read<int>('c'),
+      1,
+    );
+    expect(
+      (await db
+              .customSelect('SELECT COUNT(*) AS c FROM price_record;')
+              .getSingle())
+          .read<int>('c'),
+      2,
+    );
   });
 
   test(
