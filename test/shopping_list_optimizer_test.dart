@@ -317,6 +317,41 @@ void main() {
       expect(result.groups, isEmpty);
       expect(result.pendingEntries.map((e) => e.productFamilyId), [1]);
     });
+
+    test('does not throw when a shopping entry quantity is zero', () {
+      final result = optimizeShoppingList(
+        shoppingList: const [
+          ShoppingListEntry(id: 30, productFamilyId: 1, quantity: 0),
+        ],
+        familyById: const {
+          1: ProductFamily(id: 1, name: 'Milk', isActive: true),
+        },
+        supermarketNameById: const {1: 'Alpha Market', 2: 'Beta Market'},
+        items: [
+          _item(
+            id: 1,
+            familyId: 1,
+            marketId: 1,
+            price: 2.0,
+            ppq: 2.0,
+            date: DateTime(2026, 1, 1),
+          ),
+          _item(
+            id: 2,
+            familyId: 1,
+            marketId: 2,
+            price: 1.5,
+            ppq: 1.5,
+            date: DateTime(2026, 1, 2),
+          ),
+        ],
+      );
+
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.supermarketName, 'Beta Market');
+      expect(result.groups.single.entries.single.bestItem.id, 2);
+      expect(result.groups.single.entries.single.estimatedCost, 0);
+    });
   });
 }
 

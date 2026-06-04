@@ -208,6 +208,19 @@ _OptimizedCandidate? _selectBestCandidate({
 }) {
   if (items.isEmpty) return null;
 
+  if (entry.quantity <= 0) {
+    ProductItem? winner;
+    for (final item in items) {
+      if (winner == null || isBetterOptimizedItem(item, winner)) {
+        winner = item;
+      }
+    }
+
+    return winner == null
+        ? null
+        : _OptimizedCandidate(item: winner, estimatedCost: 0);
+  }
+
   final needUnit = _parseShoppingUnit(
     family.shoppingUnit ??
         inferShoppingUnitFromUnitType(_effectiveUnitType(items.first)),
