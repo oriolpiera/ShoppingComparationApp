@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/features/backup/presentation/data_backup_page.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/catalog_product.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/external_store_mapping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/price_record.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
@@ -177,7 +179,27 @@ class _FakeBackupRepository implements PersistenceRepository {
     required double quantity,
     required String unitType,
   }) async =>
-      const ScannedPriceRegistrationResult(created: false);
+      ScannedPriceRegistrationResult(
+        created: false,
+        catalogProduct: CatalogProduct(
+          id: 1,
+          name: 'Scanned',
+          isActive: true,
+          productFamilyId: 1,
+          barcode: 'fake',
+          packageQuantityAmount: 1,
+          packageQuantityUnit: 'kg',
+          normalizedMeasurementUnit: 'kg',
+          identityKey: 'barcode:fake',
+        ),
+        priceRecord: PriceRecord(
+          id: 1,
+          catalogProductId: 1,
+          supermarketId: 1,
+          price: 1,
+          observedAt: DateTime(2026, 1, 1),
+        ),
+      );
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:shopping_comparation_app/features/home/presentation/model_records_pages.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/catalog_product.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/price_record.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
@@ -165,17 +167,24 @@ void main() {
       matchesByBarcode: {
         'X-KNOWN': [
           BarcodeMatchResult(
-            productItem: ProductItem(
-              id: 10,
+            catalogProduct: CatalogProduct(
+              id: 3,
               name: 'Known Yogurt',
+              isActive: true,
               productFamilyId: 1,
+              barcode: 'X-KNOWN',
+              packageQuantityAmount: 1,
+              packageQuantityUnit: 'kg',
+              normalizedMeasurementUnit: 'kg',
+              identityKey: 'barcode:X-KNOWN',
+            ),
+            priceRecord: PriceRecord(
+              id: 10,
+              catalogProductId: 3,
               supermarketId: 1,
               price: 2,
-              quantity: 1,
-              unitType: 'kg',
-              pricePerQuantity: 2,
-              dateAdded: DateTime(2026, 1, 1),
-              barcode: 'X-KNOWN',
+              observedAt: DateTime(2026, 1, 1),
+              isActive: true,
             ),
             familyName: 'Confirmed Family',
             supermarketName: 'A',
@@ -333,7 +342,27 @@ class _FakeRepo implements ProductItemsRepository {
     required String unitType,
   }) async {
     registerScannedPriceCalls += 1;
-    return const ScannedPriceRegistrationResult(created: false);
+    return ScannedPriceRegistrationResult(
+      created: false,
+      catalogProduct: CatalogProduct(
+        id: 1,
+        name: 'Scanned',
+        isActive: true,
+        productFamilyId: 1,
+        barcode: 'fake',
+        packageQuantityAmount: 1,
+        packageQuantityUnit: 'kg',
+        normalizedMeasurementUnit: 'kg',
+        identityKey: 'barcode:fake',
+      ),
+      priceRecord: PriceRecord(
+        id: 1,
+        catalogProductId: 1,
+        supermarketId: 1,
+        price: 1,
+        observedAt: DateTime(2026, 1, 1),
+      ),
+    );
   }
 
   @override

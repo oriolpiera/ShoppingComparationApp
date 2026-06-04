@@ -8,8 +8,10 @@ import '../backup/app_data_backup.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
 import '../../domain/entities/barcode_match_result.dart';
+import '../../domain/entities/catalog_product.dart';
 import '../../domain/entities/external_price_observation.dart';
 import '../../domain/entities/external_store_mapping.dart';
+import '../../domain/entities/price_record.dart';
 import '../../domain/entities/product_family.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/scanned_price_registration_result.dart';
@@ -195,6 +197,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final rows = await dao.db.customSelect('''
       SELECT
         pr.id AS price_record_id,
+        cp.id AS catalog_product_id,
         cp.nom AS product_name,
         cp.actiu AS catalog_active,
         cp.product_family_id,
@@ -202,6 +205,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
         cp.package_quantity_amount,
         cp.package_quantity_unit,
         cp.normalized_measurement_unit,
+        cp.identity_key,
         pr.supermarket_id,
         pr.price,
         pr.observed_at,
@@ -278,7 +282,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
         cp.barcode,
         cp.package_quantity_amount,
         cp.package_quantity_unit,
-        cp.normalized_measurement_unit
+        cp.normalized_measurement_unit,
+        cp.identity_key
       FROM price_record pr
       JOIN catalog_product cp ON cp.id = pr.catalog_product_id
       WHERE pr.id = ?
@@ -307,6 +312,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
       packageQuantityUnit: row.data['package_quantity_unit'] as String?,
       normalizedMeasurementUnit:
           row.data['normalized_measurement_unit'] as String?,
+      identityKey: row.read<String>('identity_key'),
     );
   }
 
@@ -330,7 +336,8 @@ class DriftPersistenceRepository implements PersistenceRepository {
         cp.barcode,
         cp.package_quantity_amount,
         cp.package_quantity_unit,
-        cp.normalized_measurement_unit
+        cp.normalized_measurement_unit,
+        cp.identity_key
       FROM price_record pr
       JOIN catalog_product cp ON cp.id = pr.catalog_product_id
       WHERE pr.catalog_product_id = ? AND pr.supermarket_id = ?
@@ -363,6 +370,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
       packageQuantityUnit: row.data['package_quantity_unit'] as String?,
       normalizedMeasurementUnit:
           row.data['normalized_measurement_unit'] as String?,
+      identityKey: row.read<String>('identity_key'),
     );
   }
 
@@ -659,50 +667,87 @@ class DriftPersistenceRepository implements PersistenceRepository {
     final normalized = barcode.trim();
     if (normalized.isEmpty) return const [];
 
-    final items = await _getDerivedProductItems(
-      onlyCurrentPrice: true,
-      barcode: normalized,
-    );
-    final activeItems = items.where((item) => item.isActive).toList();
-    if (activeItems.isEmpty) return const [];
+    final rows = await dao.db.customSelect(
+      '''
+      SELECT
+        cp.id AS catalog_product_id,
+        cp.nom AS product_name,
+        cp.actiu AS catalog_active,
+        cp.product_family_id,
+        cp.barcode,
+        cp.package_quantity_amount,
+        cp.package_quantity_unit,
+        cp.normalized_measurement_unit,
+        cp.identity_key,
+        pr.id AS price_record_id,
+        pr.supermarket_id,
+        pr.price,
+        pr.observed_at,
+        pr.actiu AS price_record_active,
+        pr.external_observation_id,
+        pf.nom AS family_name,
+        s.nom AS supermarket_name
+      FROM price_record pr
+      JOIN catalog_product cp ON cp.id = pr.catalog_product_id
+      JOIN product_family pf ON pf.id = cp.product_family_id
+      JOIN supermarket s ON s.id = pr.supermarket_id
+      WHERE cp.barcode = ?
+        AND cp.actiu = 1
+        AND pr.actiu = 1
+        AND ${_isCurrentPriceSql(alias: 'pr')}
+      ORDER BY pr.observed_at DESC, pr.id DESC;
+      ''',
+      variables: [Variable.withString(normalized)],
+    ).get();
 
-    final families = await getProductFamilies(onlyActive: false);
-    final supermarkets = await getSupermarkets(onlyActive: false);
+    if (rows.isEmpty) return const [];
 
-    final familyNameById = {
-      for (final family in families)
-        if (family.id != null) family.id!: family.name,
-    };
-    final supermarketNameById = {
-      for (final market in supermarkets)
-        if (market.id != null) market.id!: market.name,
-    };
-
-    final sortedItems = [...activeItems]..sort((a, b) {
-        final byCurrent =
-            (b.isCurrentPrice ? 1 : 0) - (a.isCurrentPrice ? 1 : 0);
-        if (byCurrent != 0) return byCurrent;
-
-        final byDate = b.dateAdded.compareTo(a.dateAdded);
-        if (byDate != 0) return byDate;
-
-        final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
-        if (byUnit != 0) return byUnit;
-
-        return a.price.compareTo(b.price);
-      });
-
-    return sortedItems
+    final matches = rows
         .map(
-          (item) => BarcodeMatchResult(
-            productItem: item,
-            familyName:
-                familyNameById[item.productFamilyId] ?? 'Unknown family',
-            supermarketName: supermarketNameById[item.supermarketId] ??
-                'Unknown supermarket',
+          (row) => BarcodeMatchResult(
+            catalogProduct: CatalogProduct(
+              id: row.read<int>('catalog_product_id'),
+              name: row.read<String>('product_name'),
+              isActive: (row.data['catalog_active'] as int? ?? 0) == 1,
+              productFamilyId: row.read<int>('product_family_id'),
+              barcode: row.data['barcode'] as String?,
+              packageQuantityAmount:
+                  (row.data['package_quantity_amount'] as num?)?.toDouble(),
+              packageQuantityUnit: row.data['package_quantity_unit'] as String?,
+              normalizedMeasurementUnit:
+                  row.data['normalized_measurement_unit'] as String?,
+              identityKey: row.read<String>('identity_key'),
+            ),
+            priceRecord: PriceRecord(
+              id: row.read<int>('price_record_id'),
+              catalogProductId: row.read<int>('catalog_product_id'),
+              supermarketId: row.read<int>('supermarket_id'),
+              price: row.read<double>('price'),
+              observedAt: DateTime.fromMillisecondsSinceEpoch(
+                (row.data['observed_at'] as int?) ?? 0,
+              ),
+              isActive: (row.data['price_record_active'] as int? ?? 0) == 1,
+              externalObservationId:
+                  row.data['external_observation_id'] as int?,
+            ),
+            familyName: row.read<String>('family_name'),
+            supermarketName: row.read<String>('supermarket_name'),
           ),
         )
         .toList();
+
+    matches.sort((a, b) {
+      final byDate =
+          b.priceRecord.observedAt.compareTo(a.priceRecord.observedAt);
+      if (byDate != 0) return byDate;
+
+      final byUnit = a.pricePerQuantity.compareTo(b.pricePerQuantity);
+      if (byUnit != 0) return byUnit;
+
+      return a.priceRecord.price.compareTo(b.priceRecord.price);
+    });
+
+    return matches;
   }
 
   @override
@@ -716,9 +761,27 @@ class DriftPersistenceRepository implements PersistenceRepository {
     required String unitType,
   }) async {
     final normalizedBarcode = barcode.trim();
+    final trimmedProductName = productName.trim();
     if (normalizedBarcode.isEmpty) {
-      return const ScannedPriceRegistrationResult(
+      return ScannedPriceRegistrationResult(
         created: false,
+        catalogProduct: CatalogProduct(
+          name: trimmedProductName,
+          isActive: true,
+          productFamilyId: 0,
+          barcode: null,
+          packageQuantityAmount: quantity,
+          packageQuantityUnit: null,
+          normalizedMeasurementUnit: null,
+          identityKey: 'invalid:missing-barcode',
+        ),
+        priceRecord: PriceRecord(
+          catalogProductId: 0,
+          supermarketId: supermarketId,
+          price: price,
+          observedAt: DateTime.fromMillisecondsSinceEpoch(0),
+          isActive: false,
+        ),
         message: 'Barcode is required.',
       );
     }
@@ -729,13 +792,21 @@ class DriftPersistenceRepository implements PersistenceRepository {
       purchaseMode: inferPurchaseModeFromUnitType(unitType),
     );
     final unit = normalizeUnitTypeForStorage(unitType);
+    final normalizedMeasurementUnit = normalizeUnitTypeForComparison(unit);
+    final identityKey = buildCatalogProductIdentityKey(
+      productFamilyId: familyId,
+      name: trimmedProductName,
+      quantity: quantity,
+      unitType: unit,
+      barcode: normalizedBarcode,
+    );
     final catalogProductId = await _upsertCatalogProduct(
-      name: productName.trim(),
+      name: trimmedProductName,
       productFamilyId: familyId,
       barcode: normalizedBarcode,
       packageQuantityAmount: quantity,
       packageQuantityUnit: unit,
-      normalizedMeasurementUnit: normalizeUnitTypeForComparison(unit),
+      normalizedMeasurementUnit: normalizedMeasurementUnit,
       isActive: true,
       overwriteExisting: true,
     );
@@ -752,23 +823,63 @@ class DriftPersistenceRepository implements PersistenceRepository {
             _priceEpsilon &&
         normalizeUnitTypeForComparison(latest.packageQuantityUnit ?? unit) ==
             normalizeUnitTypeForComparison(unit)) {
-      return const ScannedPriceRegistrationResult(
+      return ScannedPriceRegistrationResult(
         created: false,
+        catalogProduct: CatalogProduct(
+          id: latest.catalogProductId,
+          name: latest.name,
+          isActive: latest.catalogIsActive,
+          productFamilyId: latest.productFamilyId,
+          barcode: latest.barcode,
+          packageQuantityAmount: latest.packageQuantityAmount,
+          packageQuantityUnit: latest.packageQuantityUnit,
+          normalizedMeasurementUnit: latest.normalizedMeasurementUnit,
+          identityKey: latest.identityKey,
+        ),
+        priceRecord: PriceRecord(
+          id: latest.id,
+          catalogProductId: latest.catalogProductId,
+          supermarketId: latest.supermarketId,
+          price: latest.price,
+          observedAt: latest.observedAt,
+          isActive: latest.isActive,
+          externalObservationId: latest.externalObservationId,
+        ),
         message:
             'Price already current in this supermarket. No new price record created.',
       );
     }
 
-    await _insertPriceRecord(
+    final observedAt = DateTime.now();
+    final priceRecordId = await _insertPriceRecord(
       catalogProductId: catalogProductId,
       supermarketId: supermarketId,
       price: price,
-      observedAt: DateTime.now(),
+      observedAt: observedAt,
       isActive: true,
     );
 
-    return const ScannedPriceRegistrationResult(
+    return ScannedPriceRegistrationResult(
       created: true,
+      catalogProduct: CatalogProduct(
+        id: catalogProductId,
+        name: trimmedProductName,
+        isActive: true,
+        productFamilyId: familyId,
+        barcode: normalizedBarcode,
+        packageQuantityAmount: quantity,
+        packageQuantityUnit: unit,
+        normalizedMeasurementUnit: normalizedMeasurementUnit,
+        identityKey: identityKey,
+      ),
+      priceRecord: PriceRecord(
+        id: priceRecordId,
+        catalogProductId: catalogProductId,
+        supermarketId: supermarketId,
+        price: price,
+        observedAt: observedAt,
+        isActive: true,
+      ),
       message: 'New current price registered.',
     );
   }
@@ -1334,6 +1445,7 @@ class _PriceRecordSnapshot {
     required this.packageQuantityAmount,
     required this.packageQuantityUnit,
     required this.normalizedMeasurementUnit,
+    required this.identityKey,
   });
 
   final int id;
@@ -1350,4 +1462,5 @@ class _PriceRecordSnapshot {
   final double? packageQuantityAmount;
   final String? packageQuantityUnit;
   final String? normalizedMeasurementUnit;
+  final String identityKey;
 }
