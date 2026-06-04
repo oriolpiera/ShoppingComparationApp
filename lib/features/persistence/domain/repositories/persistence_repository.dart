@@ -8,34 +8,10 @@ import '../entities/scanned_price_registration_result.dart';
 import '../entities/shopping_list_entry.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
 
-abstract class PersistenceRepository {
-  Future<String> exportBackupJson();
-  Future<void> importBackupJson(String jsonPayload);
-
-  Future<List<Supermarket>> getSupermarkets({bool onlyActive = true});
-  Future<int> saveSupermarket(Supermarket supermarket);
-
+abstract class BarcodeLookupRepository {
   Future<List<ProductFamily>> getProductFamilies({bool onlyActive = true});
-  Future<int> saveProductFamily(ProductFamily family);
-  Future<int> resolveProductFamilyIdByName(String familyName);
-
-  Future<List<ProductItem>> getProductItems({
-    int? productFamilyId,
-    int? supermarketId,
-    bool onlyCurrentPrice = true,
-  });
-  Future<int> saveProductItem(ProductItem item);
+  Future<List<Supermarket>> getSupermarkets({bool onlyActive = true});
   Future<int?> getLastUsedSupermarketId();
-  Future<int> saveQuickProductItem({
-    required String productName,
-    required String familyName,
-    required int supermarketId,
-    required double price,
-    required double quantity,
-    required String unitType,
-    String? purchaseMode,
-    String? barcode,
-  });
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(String barcode);
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
     required String barcode,
@@ -46,6 +22,35 @@ abstract class PersistenceRepository {
     required double quantity,
     required String unitType,
   });
+}
+
+abstract class ProductItemsRepository extends BarcodeLookupRepository {
+  Future<List<ProductItem>> getProductItems({
+    int? productFamilyId,
+    int? supermarketId,
+    bool onlyCurrentPrice = true,
+  });
+  Future<int> saveProductItem(ProductItem item);
+  Future<int> resolveProductFamilyIdByName(String familyName);
+  Future<int> saveQuickProductItem({
+    required String productName,
+    required String familyName,
+    required int supermarketId,
+    required double price,
+    required double quantity,
+    required String unitType,
+    String? purchaseMode,
+    String? barcode,
+  });
+}
+
+abstract class PersistenceRepository extends ProductItemsRepository {
+  Future<String> exportBackupJson();
+  Future<void> importBackupJson(String jsonPayload);
+
+  Future<int> saveSupermarket(Supermarket supermarket);
+
+  Future<int> saveProductFamily(ProductFamily family);
 
   Future<List<ExternalStoreMapping>> getExternalStoreMappings();
   Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping);
