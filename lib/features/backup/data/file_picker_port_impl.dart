@@ -14,10 +14,17 @@ class FilePickerPortImpl implements FilePickerPort {
 
   @override
   Future<PickedBackupFile?> pickJsonBackup() async {
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
-    );
+    // Use `FileType.any` so the OS file picker shows every file the user
+    // has access to (Downloads, Google Drive, etc.), regardless of the
+    // MIME type the source registers. Android SAF filters by MIME, and
+    // many cloud providers don't tag `.json` files as `application/json`,
+    // which caused the picker to look empty.
+    //
+    // Backup-content validation is delegated downstream: the import
+    // service / repository parse the file as JSON and surface a friendly
+    // "Invalid backup file" snackbar if the content is not a recognized
+    // backup payload.
+    final file = await FilePicker.pickFile(type: FileType.any);
 
     if (file == null) return null;
 
