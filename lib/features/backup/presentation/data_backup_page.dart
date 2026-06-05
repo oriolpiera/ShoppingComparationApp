@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../application/backup_share_service.dart';
 
 class DataBackupPage extends StatefulWidget {
   const DataBackupPage({
@@ -9,11 +10,33 @@ class DataBackupPage extends StatefulWidget {
     required this.repository,
     this.onExported,
     this.copyToClipboard,
+    this.onSharePressed,
   });
 
   final PersistenceRepository repository;
+
+  /// Optional async callback invoked after a successful share with the JSON
+  /// payload that was handed to the share sheet.
   final Future<void> Function(String jsonPayload)? onExported;
+
+  /// Optional async callback invoked for the secondary "Copy JSON" action.
+  /// When null, the page uses [defaultCopyToClipboard] as a default.
   final Future<void> Function(String jsonPayload)? copyToClipboard;
+
+  /// Optional async callback invoked when the primary "Share backup file"
+  /// button is tapped. The page hands the JSON payload; the caller is
+  /// responsible for staging the file and presenting the share sheet
+  /// (typically via [BackupShareService]). The page also calls [onExported]
+  /// after a successful share.
+  final Future<void> Function(String jsonPayload)? onSharePressed;
+
+  /// Default implementation used by the secondary "Copy JSON" action when
+  /// no [copyToClipboard] is provided. Tests can override this to avoid the
+  /// platform `Clipboard.setData` channel; production wiring leaves it
+  /// untouched.
+  @visibleForTesting
+  static Future<void> Function(String jsonPayload) defaultCopyToClipboard =
+      (json) => Clipboard.setData(ClipboardData(text: json));
 
   @override
   State<DataBackupPage> createState() => _DataBackupPageState();
@@ -43,14 +66,19 @@ class _DataBackupPageState extends State<DataBackupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Export your saved supermarkets, product families, products, price history, and shopping list as JSON. The backup is copied to the clipboard so you can save it wherever you want.',
+                    'Export your saved supermarkets, product families, products, price history, and shopping list as JSON. The backup is shared as a `.json` file you can save or send to another app.',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
+                    onPressed: _isBusy ? null : _shareBackup,
+                    icon: const Icon(Icons.ios_share),
+                    label: const Text('Share backup file'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
                     onPressed: _isBusy ? null : _exportData,
-                    icon: const Icon(Icons.upload_file_outlined),
-                    label: const Text('Export data'),
+                    child: const Text('Copy JSON to clipboard'),
                   ),
                 ],
               ),
@@ -105,10 +133,27 @@ class _DataBackupPageState extends State<DataBackupPage> {
     );
   }
 
+  Future<void> _shareBackup() async {
+    await _runBusyAction(() async {
+      final backupJson = await widget.repository.exportBackupJson();
+      final share = widget.onSharePressed;
+      if (share != null) {
+        await share(backupJson);
+      }
+      if (!mounted) return;
+      if (widget.onExported != null) {
+        await widget.onExported!(backupJson);
+      }
+      if (!mounted) return;
+      _showMessage('Backup file ready to share');
+    });
+  }
+
   Future<void> _exportData() async {
     await _runBusyAction(() async {
       final backupJson = await widget.repository.exportBackupJson();
-      final copyToClipboard = widget.copyToClipboard ?? _copyToClipboard;
+      final copyToClipboard =
+          widget.copyToClipboard ?? DataBackupPage.defaultCopyToClipboard;
       await copyToClipboard(backupJson);
       if (widget.onExported != null) {
         await widget.onExported!(backupJson);
@@ -167,6 +212,9 @@ class _DataBackupPageState extends State<DataBackupPage> {
     } on FormatException catch (error) {
       if (!mounted) return;
       _showMessage('Invalid backup file: ${error.message}');
+    } on BackupShareException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.userMessage);
     } catch (error) {
       if (!mounted) return;
       _showMessage('Backup action failed: $error');
@@ -180,9 +228,5 @@ class _DataBackupPageState extends State<DataBackupPage> {
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  static Future<void> _copyToClipboard(String jsonPayload) {
-    return Clipboard.setData(ClipboardData(text: jsonPayload));
   }
 }

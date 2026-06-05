@@ -4,13 +4,18 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../../../core/database/drift_database_provider.dart';
+import '../../backup/application/backup_share_service.dart';
 import '../../backup/presentation/data_backup_page.dart';
 import '../../demo/data/demo_seed_service.dart';
 import '../../persistence/data/repositories/drift_persistence_repository.dart';
 import 'model_records_pages.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.shareService});
+
+  /// Service used by the Data Backup page to share the exported JSON as
+  /// a file. When null, the page falls back to its clipboard-only path.
+  final BackupShareService? shareService;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -35,6 +40,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final shareService = widget.shareService;
     return Scaffold(
       appBar: AppBar(title: const Text('Shopping Comparator')),
       body: ListView(
@@ -66,7 +72,15 @@ class _HomePageState extends State<HomePage> {
           ListTile(
             leading: const Icon(Icons.backup_outlined),
             title: const Text('Data backup'),
-            onTap: () => _open(context, DataBackupPage(repository: repository)),
+            onTap: () => _open(
+              context,
+              DataBackupPage(
+                repository: repository,
+                onSharePressed: shareService == null
+                    ? null
+                    : (json) => shareService.shareBackupJson(json),
+              ),
+            ),
           ),
         ],
       ),
