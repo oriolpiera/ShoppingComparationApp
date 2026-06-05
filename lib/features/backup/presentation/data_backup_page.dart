@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../application/backup_import_service.dart';
 import '../application/backup_share_service.dart';
 
 class DataBackupPage extends StatefulWidget {
@@ -11,6 +12,7 @@ class DataBackupPage extends StatefulWidget {
     this.onExported,
     this.copyToClipboard,
     this.onSharePressed,
+    this.onPickFilePressed,
   });
 
   final PersistenceRepository repository;
@@ -29,6 +31,16 @@ class DataBackupPage extends StatefulWidget {
   /// (typically via [BackupShareService]). The page also calls [onExported]
   /// after a successful share.
   final Future<void> Function(String jsonPayload)? onSharePressed;
+
+  /// Optional async callback invoked when the primary "Pick backup file"
+  /// button is tapped. The callback is expected to open the OS file picker
+  /// and read the chosen file (typically via [BackupImportService]) and
+  /// return its JSON contents, or `null` if the user cancelled.
+  ///
+  /// When the callback throws a [BackupImportException] (or any other
+  /// error), the page shows the exception's user-facing message in a
+  /// snackbar and leaves the existing textarea unchanged.
+  final Future<String?> Function()? onPickFilePressed;
 
   /// Default implementation used by the secondary "Copy JSON" action when
   /// no [copyToClipboard] is provided. Tests can override this to avoid the
@@ -92,10 +104,23 @@ class _DataBackupPageState extends State<DataBackupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Paste a previously exported JSON backup below to replace the backed-up supermarkets, product families, products, price history, and shopping list.',
+                    'Pick a previously exported `.json` backup file from your device, or paste its contents below. Importing replaces the backed-up supermarkets, product families, products, price history, and shopping list.',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    onPressed: _isBusy || widget.onPickFilePressed == null
+                        ? null
+                        : _pickAndImport,
+                    icon: const Icon(Icons.folder_open_outlined),
+                    label: const Text('Pick backup file'),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Or paste the JSON contents:',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: _importController,
                     minLines: 8,
@@ -165,6 +190,43 @@ class _DataBackupPageState extends State<DataBackupPage> {
   }
 
   Future<void> _confirmImport() async {
+    final confirmed = await _confirmReplacement();
+    if (confirmed != true) return;
+
+    await _runBusyAction(() async {
+      final contents = _importController.text.trim();
+      if (contents.isEmpty) {
+        if (!mounted) return;
+        _showMessage('Paste a backup JSON before importing');
+        return;
+      }
+
+      await widget.repository.importBackupJson(contents);
+      if (!mounted) return;
+      _showMessage('Backup imported successfully');
+    });
+  }
+
+  Future<void> _pickAndImport() async {
+    final picker = widget.onPickFilePressed;
+    if (picker == null) return;
+
+    await _runBusyAction(() async {
+      final json = await picker();
+      if (json == null) return;
+      if (!mounted) return;
+
+      final confirmed = await _confirmReplacement();
+      if (confirmed != true) return;
+
+      await widget.repository.importBackupJson(json);
+      if (!mounted) return;
+      _importController.text = json;
+      _showMessage('Backup imported successfully');
+    });
+  }
+
+  Future<bool> _confirmReplacement() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -186,38 +248,31 @@ class _DataBackupPageState extends State<DataBackupPage> {
         );
       },
     );
-
-    if (confirmed != true) return;
-
-    await _runBusyAction(() async {
-      final contents = _importController.text.trim();
-      if (contents.isEmpty) {
-        if (!mounted) return;
-        _showMessage('Paste a backup JSON before importing');
-        return;
-      }
-
-      await widget.repository.importBackupJson(contents);
-      if (!mounted) return;
-      _showMessage('Backup imported successfully');
-    });
+    return confirmed == true;
   }
 
-  Future<void> _runBusyAction(Future<void> Function() action) async {
-    if (_isBusy) return;
+  Future<T?> _runBusyAction<T>(Future<T> Function() action) async {
+    if (_isBusy) return null;
 
     setState(() => _isBusy = true);
     try {
-      await action();
+      return await action();
     } on FormatException catch (error) {
-      if (!mounted) return;
+      if (!mounted) return null;
       _showMessage('Invalid backup file: ${error.message}');
+      return null;
     } on BackupShareException catch (error) {
-      if (!mounted) return;
+      if (!mounted) return null;
       _showMessage(error.userMessage);
+      return null;
+    } on BackupImportException catch (error) {
+      if (!mounted) return null;
+      _showMessage(error.userMessage);
+      return null;
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) return null;
       _showMessage('Backup action failed: $error');
+      return null;
     } finally {
       if (mounted) {
         setState(() => _isBusy = false);

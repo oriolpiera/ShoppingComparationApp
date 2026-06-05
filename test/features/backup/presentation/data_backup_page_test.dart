@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:shopping_comparation_app/features/backup/application/backup_import_service.dart';
 import 'package:shopping_comparation_app/features/backup/application/backup_share_service.dart';
 import 'package:shopping_comparation_app/features/backup/presentation/data_backup_page.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
@@ -236,9 +237,9 @@ void main() {
     await tester.enterText(find.byType(TextField), repository.exportedJson);
 
     final importButton = find.widgetWithText(FilledButton, 'Import data');
-    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pump();
-    await tester.tap(importButton);
+    await tester.tap(importButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.text('Replace current data?'), findsOneWidget);
@@ -258,9 +259,9 @@ void main() {
         .pumpWidget(MaterialApp(home: DataBackupPage(repository: repository)));
 
     final importButton = find.widgetWithText(FilledButton, 'Import data');
-    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pump();
-    await tester.tap(importButton);
+    await tester.tap(importButton, warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Replace data'));
     await tester.pump();
@@ -268,6 +269,191 @@ void main() {
     expect(find.text('Paste a backup JSON before importing'), findsOneWidget);
     expect(repository.importedPayload, isNull);
   });
+
+  testWidgets('pickFileAction_invokesOnPickFilePressed', (tester) async {
+    final repository = _FakeBackupRepository();
+    var pickCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onPickFilePressed: () async {
+            pickCalls += 1;
+            return null;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Pick backup file'));
+    await tester.pump();
+
+    expect(pickCalls, 1);
+    expect(repository.importedPayload, isNull);
+  });
+
+  testWidgets('pickFileAction_passesJsonToRepositoryAfterConfirmation', (
+    tester,
+  ) async {
+    final repository = _FakeBackupRepository();
+    const pickedJson = '''
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-06-05T00:00:00.000Z",
+  "supermarkets": [],
+  "productFamilies": [],
+  "catalogProducts": [],
+  "priceRecords": [],
+  "shoppingListEntries": []
+}
+''';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onPickFilePressed: () async => pickedJson,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Pick backup file'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Replace current data?'), findsOneWidget);
+    expect(repository.importedPayload, isNull);
+
+    await tester.tap(find.text('Replace data'));
+    await tester.pump();
+
+    expect(repository.importedPayload, pickedJson);
+    expect(find.text('Backup imported successfully'), findsOneWidget);
+  });
+
+  testWidgets('pickFileAction_isNoOpWhenPickerReturnsNull', (tester) async {
+    final repository = _FakeBackupRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onPickFilePressed: () async => null,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Pick backup file'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Replace current data?'), findsNothing);
+    expect(repository.importedPayload, isNull);
+  });
+
+  testWidgets('pickFileAction_doesNotImportOnPickCancellation', (tester) async {
+    final repository = _FakeBackupRepository();
+    String? modalWasShown;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DataBackupPage(
+            repository: repository,
+            onPickFilePressed: () async {
+              modalWasShown = 'picker_called';
+              return null;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Pick backup file'));
+    await tester.pumpAndSettle();
+
+    expect(modalWasShown, 'picker_called');
+    expect(repository.importedPayload, isNull);
+    expect(find.text('Replace current data?'), findsNothing);
+  });
+
+  testWidgets('pickFileAction_showsSnackbarOnPickError', (tester) async {
+    final repository = _FakeBackupRepository();
+    const userMessage = 'Could not read the selected backup file. Try again.';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onPickFilePressed: () async {
+            throw BackupImportException(userMessage);
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Pick backup file'));
+    await tester.pump();
+
+    expect(find.text(userMessage), findsOneWidget);
+    expect(repository.importedPayload, isNull);
+  });
+
+  testWidgets(
+    'pickFileAction_preservesTextareaOnCancelAndOverwritesOnConfirm',
+    (tester) async {
+      final repository = _FakeBackupRepository();
+      const typed = 'I was typed by the user';
+      const picked = '{"schemaVersion":1}';
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DataBackupPage(
+            repository: repository,
+            onPickFilePressed: () async => picked,
+          ),
+        ),
+      );
+
+      // Set the textarea content directly to avoid focusing the field.
+      // Focusing the TextField would extend its 48px minimum tap target
+      // UPWARD, covering the "Pick backup file" button and intercepting
+      // the tap below. We just need text in the controller to verify
+      // the cancel path does not destroy it.
+      final field = tester.widget<TextField>(find.byType(TextField));
+      field.controller!.text = typed;
+      await tester.pump();
+
+      await tester.tap(find.text('Pick backup file'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Replace current data?'), findsOneWidget);
+
+      // Cancelling the confirmation must NOT destroy the user's textarea.
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(repository.importedPayload, isNull);
+      expect(field.controller?.text, typed);
+
+      // Picking again and confirming must import and leave the picked
+      // payload in the controller (so the user can see what was applied
+      // if they look at the textarea afterwards).
+      final pickButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Pick backup file'),
+      );
+      expect(pickButton.onPressed, isNotNull,
+          reason: 'pick button must be re-enabled after a cancel');
+
+      await tester.tap(find.text('Pick backup file'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Replace data'));
+      await tester.pump();
+
+      expect(repository.importedPayload, picked);
+      expect(field.controller?.text, picked);
+    },
+  );
 }
 
 class _FakeBackupRepository implements PersistenceRepository {
