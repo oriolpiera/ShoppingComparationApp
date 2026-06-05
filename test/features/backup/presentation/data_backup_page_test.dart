@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:shopping_comparation_app/features/backup/application/backup_share_service.dart';
 import 'package:shopping_comparation_app/features/backup/presentation/data_backup_page.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
@@ -15,7 +18,48 @@ import 'package:shopping_comparation_app/features/persistence/domain/repositorie
 import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
 
 void main() {
-  testWidgets('export action exposes repository backup json', (tester) async {
+  testWidgets('shareAction_invokesOnSharePressedWithRepositoryJson', (
+    tester,
+  ) async {
+    final repository = _FakeBackupRepository();
+    String? sharedJson;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onSharePressed: (json) async {
+            sharedJson = json;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Share backup file'));
+    await tester.pump();
+
+    expect(sharedJson, repository.exportedJson);
+  });
+
+  testWidgets('shareAction_showsShareReadySnackbarOnSuccess', (tester) async {
+    final repository = _FakeBackupRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onSharePressed: (_) async {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Share backup file'));
+    await tester.pump();
+
+    expect(find.text('Backup file ready to share'), findsOneWidget);
+  });
+
+  testWidgets('shareAction_stillInvokesOnExportedOnSuccess', (tester) async {
     final repository = _FakeBackupRepository();
     String? exportedContents;
 
@@ -23,7 +67,7 @@ void main() {
       MaterialApp(
         home: DataBackupPage(
           repository: repository,
-          copyToClipboard: (_) async {},
+          onSharePressed: (_) async {},
           onExported: (contents) async {
             exportedContents = contents;
           },
@@ -31,28 +75,165 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Export data'));
+    await tester.tap(find.text('Share backup file'));
     await tester.pump();
 
+    expect(exportedContents, repository.exportedJson);
+  });
+
+  testWidgets('shareAction_showsFailureSnackbarWhenOnSharePressedThrows', (
+    tester,
+  ) async {
+    final repository = _FakeBackupRepository();
+    const userMessage = 'Could not share the backup file. Please try again.';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onSharePressed: (_) async {
+            throw BackupShareException(userMessage);
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Share backup file'));
+    await tester.pump();
+
+    expect(find.text(userMessage), findsOneWidget);
+  });
+
+  testWidgets('shareAction_doesNotInvokeOnExportedOnFailure', (tester) async {
+    final repository = _FakeBackupRepository();
+    var exportedCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onSharePressed: (_) async {
+            throw BackupShareException('boom');
+          },
+          onExported: (_) async {
+            exportedCalls += 1;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Share backup file'));
+    await tester.pump();
+
+    expect(exportedCalls, 0);
+  });
+
+  testWidgets('shareAction_disablesButtonsWhileInFlight', (tester) async {
+    final completer = Completer<void>();
+    final repository = _FakeBackupRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          onSharePressed: (_) => completer.future,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Share backup file'));
+    await tester.pump();
+
+    // While the share future is pending, both buttons must be disabled.
+    final inFlightShare = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Share backup file'),
+    );
+    final inFlightCopy = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, 'Copy JSON to clipboard'),
+    );
+    expect(inFlightShare.onPressed, isNull);
+    expect(inFlightCopy.onPressed, isNull);
+
+    // Resolve and let the busy state clear.
+    completer.complete();
+    await tester.pumpAndSettle();
+
+    final afterShare = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Share backup file'),
+    );
+    final afterCopy = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, 'Copy JSON to clipboard'),
+    );
+    expect(afterShare.onPressed, isNotNull);
+    expect(afterCopy.onPressed, isNotNull);
+  });
+
+  testWidgets('copyJsonAction_stillCopiesToClipboardViaInjectedCallback', (
+    tester,
+  ) async {
+    final repository = _FakeBackupRepository();
+    String? exportedContents;
+    String? copiedContents;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DataBackupPage(
+          repository: repository,
+          copyToClipboard: (json) async {
+            copiedContents = json;
+          },
+          onExported: (contents) async {
+            exportedContents = contents;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Copy JSON to clipboard'));
+    await tester.pump();
+
+    expect(copiedContents, repository.exportedJson);
     expect(exportedContents, repository.exportedJson);
     expect(find.text('Backup JSON copied to clipboard'), findsOneWidget);
   });
 
-  testWidgets('import action confirms replacement before replacing data', (
+  testWidgets('copyJsonAction_stillCopiesToClipboardViaDefaultImplementation', (
+    tester,
+  ) async {
+    // Swap the page's default clipboard impl for a test double so we don't
+    // need to mock the `flutter/platform` channel (which the test binding
+    // shares with the framework's own Title / SystemChrome calls).
+    final originalDefault = DataBackupPage.defaultCopyToClipboard;
+    String? captured;
+    DataBackupPage.defaultCopyToClipboard = (json) async {
+      captured = json;
+    };
+    addTearDown(() {
+      DataBackupPage.defaultCopyToClipboard = originalDefault;
+    });
+
+    final repository = _FakeBackupRepository();
+
+    await tester
+        .pumpWidget(MaterialApp(home: DataBackupPage(repository: repository)));
+
+    await tester.tap(find.text('Copy JSON to clipboard'));
+    await tester.pump();
+
+    expect(captured, repository.exportedJson);
+    expect(find.text('Backup JSON copied to clipboard'), findsOneWidget);
+  });
+
+  testWidgets('importAction_confirmsReplacementBeforeReplacingData', (
     tester,
   ) async {
     final repository = _FakeBackupRepository();
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: DataBackupPage(repository: repository),
-      ),
+      MaterialApp(home: DataBackupPage(repository: repository)),
     );
 
-    await tester.enterText(
-      find.byType(TextField),
-      repository.exportedJson,
-    );
+    await tester.enterText(find.byType(TextField), repository.exportedJson);
 
     final importButton = find.widgetWithText(FilledButton, 'Import data');
     await tester.drag(find.byType(ListView), const Offset(0, -300));
@@ -70,12 +251,11 @@ void main() {
     expect(find.text('Backup imported successfully'), findsOneWidget);
   });
 
-  testWidgets('import action requires pasted json', (tester) async {
+  testWidgets('importAction_requiresPastedJson', (tester) async {
     final repository = _FakeBackupRepository();
 
-    await tester.pumpWidget(
-      MaterialApp(home: DataBackupPage(repository: repository)),
-    );
+    await tester
+        .pumpWidget(MaterialApp(home: DataBackupPage(repository: repository)));
 
     final importButton = find.widgetWithText(FilledButton, 'Import data');
     await tester.drag(find.byType(ListView), const Offset(0, -300));
@@ -171,8 +351,9 @@ class _FakeBackupRepository implements PersistenceRepository {
       const ShoppingOptimizationResult(groups: [], pendingEntries: []);
 
   @override
-  Future<List<ProductFamily>> getProductFamilies(
-          {bool onlyActive = true}) async =>
+  Future<List<ProductFamily>> getProductFamilies({
+    bool onlyActive = true,
+  }) async =>
       [];
 
   @override
