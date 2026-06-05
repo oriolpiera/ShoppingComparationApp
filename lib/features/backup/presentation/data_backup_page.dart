@@ -211,14 +211,19 @@ class _DataBackupPageState extends State<DataBackupPage> {
     final picker = widget.onPickFilePressed;
     if (picker == null) return;
 
-    final json = await _runBusyAction(() => picker());
-    if (json == null) return;
+    await _runBusyAction(() async {
+      final json = await picker();
+      if (json == null) return;
+      if (!mounted) return;
 
-    if (!mounted) return;
-    _importController.text = json;
-    final confirmed = await _confirmReplacement();
-    if (confirmed != true) return;
-    await _runImport(json);
+      final confirmed = await _confirmReplacement();
+      if (confirmed != true) return;
+
+      await widget.repository.importBackupJson(json);
+      if (!mounted) return;
+      _importController.text = json;
+      _showMessage('Backup imported successfully');
+    });
   }
 
   Future<bool> _confirmReplacement() async {
@@ -244,14 +249,6 @@ class _DataBackupPageState extends State<DataBackupPage> {
       },
     );
     return confirmed == true;
-  }
-
-  Future<void> _runImport(String json) async {
-    await _runBusyAction(() async {
-      await widget.repository.importBackupJson(json);
-      if (!mounted) return;
-      _showMessage('Backup imported successfully');
-    });
   }
 
   Future<T?> _runBusyAction<T>(Future<T> Function() action) async {

@@ -399,7 +399,7 @@ void main() {
   });
 
   testWidgets(
-    'pickFileAction_overwritesTextareaWithPickedContent',
+    'pickFileAction_preservesTextareaOnCancelAndOverwritesOnConfirm',
     (tester) async {
       final repository = _FakeBackupRepository();
       const typed = 'I was typed by the user';
@@ -414,20 +414,43 @@ void main() {
         ),
       );
 
-      await tester.enterText(find.byType(TextField), typed);
-
-      await tester.drag(find.byType(ListView), const Offset(0, -200));
+      // Set the textarea content directly to avoid focusing the field.
+      // Focusing the TextField would extend its 48px minimum tap target
+      // UPWARD, covering the "Pick backup file" button and intercepting
+      // the tap below. We just need text in the controller to verify
+      // the cancel path does not destroy it.
+      final field = tester.widget<TextField>(find.byType(TextField));
+      field.controller!.text = typed;
       await tester.pump();
-      await tester.tap(find.text('Pick backup file'), warnIfMissed: false);
+
+      await tester.tap(find.text('Pick backup file'));
       await tester.pumpAndSettle();
 
-      final field = tester.widget<TextField>(find.byType(TextField));
-      expect(field.controller?.text, picked);
+      expect(find.text('Replace current data?'), findsOneWidget);
 
+      // Cancelling the confirmation must NOT destroy the user's textarea.
       await tester.tap(find.text('Cancel'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(repository.importedPayload, isNull);
+      expect(field.controller?.text, typed);
+
+      // Picking again and confirming must import and leave the picked
+      // payload in the controller (so the user can see what was applied
+      // if they look at the textarea afterwards).
+      final pickButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Pick backup file'),
+      );
+      expect(pickButton.onPressed, isNotNull,
+          reason: 'pick button must be re-enabled after a cancel');
+
+      await tester.tap(find.text('Pick backup file'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Replace data'));
+      await tester.pump();
+
+      expect(repository.importedPayload, picked);
       expect(field.controller?.text, picked);
     },
   );
