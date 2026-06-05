@@ -104,7 +104,7 @@ class _DataBackupPageState extends State<DataBackupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pick a previously exported `.json` backup file from your device, or paste its contents below. Importing replaces the backed-up supermarkets, product families, products, price history, and shopping list.',
+                    'Pick a previously exported backup file from your device, or paste its contents below. Any file can be selected; the app validates the content and shows an error if it isn\'t a recognized backup. Importing replaces the backed-up supermarkets, product families, products, price history, and shopping list.',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 12),
