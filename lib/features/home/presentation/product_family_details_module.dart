@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../application/product_family_comparison_module.dart';
 import 'product_family_presentation_helpers.dart';
+import '../../products/domain/validation/product_item_validation.dart';
 import '../../products/presentation/product_item_capture_form_support.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
@@ -535,10 +536,7 @@ class ProductItemDetailsPage extends StatelessWidget {
           DetailRow(label: 'Name', value: item.name),
           DetailRow(label: 'Family', value: familyName),
           DetailRow(label: 'Supermarket', value: supermarketName),
-          DetailRow(
-            label: 'Price',
-            value: '€${item.price.toStringAsFixed(2)}',
-          ),
+          DetailRow(label: 'Price', value: '€${item.price.toStringAsFixed(2)}'),
           DetailRow(label: 'Quantity', value: item.quantity.toString()),
           DetailRow(label: 'Unit type', value: item.unitType),
           DetailRow(
@@ -547,10 +545,7 @@ class ProductItemDetailsPage extends StatelessWidget {
           ),
           DetailRow(label: 'Date added', value: formattedDateAdded),
           DetailRow(label: 'Active', value: _yesNo(item.isActive)),
-          DetailRow(
-            label: 'Current price',
-            value: _yesNo(item.isCurrentPrice),
-          ),
+          DetailRow(label: 'Current price', value: _yesNo(item.isCurrentPrice)),
           DetailRow(
             label: 'Barcode',
             value: (item.barcode == null || item.barcode!.trim().isEmpty)

@@ -5,8 +5,10 @@ import '../../../../core/scanner/mobile_scanner_port.dart';
 import '../../../persistence/domain/entities/product_family.dart';
 import '../../../persistence/domain/entities/product_item.dart';
 import '../../../persistence/domain/repositories/persistence_repository.dart';
+import '../../../products/application/family_lookup.dart';
 import '../../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../../products/data/open_prices_price_prefill_service.dart';
+import '../../../products/domain/validation/product_item_validation.dart';
 import '../../../products/presentation/barcode_matches_page.dart';
 import '../../../products/presentation/product_item_capture_form_support.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
@@ -246,20 +248,18 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                     .where(
                       (entry) =>
                           query.isEmpty ||
-                          entry.item.name.toLowerCase().contains(
-                                query,
-                              ) ||
+                          entry.item.name.toLowerCase().contains(query) ||
                           entry.familyName.toLowerCase().contains(query),
                     )
                     .toList()
                   ..sort((a, b) {
-                    final byFamily = a.familyName
-                        .toLowerCase()
-                        .compareTo(b.familyName.toLowerCase());
+                    final byFamily = a.familyName.toLowerCase().compareTo(
+                          b.familyName.toLowerCase(),
+                        );
                     if (byFamily != 0) return byFamily;
-                    return a.item.name
-                        .toLowerCase()
-                        .compareTo(b.item.name.toLowerCase());
+                    return a.item.name.toLowerCase().compareTo(
+                          b.item.name.toLowerCase(),
+                        );
                   });
 
                 if (filtered.isEmpty) {
@@ -326,9 +326,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                           );
                           if (!mounted) return;
                           ScaffoldMessenger.of(this.context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Product deleted'),
-                            ),
+                            const SnackBar(content: Text('Product deleted')),
                           );
                         }
 
@@ -378,9 +376,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     if (data.supermarkets.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Need at least one supermarket first'),
-          ),
+          const SnackBar(content: Text('Need at least one supermarket first')),
         );
       }
       return;
@@ -448,9 +444,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                 ),
                 DropdownButtonFormField<int>(
                   initialValue: supermarketId,
-                  decoration: const InputDecoration(
-                    labelText: 'Supermarket',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Supermarket'),
                   items: data.supermarkets
                       .map(
                         (s) => DropdownMenuItem<int>(
@@ -477,19 +471,11 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: unitType,
-                  decoration: const InputDecoration(
-                    labelText: 'Unit type',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Unit type'),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'kg',
-                      child: Text('kg'),
-                    ),
+                    DropdownMenuItem(value: 'kg', child: Text('kg')),
                     DropdownMenuItem(value: 'L', child: Text('L')),
-                    DropdownMenuItem(
-                      value: 'unit',
-                      child: Text('unit'),
-                    ),
+                    DropdownMenuItem(value: 'unit', child: Text('unit')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -578,8 +564,9 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
             pricePerQuantity: quantity == 0 ? 0 : price / quantity,
             packageQuantityAmount: quantity,
             packageQuantityUnit: storedUnitType,
-            normalizedMeasurementUnit:
-                normalizeUnitTypeForComparison(storedUnitType),
+            normalizedMeasurementUnit: normalizeUnitTypeForComparison(
+              storedUnitType,
+            ),
             dateAdded: item.dateAdded,
             isCurrentPrice: true,
             barcode: item.barcode,
