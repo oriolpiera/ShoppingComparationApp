@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../../../core/scanner/mobile_scanner_port.dart';
-import 'product_family_presentation_helpers.dart';
-import 'product_family_details_module.dart';
 import '../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../products/data/open_prices_price_prefill_service.dart';
 import '../../products/presentation/barcode_matches_page.dart';
@@ -15,6 +13,7 @@ import '../../persistence/domain/entities/shopping_list_entry.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../persistence/domain/repositories/shopping_list_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
+import 'product_family_details_module.dart';
 
 class SupermarketsPage extends StatefulWidget {
   const SupermarketsPage({super.key, required this.repository});
@@ -200,10 +199,110 @@ class _SupermarketsPageState extends State<SupermarketsPage> {
   }
 }
 
+enum _SupermarketDetailsAction { edit, delete }
+
+class _SupermarketDetailsPage extends StatelessWidget {
+  const _SupermarketDetailsPage({required this.item});
+
+  final Supermarket item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Supermarket details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () =>
+                Navigator.pop(context, _SupermarketDetailsAction.edit),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _DetailRow(label: 'Name', value: item.name),
+          _DetailRow(
+            label: 'Address',
+            value: item.address?.trim().isEmpty == true
+                ? '—'
+                : (item.address ?? '—'),
+          ),
+          _DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
+          const SizedBox(height: 24),
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final shouldDelete = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete supermarket?'),
+                  content: const Text(
+                    'This will mark the supermarket as inactive.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+              if (shouldDelete == true && context.mounted) {
+                Navigator.pop(context, _SupermarketDetailsAction.delete);
+              }
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+}
+
 class ProductFamiliesPage extends StatefulWidget {
-  const ProductFamiliesPage({super.key, required this.repository});
+  const ProductFamiliesPage({
+    super.key,
+    required this.repository,
+    required this.shoppingListRepository,
+  });
 
   final PersistenceRepository repository;
+  final ShoppingListRepository shoppingListRepository;
 
   @override
   State<ProductFamiliesPage> createState() => _ProductFamiliesPageState();
@@ -211,7 +310,10 @@ class ProductFamiliesPage extends StatefulWidget {
 
 class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
   final _queryController = TextEditingController();
-  late Future<List<ProductFamily>> _future;
+  late Future<_ProductFamiliesViewData> _future;
+  final Set<int> _selectedFamilyIds = {};
+
+  bool get _selectionMode => _selectedFamilyIds.isNotEmpty;
 
   @override
   void initState() {
@@ -225,8 +327,21 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
     super.dispose();
   }
 
-  Future<List<ProductFamily>> _load() {
-    return widget.repository.getProductFamilies(onlyActive: true);
+  Future<_ProductFamiliesViewData> _load() async {
+    final families = await widget.repository.getProductFamilies(
+      onlyActive: true,
+    );
+    final shoppingListEntries =
+        await widget.shoppingListRepository.getShoppingNeedEntries();
+    final shoppingListFamilyIds = shoppingListEntries
+        .map((e) => e.productFamilyId)
+        .whereType<int>()
+        .toSet();
+
+    return _ProductFamiliesViewData(
+      families: families,
+      shoppingListFamilyIds: shoppingListFamilyIds,
+    );
   }
 
   void _refresh() {
@@ -235,10 +350,89 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
     });
   }
 
+  void _exitSelectionMode() {
+    setState(() {
+      _selectedFamilyIds.clear();
+    });
+  }
+
+  void _toggleSelection(int familyId) {
+    setState(() {
+      if (_selectedFamilyIds.contains(familyId)) {
+        _selectedFamilyIds.remove(familyId);
+      } else {
+        _selectedFamilyIds.add(familyId);
+      }
+    });
+  }
+
+  Future<void> _addSelectedFamiliesToShoppingList() async {
+    if (_selectedFamilyIds.isEmpty) return;
+
+    final freshEntries =
+        await widget.shoppingListRepository.getShoppingNeedEntries();
+    final currentlyOnShoppingList =
+        freshEntries.map((e) => e.productFamilyId).whereType<int>().toSet();
+    int addedCount = 0;
+    int skippedCount = 0;
+
+    for (final familyId in Set.of(_selectedFamilyIds)) {
+      if (!currentlyOnShoppingList.contains(familyId)) {
+        await widget.shoppingListRepository.saveShoppingNeedEntry(
+          ShoppingListEntry(
+            productFamilyId: familyId,
+            quantity: 1,
+          ),
+        );
+        addedCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+
+    if (!mounted) return;
+
+    String message;
+    if (addedCount > 0 && skippedCount == 0) {
+      message = '$addedCount families added to shopping list.';
+    } else if (addedCount == 0 && skippedCount > 0) {
+      message = '$skippedCount families already on shopping list and skipped.';
+    } else {
+      message =
+          '$addedCount families added, $skippedCount families already on list.';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
+    _exitSelectionMode();
+    _refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Product families')),
+      appBar: AppBar(
+        title: Text(
+          _selectionMode
+              ? '${_selectedFamilyIds.length} selected'
+              : 'Product families',
+        ),
+        leading: _selectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitSelectionMode,
+              )
+            : null,
+        actions: [
+          if (_selectionMode)
+            IconButton(
+              icon: const Icon(Icons.add_shopping_cart),
+              onPressed: _addSelectedFamiliesToShoppingList,
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -254,7 +448,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<ProductFamily>>(
+            child: FutureBuilder<_ProductFamiliesViewData>(
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -264,8 +458,9 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
+                final data = snapshot.data!;
                 final query = _queryController.text.toLowerCase().trim();
-                final families = (snapshot.data ?? const []).where((f) {
+                final families = data.families.where((f) {
                   if (query.isEmpty) return true;
                   return f.name.toLowerCase().contains(query);
                 }).toList();
@@ -279,10 +474,31 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = families[index];
+                    final familyId = item.id;
+                    final isSelected = familyId != null &&
+                        _selectedFamilyIds.contains(familyId);
+
                     return ListTile(
                       dense: true,
+                      selected: isSelected,
+                      leading: _selectionMode && familyId != null
+                          ? Checkbox(
+                              value: isSelected,
+                              onChanged: (_) => _toggleSelection(familyId),
+                            )
+                          : null,
                       title: Text(item.name),
+                      onLongPress: () {
+                        if (familyId != null) {
+                          _toggleSelection(familyId);
+                        }
+                      },
                       onTap: () async {
+                        if (_selectionMode) {
+                          if (familyId != null) _toggleSelection(familyId);
+                          return;
+                        }
+
                         final action = await Navigator.of(context)
                             .push<ProductFamilyDetailsAction>(
                           MaterialPageRoute(
@@ -371,10 +587,12 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(null),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _selectionMode
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _openForm(null),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -465,70 +683,14 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
   }
 }
 
-enum _SupermarketDetailsAction { edit, delete }
+class _ProductFamiliesViewData {
+  const _ProductFamiliesViewData({
+    required this.families,
+    required this.shoppingListFamilyIds,
+  });
 
-class _SupermarketDetailsPage extends StatelessWidget {
-  const _SupermarketDetailsPage({required this.item});
-
-  final Supermarket item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Supermarket details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () =>
-                Navigator.pop(context, _SupermarketDetailsAction.edit),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          DetailRow(label: 'Name', value: item.name),
-          DetailRow(
-            label: 'Address',
-            value: item.address?.trim().isEmpty == true
-                ? '—'
-                : (item.address ?? '—'),
-          ),
-          DetailRow(label: 'Active', value: item.isActive ? 'Yes' : 'No'),
-          const SizedBox(height: 24),
-          FilledButton.tonalIcon(
-            onPressed: () async {
-              final shouldDelete = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete supermarket?'),
-                  content: const Text(
-                    'This will mark the supermarket as inactive.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
-              if (shouldDelete == true && context.mounted) {
-                Navigator.pop(context, _SupermarketDetailsAction.delete);
-              }
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
+  final List<ProductFamily> families;
+  final Set<int> shoppingListFamilyIds;
 }
 
 class ProductItemsPage extends StatefulWidget {

@@ -250,7 +250,12 @@ void main() {
 }
 
 Widget _buildApp(PersistenceRepository repository) {
-  return MaterialApp(home: ProductFamiliesPage(repository: repository));
+  return MaterialApp(
+    home: ProductFamiliesPage(
+      repository: repository,
+      shoppingListRepository: repository,
+    ),
+  );
 }
 
 class _FakeRepository implements PersistenceRepository {
