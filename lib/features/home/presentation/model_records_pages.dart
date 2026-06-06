@@ -376,7 +376,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
     int addedCount = 0;
     int skippedCount = 0;
 
-    for (final familyId in _selectedFamilyIds) {
+    for (final familyId in Set.of(_selectedFamilyIds)) {
       if (!currentlyOnShoppingList.contains(familyId)) {
         await widget.shoppingListRepository.saveShoppingNeedEntry(
           ShoppingListEntry(
