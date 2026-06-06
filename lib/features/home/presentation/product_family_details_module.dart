@@ -3,19 +3,15 @@ import 'package:flutter/material.dart';
 import '../../../core/normalization/family_unit_normalization.dart';
 import '../application/product_family_comparison_module.dart';
 import 'product_family_presentation_helpers.dart';
+
+export 'product_family_details_action.dart';
 import '../../products/presentation/product_item_capture_form_support.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
 
-enum ProductFamilyDetailsAction {
-  edit,
-  deleteKeepItems,
-  deleteAndInactivateItems,
-}
-
-enum ProductItemDetailsAction { edit, delete }
+import 'product_family_details_action.dart';
 
 class ProductFamilyDetailsPage extends StatefulWidget {
   const ProductFamilyDetailsPage({
