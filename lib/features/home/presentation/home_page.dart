@@ -9,7 +9,10 @@ import '../../backup/application/backup_share_service.dart';
 import '../../backup/presentation/data_backup_page.dart';
 import '../../demo/data/demo_seed_service.dart';
 import '../../persistence/data/repositories/drift_persistence_repository.dart';
-import 'model_records_pages.dart';
+import 'pages/product_families_page.dart';
+import 'pages/product_items_page.dart';
+import 'pages/shopping_list_page.dart';
+import 'pages/supermarkets_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.shareService, this.importService});
