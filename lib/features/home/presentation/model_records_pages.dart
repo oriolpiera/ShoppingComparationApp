@@ -369,8 +369,10 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
   Future<void> _addSelectedFamiliesToShoppingList() async {
     if (_selectedFamilyIds.isEmpty) return;
 
-    final data = await _future;
-    final currentlyOnShoppingList = data.shoppingListFamilyIds;
+    final freshEntries =
+        await widget.shoppingListRepository.getShoppingNeedEntries();
+    final currentlyOnShoppingList =
+        freshEntries.map((e) => e.productFamilyId).whereType<int>().toSet();
     int addedCount = 0;
     int skippedCount = 0;
 
@@ -585,6 +587,12 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
           ),
         ],
       ),
+      floatingActionButton: _selectionMode
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _openForm(null),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
