@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/normalization/family_unit_normalization.dart';
+import '../../../core/normalization/unit_normalization.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/scanned_price_registration_result.dart';

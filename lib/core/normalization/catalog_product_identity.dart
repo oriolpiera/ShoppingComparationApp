@@ -1,4 +1,5 @@
-import 'family_unit_normalization.dart';
+import 'family_normalization.dart';
+import 'unit_normalization.dart';
 
 String buildCatalogProductIdentityKey({
   required int productFamilyId,

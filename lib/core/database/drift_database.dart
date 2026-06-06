@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../normalization/catalog_product_identity.dart';
-import '../normalization/family_unit_normalization.dart';
+import '../normalization/unit_normalization.dart';
 
 part 'drift_database.g.dart';
 
