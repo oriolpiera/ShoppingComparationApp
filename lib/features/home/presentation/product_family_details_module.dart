@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/normalization/family_unit_normalization.dart';
+import '../../../core/normalization/unit_normalization.dart';
 import '../application/product_family_comparison_module.dart';
 import 'product_family_presentation_helpers.dart';
 import '../../products/presentation/product_item_capture_form_support.dart';

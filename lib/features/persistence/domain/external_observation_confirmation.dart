@@ -1,4 +1,4 @@
-import '../../../core/normalization/family_unit_normalization.dart';
+import '../../../core/normalization/unit_normalization.dart';
 import 'entities/external_price_observation.dart';
 import 'entities/external_store_mapping.dart';
 import 'entities/product_item.dart';
