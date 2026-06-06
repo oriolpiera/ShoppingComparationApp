@@ -8,6 +8,8 @@ import '../../persistence/domain/repositories/persistence_repository.dart';
 import '../../supermarkets/data/models/supermarket.dart';
 import '../data/open_food_facts_name_prefill_service.dart';
 import '../data/open_prices_price_prefill_service.dart';
+import '../application/family_lookup.dart';
+import '../domain/validation/product_item_validation.dart';
 import 'product_item_capture_form_support.dart';
 
 class BarcodeMatchesPage extends StatefulWidget {
