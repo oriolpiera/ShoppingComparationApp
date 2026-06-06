@@ -1,5 +1,5 @@
 import '../../persistence/domain/entities/product_item.dart';
-import '../../supermarkets/data/models/supermarket.dart';
+import '../../persistence/domain/entities/supermarket.dart';
 
 class ProductFamilyComparisonItem {
   const ProductFamilyComparisonItem({

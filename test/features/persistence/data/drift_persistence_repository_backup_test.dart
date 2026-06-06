@@ -10,7 +10,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/ex
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
-import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   late AppDriftDatabase db;

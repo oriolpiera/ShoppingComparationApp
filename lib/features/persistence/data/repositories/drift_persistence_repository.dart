@@ -6,7 +6,7 @@ import '../../../../core/normalization/catalog_product_identity.dart';
 import '../../../../core/normalization/family_normalization.dart';
 import '../../../../core/normalization/unit_normalization.dart';
 import '../backup/app_data_backup.dart';
-import '../../../supermarkets/data/models/supermarket.dart';
+import '../../domain/entities/supermarket.dart';
 import '../../domain/entities/optimized_shopping.dart';
 import '../../domain/entities/barcode_match_result.dart';
 import '../../domain/entities/catalog_product.dart';

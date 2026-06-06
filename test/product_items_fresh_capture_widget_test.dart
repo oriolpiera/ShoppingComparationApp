@@ -7,7 +7,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/pr
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
-import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   testWidgets('fresh capture uses weighted semantics by default for kg items', (

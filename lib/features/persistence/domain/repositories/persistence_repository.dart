@@ -7,7 +7,7 @@ import '../entities/product_item.dart';
 import '../entities/scanned_price_registration_result.dart';
 import '../entities/shopping_list_entry.dart';
 import 'shopping_list_repository.dart';
-import '../../../supermarkets/data/models/supermarket.dart';
+import '../entities/supermarket.dart';
 
 abstract class BarcodeLookupRepository {
   Future<List<ProductFamily>> getProductFamilies({bool onlyActive = true});

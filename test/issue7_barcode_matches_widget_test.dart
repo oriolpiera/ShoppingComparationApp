@@ -11,7 +11,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/sc
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
 import 'package:shopping_comparation_app/features/products/data/open_food_facts_name_prefill_service.dart';
 import 'package:shopping_comparation_app/features/products/data/open_prices_price_prefill_service.dart';
-import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   tearDown(() {

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shopping_comparation_app/features/home/application/product_family_comparison_module.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
-import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   test('filters to current and active items only', () {
