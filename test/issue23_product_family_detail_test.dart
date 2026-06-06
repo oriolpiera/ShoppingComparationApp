@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:shopping_comparation_app/features/home/presentation/model_records_pages.dart';
+import 'package:shopping_comparation_app/features/home/presentation/pages/product_families_page.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
