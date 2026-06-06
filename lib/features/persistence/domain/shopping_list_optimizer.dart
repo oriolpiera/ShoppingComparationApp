@@ -1,4 +1,5 @@
-import '../../../core/normalization/family_unit_normalization.dart';
+import '../../../core/normalization/unit_normalization.dart';
+import '../../../core/validation/family_semantics.dart';
 import 'entities/product_family.dart';
 import 'entities/product_item.dart';
 import 'entities/shopping_list_entry.dart';

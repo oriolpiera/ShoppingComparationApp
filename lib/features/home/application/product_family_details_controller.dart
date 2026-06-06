@@ -1,4 +1,5 @@
-import '../../../core/normalization/family_unit_normalization.dart';
+import '../../../core/normalization/unit_normalization.dart';
+import '../../../core/validation/family_semantics.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
