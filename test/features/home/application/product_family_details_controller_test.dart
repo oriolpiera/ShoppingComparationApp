@@ -160,8 +160,13 @@ void main() {
       await controller.inactivateItem(_anyItem());
 
       expect(savedItems, hasLength(1));
-      expect(savedItems.single.isActive, false);
-      expect(savedItems.single.id, 1);
+      final saved = savedItems.single;
+      expect(saved.isActive, false);
+      expect(saved.id, 1);
+      expect(saved.packageQuantityAmount, 1);
+      expect(saved.packageQuantityUnit, 'kg');
+      expect(saved.normalizedMeasurementUnit, 'kg');
+      expect(saved.externalObservationId, 42);
     });
   });
 }
@@ -179,6 +184,10 @@ ProductItem _anyItem() {
     pricePerQuantity: 2.0,
     dateAdded: DateTime(2026, 1, 1),
     isCurrentPrice: true,
+    packageQuantityAmount: 1,
+    packageQuantityUnit: 'kg',
+    normalizedMeasurementUnit: 'kg',
+    externalObservationId: 42,
   );
 }
 

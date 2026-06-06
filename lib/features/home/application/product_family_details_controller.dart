@@ -1,5 +1,4 @@
 import '../../../core/normalization/family_unit_normalization.dart';
-import '../../products/presentation/product_item_capture_form_support.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
@@ -44,10 +43,15 @@ class ProductFamilyDetailsController {
     required double quantity,
     required String unitType,
   }) async {
-    final familyError = validateItemForFamily(
-      family: _family,
-      quantity: quantity,
-      unitType: unitType,
+    final shoppingUnit =
+        _family.shoppingUnit ?? inferShoppingUnitFromUnitType(unitType);
+    final purchaseMode =
+        _family.purchaseMode ?? inferPurchaseModeFromUnitType(unitType);
+    final familyError = validateItemSemantics(
+      shoppingUnit: shoppingUnit,
+      purchaseMode: purchaseMode,
+      packageQuantityAmount: quantity,
+      packageQuantityUnit: unitType,
     );
     if (familyError != null) return familyError;
 
@@ -90,6 +94,10 @@ class ProductFamilyDetailsController {
         dateAdded: item.dateAdded,
         isCurrentPrice: item.isCurrentPrice,
         barcode: item.barcode,
+        packageQuantityAmount: item.packageQuantityAmount,
+        packageQuantityUnit: item.packageQuantityUnit,
+        normalizedMeasurementUnit: item.normalizedMeasurementUnit,
+        externalObservationId: item.externalObservationId,
       ),
     );
   }
