@@ -123,7 +123,6 @@ class DriftPriceRecordRepository {
     required double price,
     required double quantity,
     required String unitType,
-    String? purchaseMode,
     String? barcode,
   }) async {
     final trimmedName = productName.trim();

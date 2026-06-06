@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
 import '../../../../core/normalization/family_normalization.dart';
@@ -23,6 +21,7 @@ import 'drift_shopping_list_repository.dart';
 import 'drift_supermarket_repository.dart';
 
 class DriftPersistenceRepository implements PersistenceRepository {
+  final PersistenceDao _dao;
   final DriftSupermarketRepository _supermarketRepository;
   final DriftProductFamilyRepository _productFamilyRepository;
   final DriftPriceRecordRepository _priceRecordRepository;
@@ -31,13 +30,15 @@ class DriftPersistenceRepository implements PersistenceRepository {
   final DriftBackupRepository _backupRepository;
 
   DriftPersistenceRepository._({
+    required PersistenceDao dao,
     required DriftSupermarketRepository supermarketRepository,
     required DriftProductFamilyRepository productFamilyRepository,
     required DriftPriceRecordRepository priceRecordRepository,
     required DriftShoppingListRepository shoppingListRepository,
     required DriftExternalObservationRepository externalObservationRepository,
     required DriftBackupRepository backupRepository,
-  })  : _supermarketRepository = supermarketRepository,
+  })  : _dao = dao,
+        _supermarketRepository = supermarketRepository,
         _productFamilyRepository = productFamilyRepository,
         _priceRecordRepository = priceRecordRepository,
         _shoppingListRepository = shoppingListRepository,
@@ -46,6 +47,7 @@ class DriftPersistenceRepository implements PersistenceRepository {
 
   factory DriftPersistenceRepository(PersistenceDao dao) {
     return DriftPersistenceRepository._(
+      dao: dao,
       supermarketRepository: DriftSupermarketRepository(dao),
       productFamilyRepository: DriftProductFamilyRepository(dao),
       priceRecordRepository: DriftPriceRecordRepository(dao),
@@ -150,7 +152,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
       price: price,
       quantity: quantity,
       unitType: unitType,
-      purchaseMode: purchaseMode,
       barcode: barcode,
     );
   }
@@ -224,49 +225,24 @@ class DriftPersistenceRepository implements PersistenceRepository {
   Future<int> confirmExternalObservationLocally({
     required int observationId,
   }) async {
-    return _externalObservationRepository.dao.db.transaction(() async {
-      final observation = await _externalObservationRepository.dao
+    return _dao.db.transaction(() async {
+      final observation = await _externalObservationRepository
           .getExternalPriceObservationById(observationId);
       if (observation == null) {
         throw StateError('External observation not found: $observationId');
       }
 
-      final mapping = await _externalObservationRepository.dao
+      final mapping = await _externalObservationRepository
           .getExternalStoreMappingByExternalId(observation.externalStoreId);
 
-      final confirmationObservation = ExternalPriceObservation(
-        id: observation.id,
-        openPricesId: observation.openPricesId,
-        productName: observation.productName,
-        familyName: observation.familyName,
-        externalStoreId: observation.externalStoreId,
-        externalStoreName: observation.externalStoreName,
-        price: observation.price,
-        quantity: observation.quantity,
-        unitType: observation.unitType,
-        pricePerQuantity: observation.pricePerQuantity,
-        observedAt: observation.observedAt,
-        reviewStatus: ExternalObservationReviewStatusCodec.fromStorageValue(
-          observation.reviewStatus,
-        ),
-        localProductItemId: observation.localProductItemId,
-        localPriceRecordId: observation.localPriceRecordId,
-      );
       final familyId =
           await _productFamilyRepository.resolveProductFamilyIdByName(
         observation.familyName,
       );
       final confirmationPlan =
           _externalObservationRepository.confirmationPlanner.buildPlan(
-        observation: confirmationObservation,
-        mapping: mapping == null
-            ? null
-            : ExternalStoreMapping(
-                id: mapping.id,
-                externalStoreId: mapping.externalStoreId,
-                externalStoreName: mapping.externalStoreName,
-                supermarketId: mapping.supermarketId,
-              ),
+        observation: observation,
+        mapping: mapping,
         productFamilyId: familyId,
         confirmedAt: DateTime.now(),
       );
@@ -274,25 +250,9 @@ class DriftPersistenceRepository implements PersistenceRepository {
         confirmationPlan.localPriceRecord,
       );
 
-      await _externalObservationRepository.dao.saveExternalPriceObservation(
-        ExternalPriceObservationTableCompanion(
-          id: Value(observation.id),
-          openPricesId: Value(observation.openPricesId),
-          productName: Value(observation.productName),
-          familyName: Value(observation.familyName),
-          externalStoreId: Value(observation.externalStoreId),
-          externalStoreName: Value(observation.externalStoreName),
-          price: Value(observation.price),
-          quantity: Value(observation.quantity),
-          unitType: Value(observation.unitType),
-          pricePerQuantity: Value(observation.pricePerQuantity),
-          observedAt: Value(observation.observedAt),
-          reviewStatus: Value(
-            ExternalObservationReviewStatus.acceptedForComparison.storageValue,
-          ),
-          localProductItemId: Value(observation.localProductItemId),
-          localPriceRecordId: Value(productItemId),
-        ),
+      await _externalObservationRepository.confirmObservation(
+        observationId: observationId,
+        localPriceRecordId: productItemId,
       );
 
       return productItemId;
@@ -373,42 +333,41 @@ class DriftPersistenceRepository implements PersistenceRepository {
     };
 
     final externalRows =
-        await _externalObservationRepository.dao.getExternalPriceObservations();
+        await _externalObservationRepository.getExternalPriceObservations();
     final mappings =
-        await _externalObservationRepository.dao.getExternalStoreMappings();
+        await _externalObservationRepository.getExternalStoreMappings();
     final mappingByExternalStoreId = {
       for (final mapping in mappings) mapping.externalStoreId: mapping,
     };
 
     final acceptedExternalItems = externalRows
         .where(
-          (row) =>
-              row.reviewStatus ==
-                  ExternalObservationReviewStatus
-                      .acceptedForComparison.storageValue &&
-              row.localPriceRecordId == null,
+          (obs) =>
+              obs.reviewStatus ==
+                  ExternalObservationReviewStatus.acceptedForComparison &&
+              obs.localPriceRecordId == null,
         )
-        .map((row) {
-          final mapping = mappingByExternalStoreId[row.externalStoreId];
-          final familyId = familyIdByName[normalizeFamilyKey(row.familyName)];
+        .map((obs) {
+          final mapping = mappingByExternalStoreId[obs.externalStoreId];
+          final familyId = familyIdByName[normalizeFamilyKey(obs.familyName)];
           if (mapping == null || familyId == null) return null;
           return ProductItem(
-            id: row.localPriceRecordId,
-            name: row.productName,
+            id: obs.localPriceRecordId,
+            name: obs.productName,
             productFamilyId: familyId,
             supermarketId: mapping.supermarketId,
-            price: row.price,
-            quantity: row.quantity,
-            unitType: row.unitType,
-            pricePerQuantity: row.pricePerQuantity,
-            dateAdded: row.observedAt,
+            price: obs.price,
+            quantity: obs.quantity,
+            unitType: obs.unitType,
+            pricePerQuantity: obs.pricePerQuantity,
+            dateAdded: obs.observedAt,
             isCurrentPrice: true,
-            packageQuantityAmount: row.quantity,
-            packageQuantityUnit: row.unitType,
+            packageQuantityAmount: obs.quantity,
+            packageQuantityUnit: obs.unitType,
             normalizedMeasurementUnit: normalizeUnitTypeForComparison(
-              row.unitType,
+              obs.unitType,
             ),
-            externalObservationId: row.id,
+            externalObservationId: obs.id,
           );
         })
         .whereType<ProductItem>()

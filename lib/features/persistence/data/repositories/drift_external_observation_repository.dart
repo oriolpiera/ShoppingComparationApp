@@ -142,6 +142,74 @@ class DriftExternalObservationRepository {
     );
   }
 
+  Future<ExternalPriceObservation?> getExternalPriceObservationById(
+    int id,
+  ) async {
+    final row = await dao.getExternalPriceObservationById(id);
+    if (row == null) return null;
+    return ExternalPriceObservation(
+      id: row.id,
+      openPricesId: row.openPricesId,
+      productName: row.productName,
+      familyName: row.familyName,
+      externalStoreId: row.externalStoreId,
+      externalStoreName: row.externalStoreName,
+      price: row.price,
+      quantity: row.quantity,
+      unitType: row.unitType,
+      pricePerQuantity: row.pricePerQuantity,
+      observedAt: row.observedAt,
+      reviewStatus: ExternalObservationReviewStatusCodec.fromStorageValue(
+        row.reviewStatus,
+      ),
+      localProductItemId: row.localProductItemId,
+      localPriceRecordId: row.localPriceRecordId,
+    );
+  }
+
+  Future<ExternalStoreMapping?> getExternalStoreMappingByExternalId(
+    String externalStoreId,
+  ) async {
+    final row = await dao.getExternalStoreMappingByExternalId(externalStoreId);
+    if (row == null) return null;
+    return ExternalStoreMapping(
+      id: row.id,
+      externalStoreId: row.externalStoreId,
+      externalStoreName: row.externalStoreName,
+      supermarketId: row.supermarketId,
+    );
+  }
+
+  Future<void> confirmObservation({
+    required int observationId,
+    required int localPriceRecordId,
+  }) async {
+    final existing = await dao.getExternalPriceObservationById(observationId);
+    if (existing == null) {
+      throw StateError('External observation not found: $observationId');
+    }
+    await dao.saveExternalPriceObservation(
+      ExternalPriceObservationTableCompanion(
+        id: Value(existing.id),
+        openPricesId: Value(existing.openPricesId),
+        productName: Value(existing.productName),
+        familyName: Value(existing.familyName),
+        externalStoreId: Value(existing.externalStoreId),
+        externalStoreName: Value(existing.externalStoreName),
+        price: Value(existing.price),
+        quantity: Value(existing.quantity),
+        unitType: Value(existing.unitType),
+        pricePerQuantity: Value(existing.pricePerQuantity),
+        observedAt: Value(existing.observedAt),
+        reviewStatus: Value(
+          ExternalObservationReviewStatus.acceptedForComparison.storageValue,
+        ),
+        localProductItemId: Value(existing.localProductItemId),
+        localPriceRecordId: Value(localPriceRecordId),
+      ),
+    );
+  }
+
   ExternalObservationConfirmationPlanner get confirmationPlanner =>
       _externalObservationConfirmationPlanner;
 }
