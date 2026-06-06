@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/normalization/family_normalization.dart';
-import '../../../core/normalization/unit_normalization.dart';
-import '../../../core/validation/family_semantics.dart';
 import '../../persistence/domain/entities/product_family.dart';
-import '../../../core/normalization/family_unit_normalization.dart';
 
 void showValidationSnackBar(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

@@ -1,4 +1,4 @@
-import '../../../core/normalization/family_unit_normalization.dart';
+import '../../../core/normalization/family_normalization.dart';
 import '../../persistence/domain/entities/product_family.dart';
 
 ProductFamily? findExistingFamilyByName({

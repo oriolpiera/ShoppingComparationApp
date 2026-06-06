@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/normalization/unit_normalization.dart';
-import '../../products/domain/validation/product_item_validation.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
@@ -441,4 +440,3 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
     );
   }
 }
-
