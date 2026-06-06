@@ -7,6 +7,7 @@ import '../../../persistence/domain/entities/shopping_list_entry.dart';
 import '../../../persistence/domain/repositories/persistence_repository.dart';
 import '../../../persistence/domain/repositories/shopping_list_repository.dart';
 import '../../../products/presentation/product_item_capture_form_support.dart';
+import '../product_family_details_action.dart';
 import '../product_family_details_module.dart';
 
 class ProductFamiliesPage extends StatefulWidget {

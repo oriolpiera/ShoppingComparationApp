@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/normalization/family_unit_normalization.dart';
-import '../application/product_family_comparison_module.dart';
-import 'product_family_presentation_helpers.dart';
-
-export 'product_family_details_action.dart';
-import 'pages/product_item_details_page.dart';
-import '../../products/presentation/product_item_capture_form_support.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
-import '../../supermarkets/data/models/supermarket.dart';
-
+import '../../products/presentation/product_item_capture_form_support.dart';
+import '../application/product_family_comparison_module.dart';
+import '../application/product_family_details_controller.dart';
+import '../application/product_family_details_data.dart';
+import 'pages/product_item_details_page.dart';
 import 'product_family_details_action.dart';
+import 'product_family_presentation_helpers.dart';
 
 class ProductFamilyDetailsPage extends StatefulWidget {
   const ProductFamilyDetailsPage({
@@ -30,34 +28,17 @@ class ProductFamilyDetailsPage extends StatefulWidget {
 }
 
 class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
-  late Future<_ProductFamilyDetailsData> _future;
+  late Future<ProductFamilyDetailsData> _future;
+  late ProductFamilyDetailsController _controller;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
-  }
-
-  Future<_ProductFamilyDetailsData> _load() async {
-    final familyId = widget.item.id;
-    if (familyId == null) {
-      return const _ProductFamilyDetailsData([], {}, 0);
-    }
-
-    final items = await widget.repository.getProductItems(
-      productFamilyId: familyId,
-      onlyCurrentPrice: false,
+    _controller = ProductFamilyDetailsController(
+      repository: widget.repository,
+      family: widget.item,
     );
-    final supermarkets = await widget.repository.getSupermarkets(
-      onlyActive: false,
-    );
-    final supermarketById = {
-      for (final supermarket in supermarkets)
-        if (supermarket.id != null) supermarket.id!: supermarket,
-    };
-
-    final activeItemCount = items.where((item) => item.isActive).length;
-    return _ProductFamilyDetailsData(items, supermarketById, activeItemCount);
+    _future = _controller.loadData();
   }
 
   Future<void> _openItemDetails(
@@ -81,28 +62,13 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
     if (action == ProductItemDetailsAction.edit) {
       await _editProductItem(item);
     } else if (action == ProductItemDetailsAction.delete) {
-      await widget.repository.saveProductItem(
-        ProductItem(
-          id: item.id,
-          name: item.name,
-          isActive: false,
-          productFamilyId: item.productFamilyId,
-          supermarketId: item.supermarketId,
-          price: item.price,
-          quantity: item.quantity,
-          unitType: item.unitType,
-          pricePerQuantity: item.pricePerQuantity,
-          dateAdded: item.dateAdded,
-          isCurrentPrice: item.isCurrentPrice,
-          barcode: item.barcode,
-        ),
-      );
+      await _controller.inactivateItem(item);
     } else {
       return;
     }
 
     setState(() {
-      _future = _load();
+      _future = _controller.loadData();
     });
   }
 
@@ -178,40 +144,18 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
-      final familyError = validateItemForFamily(
-        family: widget.item,
+      final error = await _controller.saveEditedItem(
+        original: item,
+        name: name,
+        price: price,
         quantity: quantity,
         unitType: unitType,
       );
-      if (familyError != null) {
-        if (mounted) {
-          showValidationSnackBar(context, familyError);
-        }
+
+      if (error != null && mounted) {
+        showValidationSnackBar(context, error);
         return;
       }
-
-      final storedUnitType = normalizeUnitTypeForStorage(unitType);
-      await widget.repository.saveProductItem(
-        ProductItem(
-          id: item.id,
-          name: name,
-          isActive: item.isActive,
-          productFamilyId: item.productFamilyId,
-          supermarketId: item.supermarketId,
-          price: price,
-          quantity: quantity,
-          unitType: storedUnitType,
-          pricePerQuantity: price / quantity,
-          packageQuantityAmount: quantity,
-          packageQuantityUnit: storedUnitType,
-          normalizedMeasurementUnit: normalizeUnitTypeForComparison(
-            storedUnitType,
-          ),
-          dateAdded: item.dateAdded,
-          isCurrentPrice: item.isCurrentPrice,
-          barcode: item.barcode,
-        ),
-      );
     }
   }
 
@@ -295,7 +239,7 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
           ),
         ],
       ),
-      body: FutureBuilder<_ProductFamilyDetailsData>(
+      body: FutureBuilder<ProductFamilyDetailsData>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -306,7 +250,7 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
           }
 
           final data =
-              snapshot.data ?? const _ProductFamilyDetailsData([], {}, 0);
+              snapshot.data ?? const ProductFamilyDetailsData([], {}, 0);
           final comparisonView = buildProductFamilyComparisonView(
             items: data.items,
             supermarketById: data.supermarketById,
@@ -495,16 +439,4 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
       ),
     );
   }
-}
-
-class _ProductFamilyDetailsData {
-  const _ProductFamilyDetailsData(
-    this.items,
-    this.supermarketById,
-    this.activeItemCount,
-  );
-
-  final List<ProductItem> items;
-  final Map<int, Supermarket> supermarketById;
-  final int activeItemCount;
 }
