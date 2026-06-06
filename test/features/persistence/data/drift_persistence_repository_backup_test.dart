@@ -68,7 +68,7 @@ void main() {
         dateAdded: DateTime(2026, 2, 1),
       ),
     );
-    await repository.saveShoppingListEntry(
+    await repository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 3),
     );
 
@@ -87,7 +87,7 @@ void main() {
     final supermarkets = await repository.getSupermarkets(onlyActive: false);
     final families = await repository.getProductFamilies(onlyActive: false);
     final items = await repository.getProductItems(onlyCurrentPrice: false);
-    final shoppingList = await repository.getShoppingList();
+    final shoppingList = await repository.getShoppingNeedEntries();
 
     expect(supermarkets.single.name, 'Market');
     expect(families.single.name, 'Rice');

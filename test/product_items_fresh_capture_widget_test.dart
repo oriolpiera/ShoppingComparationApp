@@ -6,7 +6,10 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/ba
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_family_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_item_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/price_record_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/supermarket_repository.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
@@ -16,7 +19,11 @@ void main() {
     final repository = _CapturingRepo();
 
     await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
+      MaterialApp(home: ProductItemsPage(
+            productItemRepository: repository,
+            productFamilyRepository: repository,
+            supermarketRepository: repository,
+            priceRecordRepository: repository,),)
     );
     await tester.pumpAndSettle();
 
@@ -69,7 +76,12 @@ class _QuickCaptureCall {
   final String? barcode;
 }
 
-class _CapturingRepo implements ProductItemsRepository {
+class _CapturingRepo
+    implements
+        ProductItemRepository,
+        ProductFamilyRepository,
+        SupermarketRepository,
+        PriceRecordRepository {
   _QuickCaptureCall? lastQuickCapture;
 
   @override
@@ -141,4 +153,10 @@ class _CapturingRepo implements ProductItemsRepository {
     );
     return 1;
   }
+
+  @override
+  Future<int> saveProductFamily(ProductFamily family) async => 1;
+
+  @override
+  Future<int> saveSupermarket(Supermarket supermarket) async => 1;
 }

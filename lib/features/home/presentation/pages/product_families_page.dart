@@ -5,8 +5,10 @@ import '../../../../core/validation/family_semantics.dart';
 import '../../../persistence/domain/entities/product_family.dart';
 import '../../../persistence/domain/entities/product_item.dart';
 import '../../../persistence/domain/entities/shopping_list_entry.dart';
-import '../../../persistence/domain/repositories/persistence_repository.dart';
+import '../../../persistence/domain/repositories/product_family_repository.dart';
+import '../../../persistence/domain/repositories/product_item_repository.dart';
 import '../../../persistence/domain/repositories/shopping_list_repository.dart';
+import '../../../persistence/domain/repositories/supermarket_repository.dart';
 import '../../../products/presentation/product_item_capture_form_support.dart';
 import '../product_family_details_action.dart';
 import '../product_family_details_module.dart';
@@ -14,11 +16,15 @@ import '../product_family_details_module.dart';
 class ProductFamiliesPage extends StatefulWidget {
   const ProductFamiliesPage({
     super.key,
-    required this.repository,
+    required this.productFamilyRepository,
+    required this.productItemRepository,
+    required this.supermarketRepository,
     required this.shoppingListRepository,
   });
 
-  final PersistenceRepository repository;
+  final ProductFamilyRepository productFamilyRepository;
+  final ProductItemRepository productItemRepository;
+  final SupermarketRepository supermarketRepository;
   final ShoppingListRepository shoppingListRepository;
 
   @override
@@ -45,7 +51,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
   }
 
   Future<_ProductFamiliesViewData> _load() async {
-    final families = await widget.repository.getProductFamilies(
+    final families = await widget.productFamilyRepository.getProductFamilies(
       onlyActive: true,
     );
     final shoppingListEntries =
@@ -221,7 +227,12 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                           MaterialPageRoute(
                             builder: (_) => ProductFamilyDetailsPage(
                               item: item,
-                              repository: widget.repository,
+                              productItemRepository:
+                                  widget.productItemRepository,
+                              supermarketRepository:
+                                  widget.supermarketRepository,
+                              shoppingListRepository:
+                                  widget.shoppingListRepository,
                             ),
                           ),
                         );
@@ -232,7 +243,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                           await _openForm(item);
                         } else if (action ==
                             ProductFamilyDetailsAction.deleteKeepItems) {
-                          await widget.repository.saveProductFamily(
+                          await widget.productFamilyRepository.saveProductFamily(
                             ProductFamily(
                               id: item.id,
                               name: item.name,
@@ -251,14 +262,14 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                             ProductFamilyDetailsAction
                                 .deleteAndInactivateItems) {
                           final allItems =
-                              await widget.repository.getProductItems(
+                              await widget.productItemRepository.getProductItems(
                             productFamilyId: item.id,
                             onlyCurrentPrice: false,
                           );
                           for (final productItem in allItems.where(
                             (p) => p.isActive,
                           )) {
-                            await widget.repository.saveProductItem(
+                            await widget.productItemRepository.saveProductItem(
                               ProductItem(
                                 id: productItem.id,
                                 name: productItem.name,
@@ -275,7 +286,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               ),
                             );
                           }
-                          await widget.repository.saveProductFamily(
+                          await widget.productFamilyRepository.saveProductFamily(
                             ProductFamily(
                               id: item.id,
                               name: item.name,
@@ -399,7 +410,7 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
         return;
       }
 
-      await widget.repository.saveProductFamily(
+      await widget.productFamilyRepository.saveProductFamily(
         ProductFamily(
           id: family?.id,
           name: nextName,

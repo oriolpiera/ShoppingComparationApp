@@ -4,7 +4,9 @@ import '../../../core/normalization/unit_normalization.dart';
 import '../../persistence/domain/entities/barcode_match_result.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/scanned_price_registration_result.dart';
-import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../../persistence/domain/repositories/price_record_repository.dart';
+import '../../persistence/domain/repositories/product_family_repository.dart';
+import '../../persistence/domain/repositories/supermarket_repository.dart';
 import '../../persistence/domain/entities/supermarket.dart';
 import '../data/open_food_facts_name_prefill_service.dart';
 import '../data/open_prices_price_prefill_service.dart';
@@ -15,13 +17,17 @@ import 'product_item_capture_form_support.dart';
 class BarcodeMatchesPage extends StatefulWidget {
   const BarcodeMatchesPage({
     super.key,
-    required this.repository,
+    required this.priceRecordRepository,
+    required this.productFamilyRepository,
+    required this.supermarketRepository,
     required this.barcode,
     required this.namePrefillService,
     required this.pricePrefillService,
   });
 
-  final BarcodeLookupRepository repository;
+  final PriceRecordRepository priceRecordRepository;
+  final ProductFamilyRepository productFamilyRepository;
+  final SupermarketRepository supermarketRepository;
   final String barcode;
   final OpenFoodFactsNamePrefillService namePrefillService;
   final OpenPricesPricePrefillService pricePrefillService;
@@ -40,7 +46,7 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
   }
 
   Future<_BarcodeLookupData> _load() async {
-    final matches = await widget.repository.findCurrentActiveByBarcode(
+    final matches = await widget.priceRecordRepository.findCurrentActiveByBarcode(
       widget.barcode,
     );
 
@@ -96,7 +102,9 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
       context: context,
       isScrollControlled: true,
       builder: (_) => _RegisterScannedPriceSheet(
-        repository: widget.repository,
+        priceRecordRepository: widget.priceRecordRepository,
+        productFamilyRepository: widget.productFamilyRepository,
+        supermarketRepository: widget.supermarketRepository,
         barcode: widget.barcode,
         families: data.families,
         supermarkets: data.supermarkets,
@@ -124,14 +132,14 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
   }
 
   Future<_BarcodeCreateData> _loadCreateData() async {
-    final families = await widget.repository.getProductFamilies(
+    final families = await widget.productFamilyRepository.getProductFamilies(
       onlyActive: true,
     );
-    final supermarkets = await widget.repository.getSupermarkets(
+    final supermarkets = await widget.supermarketRepository.getSupermarkets(
       onlyActive: true,
     );
     final lastUsedSupermarketId =
-        await widget.repository.getLastUsedSupermarketId();
+        await widget.supermarketRepository.getLastUsedSupermarketId();
     return _BarcodeCreateData(
       families: families,
       supermarkets: supermarkets,
@@ -235,7 +243,9 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
 
 class _RegisterScannedPriceSheet extends StatefulWidget {
   const _RegisterScannedPriceSheet({
-    required this.repository,
+    required this.priceRecordRepository,
+    required this.productFamilyRepository,
+    required this.supermarketRepository,
     required this.barcode,
     required this.families,
     required this.supermarkets,
@@ -248,7 +258,9 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
     this.prefilledUnitType,
   });
 
-  final BarcodeLookupRepository repository;
+  final PriceRecordRepository priceRecordRepository;
+  final ProductFamilyRepository productFamilyRepository;
+  final SupermarketRepository supermarketRepository;
   final String barcode;
   final List<ProductFamily> families;
   final List<Supermarket> supermarkets;
@@ -327,7 +339,7 @@ class _RegisterScannedPriceSheetState
       return;
     }
 
-    final refreshedFamilies = await widget.repository.getProductFamilies(
+    final refreshedFamilies = await widget.productFamilyRepository.getProductFamilies(
       onlyActive: true,
     );
     final selectedFamily = findExistingFamilyByName(
@@ -349,7 +361,7 @@ class _RegisterScannedPriceSheetState
 
     final storedUnitType = normalizeUnitTypeForStorage(_unitType);
 
-    final result = await widget.repository.registerScannedPrice(
+    final result = await widget.priceRecordRepository.registerScannedPrice(
       barcode: widget.barcode,
       productName: name,
       familyName: family,

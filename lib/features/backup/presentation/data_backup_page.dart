@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../../persistence/domain/repositories/backup_repository.dart';
 import '../application/backup_import_service.dart';
 import '../application/backup_share_service.dart';
 
@@ -15,7 +15,7 @@ class DataBackupPage extends StatefulWidget {
     this.onPickFilePressed,
   });
 
-  final PersistenceRepository repository;
+  final BackupRepository repository;
 
   /// Optional async callback invoked after a successful share with the JSON
   /// payload that was handed to the share sheet.

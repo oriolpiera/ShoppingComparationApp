@@ -42,7 +42,14 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     if (_isWebPreview || kDebugMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(DemoSeedService(repository).seed());
+        unawaited(
+          DemoSeedService(
+            supermarketRepository: repository,
+            productFamilyRepository: repository,
+            productItemRepository: repository,
+            shoppingListRepository: repository,
+          ).seed(),
+        );
       });
     }
   }
@@ -67,7 +74,9 @@ class _HomePageState extends State<HomePage> {
             onTap: () => _open(
               context,
               ProductFamiliesPage(
-                repository: repository,
+                productFamilyRepository: repository,
+                productItemRepository: repository,
+                supermarketRepository: repository,
                 shoppingListRepository: repository,
               ),
             ),
@@ -76,7 +85,12 @@ class _HomePageState extends State<HomePage> {
             leading: const Icon(Icons.shopping_bag_outlined),
             title: const Text('Product items'),
             onTap: () =>
-                _open(context, ProductItemsPage(repository: repository)),
+                _open(context, ProductItemsPage(
+                  productItemRepository: repository,
+                  productFamilyRepository: repository,
+                  supermarketRepository: repository,
+                  priceRecordRepository: repository,
+                )),
           ),
           ListTile(
             leading: const Icon(Icons.list_alt_outlined),

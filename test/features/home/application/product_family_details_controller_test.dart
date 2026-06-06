@@ -2,21 +2,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shopping_comparation_app/features/home/application/product_family_details_controller.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/barcode_match_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/external_price_observation.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/external_store_mapping.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/optimized_shopping.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/shopping_list_optimizer.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_item_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/supermarket_repository.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   group('loadData', () {
     test('returns empty data when family has no id', () async {
+      final repo = _FakeRepository(items: [], supermarkets: []);
       final controller = ProductFamilyDetailsController(
-        repository: _FakeRepository(items: [], supermarkets: []),
+        productItemRepository: repo,
+        supermarketRepository: repo,
         family: const ProductFamily(name: 'No ID family'),
       );
 
@@ -61,12 +57,14 @@ void main() {
         Supermarket(id: 2, name: 'Inactive', isActive: false),
       ];
 
+      final repo = _FakeRepository(
+        families: [const ProductFamily(id: 1, name: 'Test')],
+        items: items,
+        supermarkets: supermarkets,
+      );
       final controller = ProductFamilyDetailsController(
-        repository: _FakeRepository(
-          families: [const ProductFamily(id: 1, name: 'Test')],
-          items: items,
-          supermarkets: supermarkets,
-        ),
+        productItemRepository: repo,
+        supermarketRepository: repo,
         family: const ProductFamily(id: 1, name: 'Test'),
       );
 
@@ -83,7 +81,8 @@ void main() {
     test('returns error when item semantics are invalid', () async {
       final repository = _FakeRepository(items: [], supermarkets: []);
       final controller = ProductFamilyDetailsController(
-        repository: repository,
+        productItemRepository: repository,
+        supermarketRepository: repository,
         family: const ProductFamily(
           id: 1,
           name: 'Test',
@@ -115,7 +114,8 @@ void main() {
         },
       );
       final controller = ProductFamilyDetailsController(
-        repository: repository,
+        productItemRepository: repository,
+        supermarketRepository: repository,
         family: const ProductFamily(id: 1, name: 'Test'),
       );
 
@@ -153,7 +153,8 @@ void main() {
         },
       );
       final controller = ProductFamilyDetailsController(
-        repository: repository,
+        productItemRepository: repository,
+        supermarketRepository: repository,
         family: const ProductFamily(id: 1, name: 'Test'),
       );
 
@@ -191,7 +192,10 @@ ProductItem _anyItem() {
   );
 }
 
-class _FakeRepository implements PersistenceRepository {
+class _FakeRepository
+    implements
+        ProductItemRepository,
+        SupermarketRepository {
   _FakeRepository({
     required this.items,
     required this.supermarkets,
@@ -206,20 +210,6 @@ class _FakeRepository implements PersistenceRepository {
 
   final List<ProductItem> savedItems = [];
   final List<ProductFamily> savedFamilies = [];
-
-  @override
-  Future<String> exportBackupJson() async => '{}';
-
-  @override
-  Future<void> importBackupJson(String jsonPayload) async {}
-
-  @override
-  Future<List<ProductFamily>> getProductFamilies({
-    bool onlyActive = true,
-  }) async {
-    if (!onlyActive) return families;
-    return families.where((f) => f.isActive).toList();
-  }
 
   @override
   Future<List<ProductItem>> getProductItems({
@@ -246,12 +236,6 @@ class _FakeRepository implements PersistenceRepository {
   }
 
   @override
-  Future<int> saveProductFamily(ProductFamily family) async {
-    savedFamilies.add(family);
-    return family.id ?? 1;
-  }
-
-  @override
   Future<int> saveProductItem(ProductItem item) async {
     _onSaveItem?.call(item);
     savedItems.add(item);
@@ -259,47 +243,7 @@ class _FakeRepository implements PersistenceRepository {
   }
 
   @override
-  Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async => [];
-
-  @override
   Future<int?> getLastUsedSupermarketId() async => null;
-
-  @override
-  Future<List<ExternalStoreMapping>> getExternalStoreMappings() async => [];
-
-  @override
-  Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping) async => 1;
-
-  @override
-  Future<List<ExternalPriceObservation>> getExternalPriceObservations() async =>
-      [];
-
-  @override
-  Future<int> saveExternalPriceObservation(
-    ExternalPriceObservation observation,
-  ) async =>
-      1;
-
-  @override
-  Future<void> updateExternalObservationReviewStatus({
-    required int observationId,
-    required ExternalObservationReviewStatus newStatus,
-  }) async {}
-
-  @override
-  Future<int> confirmExternalObservationLocally({
-    required int observationId,
-  }) async =>
-      1;
-
-  @override
-  Future<List<ShoppingListEntry>> getShoppingList() async => [];
-
-  @override
-  Future<List<ShoppingListEntry>> getShoppingNeedEntries() => getShoppingList();
-
-  @override
-  Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
 
   @override
   Future<int> saveQuickProductItem({
@@ -313,63 +257,6 @@ class _FakeRepository implements PersistenceRepository {
     String? barcode,
   }) async =>
       1;
-
-  @override
-  Future<int> saveShoppingListEntry(ShoppingListEntry entry) async => 1;
-
-  @override
-  Future<int> saveShoppingNeedEntry(ShoppingListEntry entry) =>
-      saveShoppingListEntry(entry);
-
-  @override
-  Future<int> addOrIncrementShoppingListEntry({
-    required int productFamilyId,
-    int quantity = 1,
-  }) async =>
-      1;
-
-  @override
-  Future<int> addOrIncrementShoppingNeedEntry({
-    required int productFamilyId,
-    int quantity = 1,
-  }) =>
-      addOrIncrementShoppingListEntry(
-        productFamilyId: productFamilyId,
-        quantity: quantity,
-      );
-
-  @override
-  Future<void> deleteShoppingListEntries(List<int> entryIds) async {}
-
-  @override
-  Future<void> deleteShoppingNeedEntries(List<int> entryIds) =>
-      deleteShoppingListEntries(entryIds);
-
-  @override
-  Future<List<ProductFamily>> getActiveShoppingFamilies() =>
-      getProductFamilies();
-
-  @override
-  Future<ShoppingOptimizationResult> getOptimizedShoppingNeedEntries() async =>
-      const ShoppingOptimizationResult(groups: [], pendingEntries: []);
-
-  @override
-  Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
-    String barcode,
-  ) async =>
-      [];
-
-  @override
-  Future<ScannedPriceRegistrationResult> registerScannedPrice({
-    required String barcode,
-    required String productName,
-    required String familyName,
-    required int supermarketId,
-    required double price,
-    required double quantity,
-    required String unitType,
-  }) async =>
-      const ScannedPriceRegistrationResult(created: false);
 
   @override
   Future<int> saveSupermarket(Supermarket supermarket) async => 1;

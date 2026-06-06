@@ -8,7 +8,10 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/pr
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/price_record_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_family_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_item_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/supermarket_repository.dart';
 import 'package:shopping_comparation_app/features/products/data/open_food_facts_name_prefill_service.dart';
 import 'package:shopping_comparation_app/features/products/data/open_prices_price_prefill_service.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
@@ -25,7 +28,14 @@ void main() {
     final repository = _FakeRepo();
 
     await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
+      MaterialApp(
+        home: ProductItemsPage(
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -52,7 +62,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: ProductItemsPage(
-          repository: repository,
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
           namePrefillService: prefillService,
         ),
       ),
@@ -98,7 +111,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: ProductItemsPage(
-          repository: repository,
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
           namePrefillService: prefillService,
           pricePrefillService: pricePrefillService,
         ),
@@ -133,7 +149,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: ProductItemsPage(
-          repository: repository,
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
           namePrefillService: prefillService,
         ),
       ),
@@ -194,7 +213,14 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
+      MaterialApp(
+        home: ProductItemsPage(
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -230,7 +256,11 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
+      MaterialApp(home: ProductItemsPage(
+            productItemRepository: repository,
+            productFamilyRepository: repository,
+            supermarketRepository: repository,
+            priceRecordRepository: repository,),)
     );
     await tester.pumpAndSettle();
 
@@ -263,7 +293,11 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
+      MaterialApp(home: ProductItemsPage(
+            productItemRepository: repository,
+            productFamilyRepository: repository,
+            supermarketRepository: repository,
+            priceRecordRepository: repository,),)
     );
     await tester.pumpAndSettle();
 
@@ -292,7 +326,12 @@ void main() {
   });
 }
 
-class _FakeRepo implements ProductItemsRepository {
+class _FakeRepo
+    implements
+        ProductItemRepository,
+        ProductFamilyRepository,
+        SupermarketRepository,
+        PriceRecordRepository {
   _FakeRepo({
     this.matchesByBarcode = const {},
     this.families = const [ProductFamily(id: 1, name: 'Milk')],
@@ -366,4 +405,10 @@ class _FakeRepo implements ProductItemsRepository {
     String? barcode,
   }) async =>
       1;
+
+  @override
+  Future<int> saveProductFamily(ProductFamily family) async => 1;
+
+  @override
+  Future<int> saveSupermarket(Supermarket supermarket) async => 1;
 }

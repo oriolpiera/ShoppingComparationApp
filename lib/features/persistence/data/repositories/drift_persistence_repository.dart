@@ -11,7 +11,13 @@ import '../../domain/entities/product_item.dart';
 import '../../domain/entities/scanned_price_registration_result.dart';
 import '../../domain/entities/shopping_list_entry.dart';
 import '../../domain/entities/supermarket.dart';
-import '../../domain/repositories/persistence_repository.dart';
+import '../../domain/repositories/backup_repository.dart';
+import '../../domain/repositories/external_observation_repository.dart';
+import '../../domain/repositories/price_record_repository.dart';
+import '../../domain/repositories/product_family_repository.dart';
+import '../../domain/repositories/product_item_repository.dart';
+import '../../domain/repositories/shopping_list_repository.dart';
+import '../../domain/repositories/supermarket_repository.dart';
 import '../../domain/shopping_list_optimizer.dart';
 import 'drift_backup_repository.dart';
 import 'drift_external_observation_repository.dart';
@@ -20,7 +26,14 @@ import 'drift_product_family_repository.dart';
 import 'drift_shopping_list_repository.dart';
 import 'drift_supermarket_repository.dart';
 
-class DriftPersistenceRepository implements PersistenceRepository {
+class DriftPersistenceRepository implements
+    SupermarketRepository,
+    ProductFamilyRepository,
+    ProductItemRepository,
+    PriceRecordRepository,
+    ShoppingListRepository,
+    ExternalObservationRepository,
+    BackupRepository {
   final PersistenceDao _dao;
   final DriftSupermarketRepository _supermarketRepository;
   final DriftProductFamilyRepository _productFamilyRepository;
@@ -264,30 +277,12 @@ class DriftPersistenceRepository implements PersistenceRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<ShoppingListEntry>> getShoppingList() =>
-      _shoppingListRepository.getShoppingList();
-
-  @override
   Future<List<ShoppingListEntry>> getShoppingNeedEntries() =>
       _shoppingListRepository.getShoppingList();
 
   @override
-  Future<int> saveShoppingListEntry(ShoppingListEntry entry) =>
-      _shoppingListRepository.saveShoppingListEntry(entry);
-
-  @override
   Future<int> saveShoppingNeedEntry(ShoppingListEntry entry) =>
       _shoppingListRepository.saveShoppingListEntry(entry);
-
-  @override
-  Future<int> addOrIncrementShoppingListEntry({
-    required int productFamilyId,
-    int quantity = 1,
-  }) =>
-      _shoppingListRepository.addOrIncrementShoppingListEntry(
-        productFamilyId: productFamilyId,
-        quantity: quantity,
-      );
 
   @override
   Future<int> addOrIncrementShoppingNeedEntry({
@@ -298,10 +293,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
         productFamilyId: productFamilyId,
         quantity: quantity,
       );
-
-  @override
-  Future<void> deleteShoppingListEntries(List<int> entryIds) =>
-      _shoppingListRepository.deleteShoppingListEntries(entryIds);
 
   @override
   Future<void> deleteShoppingNeedEntries(List<int> entryIds) =>
@@ -388,7 +379,6 @@ class DriftPersistenceRepository implements PersistenceRepository {
     );
   }
 
-  @override
   Future<List<OptimizedShoppingGroup>> getOptimizedShoppingList() async {
     final optimization = await getOptimizedShoppingNeedEntries();
 

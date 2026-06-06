@@ -49,7 +49,7 @@ void main() {
     final familyId = await repository.saveProductFamily(
       const ProductFamily(name: 'Milk'),
     );
-    await repository.saveShoppingListEntry(
+    await repository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 1),
     );
     await repository.saveExternalStoreMapping(
@@ -92,7 +92,7 @@ void main() {
     final familyId = await repository.saveProductFamily(
       const ProductFamily(name: 'Milk'),
     );
-    await repository.saveShoppingListEntry(
+    await repository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 1),
     );
     await repository.saveExternalStoreMapping(
@@ -236,7 +236,7 @@ void main() {
     final familyId = await repository.saveProductFamily(
       const ProductFamily(name: 'Milk'),
     );
-    await repository.saveShoppingListEntry(
+    await repository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 1),
     );
     await repository.saveExternalStoreMapping(
