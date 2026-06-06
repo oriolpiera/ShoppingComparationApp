@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../persistence/domain/repositories/persistence_repository.dart';
-import '../../../supermarkets/data/models/supermarket.dart';
+import '../../../persistence/domain/entities/supermarket.dart';
 
 class SupermarketsPage extends StatefulWidget {
   const SupermarketsPage({super.key, required this.repository});

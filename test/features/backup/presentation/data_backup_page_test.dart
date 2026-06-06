@@ -16,7 +16,7 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/sc
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/shopping_list_optimizer.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
-import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   testWidgets('shareAction_invokesOnSharePressedWithRepositoryJson', (

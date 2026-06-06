@@ -11,7 +11,7 @@ import '../../../products/data/open_prices_price_prefill_service.dart';
 import '../../../products/domain/validation/product_item_validation.dart';
 import '../../../products/presentation/barcode_matches_page.dart';
 import '../../../products/presentation/product_item_capture_form_support.dart';
-import '../../../supermarkets/data/models/supermarket.dart';
+import '../../../persistence/domain/entities/supermarket.dart';
 import '../product_family_details_action.dart';
 import 'product_item_details_page.dart';
 

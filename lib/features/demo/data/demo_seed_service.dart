@@ -2,7 +2,7 @@ import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
-import '../../supermarkets/data/models/supermarket.dart';
+import '../../persistence/domain/entities/supermarket.dart';
 
 class DemoSeedService {
   final PersistenceRepository repository;

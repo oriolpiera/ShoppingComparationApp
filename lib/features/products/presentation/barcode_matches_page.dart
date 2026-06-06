@@ -5,7 +5,7 @@ import '../../persistence/domain/entities/barcode_match_result.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/scanned_price_registration_result.dart';
 import '../../persistence/domain/repositories/persistence_repository.dart';
-import '../../supermarkets/data/models/supermarket.dart';
+import '../../persistence/domain/entities/supermarket.dart';
 import '../data/open_food_facts_name_prefill_service.dart';
 import '../data/open_prices_price_prefill_service.dart';
 import '../application/family_lookup.dart';

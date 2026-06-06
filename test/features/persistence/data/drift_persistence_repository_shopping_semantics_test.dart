@@ -5,7 +5,7 @@ import 'package:shopping_comparation_app/core/database/drift_database.dart';
 import 'package:shopping_comparation_app/features/persistence/data/repositories/drift_persistence_repository.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
-import 'package:shopping_comparation_app/features/supermarkets/data/models/supermarket.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
   late AppDriftDatabase db;
