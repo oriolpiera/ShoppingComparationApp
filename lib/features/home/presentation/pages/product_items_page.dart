@@ -523,7 +523,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
-      final refreshedFamilies = await widget.productFamilyRepository.getProductFamilies(
+      final refreshedFamilies =
+          await widget.productFamilyRepository.getProductFamilies(
         onlyActive: true,
       );
       final existingFamily = findExistingFamilyByName(
@@ -562,7 +563,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         );
       } else {
         final resolvedFamilyId = existingFamily?.id ??
-            await widget.productFamilyRepository.resolveProductFamilyIdByName(familyName);
+            await widget.productFamilyRepository
+                .resolveProductFamilyIdByName(familyName);
         await widget.productItemRepository.saveProductItem(
           ProductItem(
             id: item.id,

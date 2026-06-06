@@ -200,7 +200,8 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
           productFamilyId: familyId,
           quantity: quantity,
         );
-        final entries = await widget.shoppingListRepository.getShoppingNeedEntries();
+        final entries =
+            await widget.shoppingListRepository.getShoppingNeedEntries();
         final exists = entries.any(
           (entry) => entry.productFamilyId == familyId,
         );

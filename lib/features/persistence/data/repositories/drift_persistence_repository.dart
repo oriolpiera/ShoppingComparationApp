@@ -26,14 +26,15 @@ import 'drift_product_family_repository.dart';
 import 'drift_shopping_list_repository.dart';
 import 'drift_supermarket_repository.dart';
 
-class DriftPersistenceRepository implements
-    SupermarketRepository,
-    ProductFamilyRepository,
-    ProductItemRepository,
-    PriceRecordRepository,
-    ShoppingListRepository,
-    ExternalObservationRepository,
-    BackupRepository {
+class DriftPersistenceRepository
+    implements
+        SupermarketRepository,
+        ProductFamilyRepository,
+        ProductItemRepository,
+        PriceRecordRepository,
+        ShoppingListRepository,
+        ExternalObservationRepository,
+        BackupRepository {
   final PersistenceDao _dao;
   final DriftSupermarketRepository _supermarketRepository;
   final DriftProductFamilyRepository _productFamilyRepository;

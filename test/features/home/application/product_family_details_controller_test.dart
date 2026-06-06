@@ -192,10 +192,7 @@ ProductItem _anyItem() {
   );
 }
 
-class _FakeRepository
-    implements
-        ProductItemRepository,
-        SupermarketRepository {
+class _FakeRepository implements ProductItemRepository, SupermarketRepository {
   _FakeRepository({
     required this.items,
     required this.supermarkets,

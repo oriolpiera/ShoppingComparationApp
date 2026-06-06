@@ -46,7 +46,8 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
   }
 
   Future<_BarcodeLookupData> _load() async {
-    final matches = await widget.priceRecordRepository.findCurrentActiveByBarcode(
+    final matches =
+        await widget.priceRecordRepository.findCurrentActiveByBarcode(
       widget.barcode,
     );
 
@@ -339,7 +340,8 @@ class _RegisterScannedPriceSheetState
       return;
     }
 
-    final refreshedFamilies = await widget.productFamilyRepository.getProductFamilies(
+    final refreshedFamilies =
+        await widget.productFamilyRepository.getProductFamilies(
       onlyActive: true,
     );
     final selectedFamily = findExistingFamilyByName(

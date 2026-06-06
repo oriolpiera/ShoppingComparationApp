@@ -84,8 +84,9 @@ class _HomePageState extends State<HomePage> {
           ListTile(
             leading: const Icon(Icons.shopping_bag_outlined),
             title: const Text('Product items'),
-            onTap: () =>
-                _open(context, ProductItemsPage(
+            onTap: () => _open(
+                context,
+                ProductItemsPage(
                   productItemRepository: repository,
                   productFamilyRepository: repository,
                   supermarketRepository: repository,

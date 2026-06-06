@@ -255,13 +255,14 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(
-            productItemRepository: repository,
-            productFamilyRepository: repository,
-            supermarketRepository: repository,
-            priceRecordRepository: repository,),)
-    );
+    await tester.pumpWidget(MaterialApp(
+      home: ProductItemsPage(
+        productItemRepository: repository,
+        productFamilyRepository: repository,
+        supermarketRepository: repository,
+        priceRecordRepository: repository,
+      ),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.tag));
@@ -292,13 +293,14 @@ void main() {
       ],
     );
 
-    await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(
-            productItemRepository: repository,
-            productFamilyRepository: repository,
-            supermarketRepository: repository,
-            priceRecordRepository: repository,),)
-    );
+    await tester.pumpWidget(MaterialApp(
+      home: ProductItemsPage(
+        productItemRepository: repository,
+        productFamilyRepository: repository,
+        supermarketRepository: repository,
+        priceRecordRepository: repository,
+      ),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.tag));

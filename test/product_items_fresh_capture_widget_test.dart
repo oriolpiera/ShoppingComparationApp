@@ -18,13 +18,14 @@ void main() {
   ) async {
     final repository = _CapturingRepo();
 
-    await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(
-            productItemRepository: repository,
-            productFamilyRepository: repository,
-            supermarketRepository: repository,
-            priceRecordRepository: repository,),)
-    );
+    await tester.pumpWidget(MaterialApp(
+      home: ProductItemsPage(
+        productItemRepository: repository,
+        productFamilyRepository: repository,
+        supermarketRepository: repository,
+        priceRecordRepository: repository,
+      ),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FloatingActionButton, 'Fresh'));

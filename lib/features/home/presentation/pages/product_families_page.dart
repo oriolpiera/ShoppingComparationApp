@@ -243,7 +243,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                           await _openForm(item);
                         } else if (action ==
                             ProductFamilyDetailsAction.deleteKeepItems) {
-                          await widget.productFamilyRepository.saveProductFamily(
+                          await widget.productFamilyRepository
+                              .saveProductFamily(
                             ProductFamily(
                               id: item.id,
                               name: item.name,
@@ -261,8 +262,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                         } else if (action ==
                             ProductFamilyDetailsAction
                                 .deleteAndInactivateItems) {
-                          final allItems =
-                              await widget.productItemRepository.getProductItems(
+                          final allItems = await widget.productItemRepository
+                              .getProductItems(
                             productFamilyId: item.id,
                             onlyCurrentPrice: false,
                           );
@@ -286,7 +287,8 @@ class _ProductFamiliesPageState extends State<ProductFamiliesPage> {
                               ),
                             );
                           }
-                          await widget.productFamilyRepository.saveProductFamily(
+                          await widget.productFamilyRepository
+                              .saveProductFamily(
                             ProductFamily(
                               id: item.id,
                               name: item.name,
