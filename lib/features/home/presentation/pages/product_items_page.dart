@@ -10,7 +10,8 @@ import '../../../products/data/open_prices_price_prefill_service.dart';
 import '../../../products/presentation/barcode_matches_page.dart';
 import '../../../products/presentation/product_item_capture_form_support.dart';
 import '../../../supermarkets/data/models/supermarket.dart';
-import '../product_family_details_module.dart';
+import '../product_family_details_action.dart';
+import 'product_item_details_page.dart';
 
 class ProductItemsPage extends StatefulWidget {
   ProductItemsPage({
