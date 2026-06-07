@@ -393,6 +393,9 @@ class _FakeRepo
   }
 
   @override
+  Future<int?> findProductFamilyIdByName(String familyName) async => 1;
+
+  @override
   Future<int> saveProductItem(ProductItem item) async => 1;
 
   @override

@@ -56,6 +56,19 @@ class DriftProductFamilyRepository implements ProductFamilyRepository {
     return resolveOrCreateProductFamily(familyName);
   }
 
+  @override
+  Future<int?> findProductFamilyIdByName(String familyName) async {
+    final normalizedTarget = normalizeFamilyKey(familyName);
+    final families = await getProductFamilies(onlyActive: true);
+    for (final family in families) {
+      if (family.id != null &&
+          normalizeFamilyKey(family.name) == normalizedTarget) {
+        return family.id;
+      }
+    }
+    return null;
+  }
+
   Future<int> resolveOrCreateProductFamily(
     String familyName, {
     String? shoppingUnit,

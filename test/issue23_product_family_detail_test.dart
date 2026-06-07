@@ -328,6 +328,9 @@ class _FakeRepository
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
 
   @override
+  Future<int?> findProductFamilyIdByName(String familyName) async => 1;
+
+  @override
   Future<int> saveQuickProductItem({
     required String productName,
     required int familyId,

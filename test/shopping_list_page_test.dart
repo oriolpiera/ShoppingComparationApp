@@ -274,6 +274,14 @@ class _FakeProductFamilyRepository implements ProductFamilyRepository {
 
   @override
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
+
+  @override
+  Future<int?> findProductFamilyIdByName(String familyName) async {
+    final match = activeFamilies.where(
+      (f) => f.name.toLowerCase() == familyName.toLowerCase(),
+    );
+    return match.isNotEmpty ? match.first.id : null;
+  }
 }
 
 class _AddCall {
