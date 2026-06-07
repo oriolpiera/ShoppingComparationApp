@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
+import '../../../../core/normalization/family_normalization.dart';
 import '../../domain/entities/external_price_observation.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/shopping_list_entry.dart';
@@ -129,7 +130,7 @@ class DriftShoppingListRepository implements ShoppingListRepository {
     };
     final familyIdByName = {
       for (final f in families)
-        if (f.id != null) f.name.toLowerCase(): f.id!,
+        if (f.id != null) normalizeFamilyKey(f.name): f.id!,
     };
     final externalItems = <ProductItem>[];
     for (final obs in allObservations) {
@@ -140,7 +141,7 @@ class DriftShoppingListRepository implements ShoppingListRepository {
       }
       final supermarketId = supermarketIdByExternalStore[obs.externalStoreId];
       if (supermarketId == null) continue;
-      final familyId = familyIdByName[obs.familyName.toLowerCase()];
+      final familyId = familyIdByName[normalizeFamilyKey(obs.familyName)];
       if (familyId == null) continue;
       externalItems.add(
         ProductItem(
