@@ -127,6 +127,10 @@ class DriftShoppingListRepository implements ShoppingListRepository {
     final supermarketIdByExternalStore = {
       for (final m in storeMappings) m.externalStoreId: m.supermarketId,
     };
+    final familyIdByName = {
+      for (final f in families)
+        if (f.id != null) f.name.toLowerCase(): f.id!,
+    };
     final externalItems = <ProductItem>[];
     for (final obs in allObservations) {
       if (obs.reviewStatus !=
@@ -136,9 +140,7 @@ class DriftShoppingListRepository implements ShoppingListRepository {
       }
       final supermarketId = supermarketIdByExternalStore[obs.externalStoreId];
       if (supermarketId == null) continue;
-      final familyId = await productFamilyRepository.findProductFamilyIdByName(
-        obs.familyName,
-      );
+      final familyId = familyIdByName[obs.familyName.toLowerCase()];
       if (familyId == null) continue;
       externalItems.add(
         ProductItem(
