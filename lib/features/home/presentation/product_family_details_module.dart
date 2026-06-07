@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/normalization/unit_normalization.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
-import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../../persistence/domain/repositories/product_item_repository.dart';
+import '../../persistence/domain/repositories/shopping_list_repository.dart';
+import '../../persistence/domain/repositories/supermarket_repository.dart';
 import '../../products/presentation/product_item_capture_form_support.dart';
 import '../application/product_family_comparison_module.dart';
 import '../application/product_family_details_controller.dart';
@@ -16,11 +18,15 @@ class ProductFamilyDetailsPage extends StatefulWidget {
   const ProductFamilyDetailsPage({
     super.key,
     required this.item,
-    required this.repository,
+    required this.productItemRepository,
+    required this.supermarketRepository,
+    required this.shoppingListRepository,
   });
 
   final ProductFamily item;
-  final PersistenceRepository repository;
+  final ProductItemRepository productItemRepository;
+  final SupermarketRepository supermarketRepository;
+  final ShoppingListRepository shoppingListRepository;
 
   @override
   State<ProductFamilyDetailsPage> createState() =>
@@ -35,7 +41,8 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
   void initState() {
     super.initState();
     _controller = ProductFamilyDetailsController(
-      repository: widget.repository,
+      productItemRepository: widget.productItemRepository,
+      supermarketRepository: widget.supermarketRepository,
       family: widget.item,
     );
     _future = _controller.loadData();
@@ -189,11 +196,12 @@ class _ProductFamilyDetailsPageState extends State<ProductFamilyDetailsPage> {
     final quantity = int.tryParse(quantityController.text.trim());
     if (shouldSave == true && quantity != null && quantity > 0) {
       try {
-        await widget.repository.addOrIncrementShoppingListEntry(
+        await widget.shoppingListRepository.addOrIncrementShoppingNeedEntry(
           productFamilyId: familyId,
           quantity: quantity,
         );
-        final entries = await widget.repository.getShoppingList();
+        final entries =
+            await widget.shoppingListRepository.getShoppingNeedEntries();
         final exists = entries.any(
           (entry) => entry.productFamilyId == familyId,
         );

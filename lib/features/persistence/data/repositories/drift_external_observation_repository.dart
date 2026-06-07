@@ -1,20 +1,30 @@
 import 'package:drift/drift.dart';
-
-import '../../../../core/database/dao/persistence_dao.dart';
-import '../../../../core/database/drift_database.dart';
 import '../../domain/entities/external_price_observation.dart';
 import '../../domain/entities/external_store_mapping.dart';
 import '../../domain/external_observation_confirmation.dart';
 import '../../domain/external_observation_review_policy.dart';
+import '../../domain/repositories/external_observation_repository.dart';
+import '../../domain/repositories/product_item_repository.dart';
+import '../../domain/repositories/product_family_repository.dart';
+import '../../../../core/database/dao/persistence_dao.dart';
+import '../../../../core/database/drift_database.dart';
 
-class DriftExternalObservationRepository {
+class DriftExternalObservationRepository
+    implements ExternalObservationRepository {
   final PersistenceDao dao;
+  final ProductFamilyRepository productFamilyRepository;
+  final ProductItemRepository productItemRepository;
   static const ExternalObservationConfirmationPlanner
       _externalObservationConfirmationPlanner =
       ExternalObservationConfirmationPlanner();
 
-  DriftExternalObservationRepository(this.dao);
+  DriftExternalObservationRepository(
+    this.dao, {
+    required this.productFamilyRepository,
+    required this.productItemRepository,
+  });
 
+  @override
   Future<List<ExternalStoreMapping>> getExternalStoreMappings() async {
     final rows = await dao.getExternalStoreMappings();
     return rows
@@ -29,6 +39,7 @@ class DriftExternalObservationRepository {
         .toList();
   }
 
+  @override
   Future<int> saveExternalStoreMapping(ExternalStoreMapping mapping) {
     return dao.saveExternalStoreMapping(
       ExternalStoreMappingTableCompanion(
@@ -40,6 +51,7 @@ class DriftExternalObservationRepository {
     );
   }
 
+  @override
   Future<List<ExternalPriceObservation>> getExternalPriceObservations() async {
     final rows = await dao.getExternalPriceObservations();
     return rows
@@ -66,6 +78,7 @@ class DriftExternalObservationRepository {
         .toList();
   }
 
+  @override
   Future<int> saveExternalPriceObservation(
     ExternalPriceObservation observation,
   ) async {
@@ -105,6 +118,7 @@ class DriftExternalObservationRepository {
     );
   }
 
+  @override
   Future<void> updateExternalObservationReviewStatus({
     required int observationId,
     required ExternalObservationReviewStatus newStatus,
@@ -142,7 +156,44 @@ class DriftExternalObservationRepository {
     );
   }
 
-  Future<ExternalPriceObservation?> getExternalPriceObservationById(
+  @override
+  Future<int> confirmExternalObservationLocally({
+    required int observationId,
+  }) async {
+    return dao.db.transaction(() async {
+      final observation = await _getExternalPriceObservationById(observationId);
+      if (observation == null) {
+        throw StateError('External observation not found: $observationId');
+      }
+
+      final mapping = await getExternalStoreMappingByExternalId(
+          observation.externalStoreId);
+
+      final familyId =
+          await productFamilyRepository.resolveProductFamilyIdByName(
+        observation.familyName,
+      );
+      final confirmationPlan =
+          _externalObservationConfirmationPlanner.buildPlan(
+        observation: observation,
+        mapping: mapping,
+        productFamilyId: familyId,
+        confirmedAt: DateTime.now(),
+      );
+      final productItemId = await productItemRepository.saveProductItem(
+        confirmationPlan.localPriceRecord,
+      );
+
+      await _confirmObservation(
+        observationId: observationId,
+        localPriceRecordId: productItemId,
+      );
+
+      return productItemId;
+    });
+  }
+
+  Future<ExternalPriceObservation?> _getExternalPriceObservationById(
     int id,
   ) async {
     final row = await dao.getExternalPriceObservationById(id);
@@ -180,7 +231,7 @@ class DriftExternalObservationRepository {
     );
   }
 
-  Future<void> confirmObservation({
+  Future<void> _confirmObservation({
     required int observationId,
     required int localPriceRecordId,
   }) async {
@@ -209,7 +260,4 @@ class DriftExternalObservationRepository {
       ),
     );
   }
-
-  ExternalObservationConfirmationPlanner get confirmationPlanner =>
-      _externalObservationConfirmationPlanner;
 }

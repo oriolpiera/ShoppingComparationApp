@@ -22,7 +22,7 @@ void main() {
   });
 
   test('unreviewed observations do not create local current prices', () async {
-    await repository.saveExternalPriceObservation(
+    await repository.externalObservationRepository.saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-1',
         productName: 'Milk 1L',
@@ -37,22 +37,24 @@ void main() {
       ),
     );
 
-    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    final items = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(items, isEmpty);
   });
 
   test('accepted observations participate in optimization and are tagged',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Local Market'),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Milk'),
     );
-    await repository.saveShoppingListEntry(
+    await repository.shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 1),
     );
-    await repository.saveExternalStoreMapping(
+    await repository.externalObservationRepository.saveExternalStoreMapping(
       ExternalStoreMapping(
         externalStoreId: 'store-1',
         externalStoreName: 'Open Store',
@@ -60,7 +62,8 @@ void main() {
       ),
     );
 
-    final observationId = await repository.saveExternalPriceObservation(
+    final observationId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-2',
         productName: 'Milk branded',
@@ -75,27 +78,31 @@ void main() {
       ),
     );
 
-    await repository.updateExternalObservationReviewStatus(
+    await repository.externalObservationRepository
+        .updateExternalObservationReviewStatus(
       observationId: observationId,
       newStatus: ExternalObservationReviewStatus.acceptedForComparison,
     );
 
-    final optimized = await repository.getOptimizedShoppingList();
-    expect(optimized.single.items.single.sourceTag, 'OpenPrices');
+    final optimized = await repository.shoppingListRepository
+        .getOptimizedShoppingNeedEntries();
+    expect(optimized.groups.single.entries.single.bestItem.isOpenPricesSource,
+        isTrue);
   });
 
   test('accepted observations participate in shopping need seam optimization',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Local Market'),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Milk'),
     );
-    await repository.saveShoppingListEntry(
+    await repository.shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 1),
     );
-    await repository.saveExternalStoreMapping(
+    await repository.externalObservationRepository.saveExternalStoreMapping(
       ExternalStoreMapping(
         externalStoreId: 'store-need-1',
         externalStoreName: 'Open Store',
@@ -103,7 +110,8 @@ void main() {
       ),
     );
 
-    final observationId = await repository.saveExternalPriceObservation(
+    final observationId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-need-1',
         productName: 'Milk seam candidate',
@@ -118,12 +126,14 @@ void main() {
       ),
     );
 
-    await repository.updateExternalObservationReviewStatus(
+    await repository.externalObservationRepository
+        .updateExternalObservationReviewStatus(
       observationId: observationId,
       newStatus: ExternalObservationReviewStatus.acceptedForComparison,
     );
 
-    final optimized = await repository.getOptimizedShoppingNeedEntries();
+    final optimized = await repository.shoppingListRepository
+        .getOptimizedShoppingNeedEntries();
     expect(optimized.groups, hasLength(1));
     expect(optimized.groups.single.entries, hasLength(1));
     expect(optimized.groups.single.entries.single.bestItem.name,
@@ -137,10 +147,11 @@ void main() {
   test(
       'confirming external observation creates local product item with source link',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Local Market'),
     );
-    await repository.saveExternalStoreMapping(
+    await repository.externalObservationRepository.saveExternalStoreMapping(
       ExternalStoreMapping(
         externalStoreId: 'store-1',
         externalStoreName: 'Open Store',
@@ -148,7 +159,8 @@ void main() {
       ),
     );
 
-    final observationId = await repository.saveExternalPriceObservation(
+    final observationId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-3',
         productName: 'Bread',
@@ -163,20 +175,24 @@ void main() {
       ),
     );
 
-    await repository.updateExternalObservationReviewStatus(
+    await repository.externalObservationRepository
+        .updateExternalObservationReviewStatus(
       observationId: observationId,
       newStatus: ExternalObservationReviewStatus.acceptedForComparison,
     );
 
-    final productItemId = await repository.confirmExternalObservationLocally(
+    final productItemId = await repository.externalObservationRepository
+        .confirmExternalObservationLocally(
       observationId: observationId,
     );
 
-    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    final items = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(items.single.id, productItemId);
     expect(items.single.externalObservationId, observationId);
 
-    final observations = await repository.getExternalPriceObservations();
+    final observations = await repository.externalObservationRepository
+        .getExternalPriceObservations();
     final confirmed = observations.singleWhere((o) => o.id == observationId);
     expect(
       confirmed.reviewStatus,
@@ -188,7 +204,8 @@ void main() {
 
   test('missing mapping rejection leaves no local product item behind',
       () async {
-    final observationId = await repository.saveExternalPriceObservation(
+    final observationId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-3-missing-mapping',
         productName: 'Bread',
@@ -203,22 +220,26 @@ void main() {
       ),
     );
 
-    await repository.updateExternalObservationReviewStatus(
+    await repository.externalObservationRepository
+        .updateExternalObservationReviewStatus(
       observationId: observationId,
       newStatus: ExternalObservationReviewStatus.acceptedForComparison,
     );
 
     await expectLater(
-      repository.confirmExternalObservationLocally(
+      repository.externalObservationRepository
+          .confirmExternalObservationLocally(
         observationId: observationId,
       ),
       throwsA(isA<StateError>()),
     );
 
-    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    final items = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(items, isEmpty);
 
-    final confirmed = (await repository.getExternalPriceObservations())
+    final confirmed = (await repository.externalObservationRepository
+            .getExternalPriceObservations())
         .singleWhere((o) => o.id == observationId);
     expect(confirmed.localPriceRecordId, isNull);
     expect(
@@ -230,16 +251,17 @@ void main() {
   test(
       'confirmed observations are not re-injected as separate optimizer candidates',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Local Market'),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Milk'),
     );
-    await repository.saveShoppingListEntry(
+    await repository.shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 1),
     );
-    await repository.saveExternalStoreMapping(
+    await repository.externalObservationRepository.saveExternalStoreMapping(
       ExternalStoreMapping(
         externalStoreId: 'store-1',
         externalStoreName: 'Open Store',
@@ -247,7 +269,8 @@ void main() {
       ),
     );
 
-    final observationId = await repository.saveExternalPriceObservation(
+    final observationId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-4',
         productName: 'Milk 1L',
@@ -262,49 +285,58 @@ void main() {
       ),
     );
 
-    await repository.updateExternalObservationReviewStatus(
+    await repository.externalObservationRepository
+        .updateExternalObservationReviewStatus(
       observationId: observationId,
       newStatus: ExternalObservationReviewStatus.acceptedForComparison,
     );
 
-    await repository.confirmExternalObservationLocally(
+    await repository.externalObservationRepository
+        .confirmExternalObservationLocally(
       observationId: observationId,
     );
 
-    final itemsAfterFirstConfirmation = await repository.getProductItems(
+    final itemsAfterFirstConfirmation =
+        await repository.priceRecordRepository.getProductItems(
       onlyCurrentPrice: true,
     );
     expect(itemsAfterFirstConfirmation, hasLength(1));
     final confirmedItemId = itemsAfterFirstConfirmation.single.id;
 
     await expectLater(
-      repository.confirmExternalObservationLocally(
+      repository.externalObservationRepository
+          .confirmExternalObservationLocally(
         observationId: observationId,
       ),
       throwsA(isA<StateError>()),
     );
 
-    final itemsAfterRejectedSecondConfirmation =
-        await repository.getProductItems(onlyCurrentPrice: true);
+    final itemsAfterRejectedSecondConfirmation = await repository
+        .priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(itemsAfterRejectedSecondConfirmation, hasLength(1));
     expect(itemsAfterRejectedSecondConfirmation.single.id, confirmedItemId);
 
-    final confirmed = (await repository.getExternalPriceObservations())
+    final confirmed = (await repository.externalObservationRepository
+            .getExternalPriceObservations())
         .singleWhere((o) => o.id == observationId);
     expect(confirmed.localPriceRecordId, confirmedItemId);
 
-    final optimized = await repository.getOptimizedShoppingList();
-    expect(optimized, hasLength(1));
-    expect(optimized.single.items, hasLength(1));
-    expect(optimized.single.items.single.sourceTag, 'OpenPrices');
+    final optimized = await repository.shoppingListRepository
+        .getOptimizedShoppingNeedEntries();
+    expect(optimized.groups, hasLength(1));
+    expect(optimized.groups.single.entries, hasLength(1));
+    expect(optimized.groups.single.entries.single.bestItem.isOpenPricesSource,
+        isTrue);
   });
 
   test('confirming discarded observation does not create orphan product item',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Local Market'),
     );
-    await repository.saveExternalStoreMapping(
+    await repository.externalObservationRepository.saveExternalStoreMapping(
       ExternalStoreMapping(
         externalStoreId: 'store-1',
         externalStoreName: 'Open Store',
@@ -312,7 +344,8 @@ void main() {
       ),
     );
 
-    final observationId = await repository.saveExternalPriceObservation(
+    final observationId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-5',
         productName: 'Discarded Milk',
@@ -329,14 +362,15 @@ void main() {
     );
 
     await expectLater(
-      repository.confirmExternalObservationLocally(
+      repository.externalObservationRepository
+          .confirmExternalObservationLocally(
         observationId: observationId,
       ),
       throwsA(isA<StateError>()),
     );
 
-    final currentItems =
-        await repository.getProductItems(onlyCurrentPrice: true);
+    final currentItems = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(
       currentItems.where((item) => item.externalObservationId == observationId),
       isEmpty,
@@ -346,7 +380,8 @@ void main() {
   test(
       'saving same openPricesId updates existing observation instead of duplicating',
       () async {
-    final firstId = await repository.saveExternalPriceObservation(
+    final firstId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-dup-1',
         productName: 'Milk A',
@@ -361,7 +396,8 @@ void main() {
       ),
     );
 
-    final secondId = await repository.saveExternalPriceObservation(
+    final secondId = await repository.externalObservationRepository
+        .saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'op-dup-1',
         productName: 'Milk B',
@@ -378,7 +414,8 @@ void main() {
 
     expect(secondId, firstId);
 
-    final observations = await repository.getExternalPriceObservations();
+    final observations = await repository.externalObservationRepository
+        .getExternalPriceObservations();
     expect(
         observations.where((o) => o.openPricesId == 'op-dup-1'), hasLength(1));
     expect(

@@ -5,6 +5,7 @@ import 'package:shopping_comparation_app/features/home/presentation/pages/shoppi
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/shopping_list_entry.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_family_repository.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/repositories/shopping_list_repository.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/shopping_list_optimizer.dart';
 
@@ -47,10 +48,13 @@ void main() {
           ),
         ],
       ),
+    );
+
+    final productFamilyFake = _FakeProductFamilyRepository(
       activeFamilies: const [ProductFamily(id: 1, name: 'Milk')],
     );
 
-    await tester.pumpWidget(_buildApp(repository));
+    await tester.pumpWidget(_buildApp(repository, productFamilyFake));
     await tester.pumpAndSettle();
 
     expect(find.text('Alpha Market'), findsOneWidget);
@@ -89,10 +93,13 @@ void main() {
         ],
         pendingEntries: const [],
       ),
+    );
+
+    final productFamilyFake = _FakeProductFamilyRepository(
       activeFamilies: const [ProductFamily(id: 1, name: 'Milk')],
     );
 
-    await tester.pumpWidget(_buildApp(repository));
+    await tester.pumpWidget(_buildApp(repository, productFamilyFake));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithIcon(IconButton, Icons.add).first);
@@ -138,13 +145,16 @@ void main() {
         ],
         pendingEntries: const [],
       ),
+    );
+
+    final productFamilyFake = _FakeProductFamilyRepository(
       activeFamilies: const [
         ProductFamily(id: 1, name: 'Milk'),
         ProductFamily(id: 2, name: 'Bread'),
       ],
     );
 
-    await tester.pumpWidget(_buildApp(repository));
+    await tester.pumpWidget(_buildApp(repository, productFamilyFake));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(FloatingActionButton));
@@ -169,8 +179,16 @@ void main() {
   });
 }
 
-MaterialApp _buildApp(ShoppingListRepository repository) {
-  return MaterialApp(home: ShoppingListPage(repository: repository));
+MaterialApp _buildApp(
+  ShoppingListRepository shoppingListRepository,
+  ProductFamilyRepository productFamilyRepository,
+) {
+  return MaterialApp(
+    home: ShoppingListPage(
+      shoppingListRepository: shoppingListRepository,
+      productFamilyRepository: productFamilyRepository,
+    ),
+  );
 }
 
 ProductItem _item({
@@ -199,11 +217,9 @@ ProductItem _item({
 class _FakeShoppingListRepository implements ShoppingListRepository {
   _FakeShoppingListRepository({
     required this.optimization,
-    required this.activeFamilies,
   });
 
   final ShoppingOptimizationResult optimization;
-  final List<ProductFamily> activeFamilies;
 
   final List<ShoppingListEntry> savedEntries = [];
   final List<_AddCall> addCalls = [];
@@ -226,10 +242,6 @@ class _FakeShoppingListRepository implements ShoppingListRepository {
   }
 
   @override
-  Future<List<ProductFamily>> getActiveShoppingFamilies() async =>
-      activeFamilies;
-
-  @override
   Future<ShoppingOptimizationResult> getOptimizedShoppingNeedEntries() async =>
       optimization;
 
@@ -240,6 +252,35 @@ class _FakeShoppingListRepository implements ShoppingListRepository {
   Future<int> saveShoppingNeedEntry(ShoppingListEntry entry) async {
     savedEntries.add(entry);
     return entry.id ?? 1;
+  }
+}
+
+class _FakeProductFamilyRepository implements ProductFamilyRepository {
+  _FakeProductFamilyRepository({required this.activeFamilies});
+
+  final List<ProductFamily> activeFamilies;
+
+  @override
+  Future<List<ProductFamily>> getProductFamilies(
+          {bool onlyActive = true}) async =>
+      activeFamilies;
+
+  @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() async =>
+      activeFamilies;
+
+  @override
+  Future<int> saveProductFamily(ProductFamily family) async => 1;
+
+  @override
+  Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
+
+  @override
+  Future<int?> findProductFamilyIdByName(String familyName) async {
+    final match = activeFamilies.where(
+      (f) => f.name.toLowerCase() == familyName.toLowerCase(),
+    );
+    return match.isNotEmpty ? match.first.id : null;
   }
 }
 

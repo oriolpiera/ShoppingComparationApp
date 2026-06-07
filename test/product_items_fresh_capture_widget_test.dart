@@ -6,7 +6,10 @@ import 'package:shopping_comparation_app/features/persistence/domain/entities/ba
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_family.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/product_item.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/scanned_price_registration_result.dart';
-import 'package:shopping_comparation_app/features/persistence/domain/repositories/persistence_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_family_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/product_item_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/price_record_repository.dart';
+import 'package:shopping_comparation_app/features/persistence/domain/repositories/supermarket_repository.dart';
 import 'package:shopping_comparation_app/features/persistence/domain/entities/supermarket.dart';
 
 void main() {
@@ -15,9 +18,14 @@ void main() {
   ) async {
     final repository = _CapturingRepo();
 
-    await tester.pumpWidget(
-      MaterialApp(home: ProductItemsPage(repository: repository)),
-    );
+    await tester.pumpWidget(MaterialApp(
+      home: ProductItemsPage(
+        productItemRepository: repository,
+        productFamilyRepository: repository,
+        supermarketRepository: repository,
+        priceRecordRepository: repository,
+      ),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FloatingActionButton, 'Fresh'));
@@ -50,7 +58,7 @@ void main() {
 class _QuickCaptureCall {
   const _QuickCaptureCall({
     required this.productName,
-    required this.familyName,
+    required this.familyId,
     required this.supermarketId,
     required this.price,
     required this.quantity,
@@ -60,7 +68,7 @@ class _QuickCaptureCall {
   });
 
   final String productName;
-  final String familyName;
+  final int familyId;
   final int supermarketId;
   final double price;
   final double quantity;
@@ -69,7 +77,12 @@ class _QuickCaptureCall {
   final String? barcode;
 }
 
-class _CapturingRepo implements ProductItemsRepository {
+class _CapturingRepo
+    implements
+        ProductItemRepository,
+        ProductFamilyRepository,
+        SupermarketRepository,
+        PriceRecordRepository {
   _QuickCaptureCall? lastQuickCapture;
 
   @override
@@ -88,6 +101,9 @@ class _CapturingRepo implements ProductItemsRepository {
       const [];
 
   @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() async => const [];
+
+  @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
@@ -104,7 +120,7 @@ class _CapturingRepo implements ProductItemsRepository {
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
     required String barcode,
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,
@@ -116,12 +132,15 @@ class _CapturingRepo implements ProductItemsRepository {
   Future<int> resolveProductFamilyIdByName(String familyName) async => 1;
 
   @override
+  Future<int?> findProductFamilyIdByName(String familyName) async => 1;
+
+  @override
   Future<int> saveProductItem(ProductItem item) async => 1;
 
   @override
   Future<int> saveQuickProductItem({
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,
@@ -131,7 +150,7 @@ class _CapturingRepo implements ProductItemsRepository {
   }) async {
     lastQuickCapture = _QuickCaptureCall(
       productName: productName,
-      familyName: familyName,
+      familyId: familyId,
       supermarketId: supermarketId,
       price: price,
       quantity: quantity,
@@ -141,4 +160,10 @@ class _CapturingRepo implements ProductItemsRepository {
     );
     return 1;
   }
+
+  @override
+  Future<int> saveProductFamily(ProductFamily family) async => 1;
+
+  @override
+  Future<int> saveSupermarket(Supermarket supermarket) async => 1;
 }

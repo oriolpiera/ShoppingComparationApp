@@ -4,7 +4,10 @@ import '../../../../core/normalization/unit_normalization.dart';
 import '../../../../core/scanner/mobile_scanner_port.dart';
 import '../../../persistence/domain/entities/product_family.dart';
 import '../../../persistence/domain/entities/product_item.dart';
-import '../../../persistence/domain/repositories/persistence_repository.dart';
+import '../../../persistence/domain/repositories/price_record_repository.dart';
+import '../../../persistence/domain/repositories/product_family_repository.dart';
+import '../../../persistence/domain/repositories/product_item_repository.dart';
+import '../../../persistence/domain/repositories/supermarket_repository.dart';
 import '../../../products/application/family_lookup.dart';
 import '../../../products/data/open_food_facts_name_prefill_service.dart';
 import '../../../products/data/open_prices_price_prefill_service.dart';
@@ -18,7 +21,10 @@ import 'product_item_details_page.dart';
 class ProductItemsPage extends StatefulWidget {
   ProductItemsPage({
     super.key,
-    required this.repository,
+    required this.productItemRepository,
+    required this.productFamilyRepository,
+    required this.supermarketRepository,
+    required this.priceRecordRepository,
     OpenFoodFactsNamePrefillService? namePrefillService,
     OpenPricesPricePrefillService? pricePrefillService,
   })  : namePrefillService =
@@ -26,7 +32,10 @@ class ProductItemsPage extends StatefulWidget {
         pricePrefillService =
             pricePrefillService ?? OpenPricesPricePrefillService();
 
-  final ProductItemsRepository repository;
+  final ProductItemRepository productItemRepository;
+  final ProductFamilyRepository productFamilyRepository;
+  final SupermarketRepository supermarketRepository;
+  final PriceRecordRepository priceRecordRepository;
   final OpenFoodFactsNamePrefillService namePrefillService;
   final OpenPricesPricePrefillService pricePrefillService;
 
@@ -51,17 +60,17 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
   }
 
   Future<_ProductContext> _load() async {
-    final items = await widget.repository.getProductItems(
+    final items = await widget.productItemRepository.getProductItems(
       onlyCurrentPrice: true,
     );
-    final families = await widget.repository.getProductFamilies(
+    final families = await widget.productFamilyRepository.getProductFamilies(
       onlyActive: true,
     );
-    final supermarkets = await widget.repository.getSupermarkets(
+    final supermarkets = await widget.supermarketRepository.getSupermarkets(
       onlyActive: true,
     );
     final lastUsedSupermarketId =
-        await widget.repository.getLastUsedSupermarketId();
+        await widget.supermarketRepository.getLastUsedSupermarketId();
     return _ProductContext(
       items,
       families,
@@ -120,7 +129,9 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
     final action = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => BarcodeMatchesPage(
-          repository: widget.repository,
+          priceRecordRepository: widget.priceRecordRepository,
+          productFamilyRepository: widget.productFamilyRepository,
+          supermarketRepository: widget.supermarketRepository,
           barcode: barcode,
           namePrefillService: widget.namePrefillService,
           pricePrefillService: widget.pricePrefillService,
@@ -309,7 +320,7 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                         if (action == ProductItemDetailsAction.edit) {
                           await _openForm(item, data);
                         } else if (action == ProductItemDetailsAction.delete) {
-                          await widget.repository.saveProductItem(
+                          await widget.productItemRepository.saveProductItem(
                             ProductItem(
                               id: item.id,
                               name: item.name,
@@ -512,7 +523,8 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         price > 0 &&
         quantity != null &&
         quantity > 0) {
-      final refreshedFamilies = await widget.repository.getProductFamilies(
+      final refreshedFamilies =
+          await widget.productFamilyRepository.getProductFamilies(
         onlyActive: true,
       );
       final existingFamily = findExistingFamilyByName(
@@ -540,9 +552,12 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                 ? 'piece'
                 : 'weighted')
             : null;
-        await widget.repository.saveQuickProductItem(
+        final familyId = existingFamily?.id ??
+            await widget.productFamilyRepository
+                .resolveProductFamilyIdByName(familyName);
+        await widget.productItemRepository.saveQuickProductItem(
           productName: name,
-          familyName: familyName,
+          familyId: familyId,
           supermarketId: supermarketId,
           price: price,
           quantity: quantity,
@@ -551,8 +566,9 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
         );
       } else {
         final resolvedFamilyId = existingFamily?.id ??
-            await widget.repository.resolveProductFamilyIdByName(familyName);
-        await widget.repository.saveProductItem(
+            await widget.productFamilyRepository
+                .resolveProductFamilyIdByName(familyName);
+        await widget.productItemRepository.saveProductItem(
           ProductItem(
             id: item.id,
             name: name,

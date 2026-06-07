@@ -1,5 +1,4 @@
 import 'dart:async' show unawaited;
-
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
@@ -42,7 +41,14 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     if (_isWebPreview || kDebugMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(DemoSeedService(repository).seed());
+        unawaited(
+          DemoSeedService(
+            supermarketRepository: repository.supermarketRepository,
+            productFamilyRepository: repository.productFamilyRepository,
+            productItemRepository: repository.priceRecordRepository,
+            shoppingListRepository: repository.shoppingListRepository,
+          ).seed(),
+        );
       });
     }
   }
@@ -58,8 +64,8 @@ class _HomePageState extends State<HomePage> {
           ListTile(
             leading: const Icon(Icons.store_outlined),
             title: const Text('Supermarkets'),
-            onTap: () =>
-                _open(context, SupermarketsPage(repository: repository)),
+            onTap: () => _open(context,
+                SupermarketsPage(repository: repository.supermarketRepository)),
           ),
           ListTile(
             leading: const Icon(Icons.category_outlined),
@@ -67,22 +73,35 @@ class _HomePageState extends State<HomePage> {
             onTap: () => _open(
               context,
               ProductFamiliesPage(
-                repository: repository,
-                shoppingListRepository: repository,
+                productFamilyRepository: repository.productFamilyRepository,
+                productItemRepository: repository.priceRecordRepository,
+                supermarketRepository: repository.supermarketRepository,
+                shoppingListRepository: repository.shoppingListRepository,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.list_alt_outlined),
+            title: const Text('Shopping list'),
+            onTap: () => _open(
+              context,
+              ShoppingListPage(
+                shoppingListRepository: repository.shoppingListRepository,
+                productFamilyRepository: repository.productFamilyRepository,
               ),
             ),
           ),
           ListTile(
             leading: const Icon(Icons.shopping_bag_outlined),
             title: const Text('Product items'),
-            onTap: () =>
-                _open(context, ProductItemsPage(repository: repository)),
-          ),
-          ListTile(
-            leading: const Icon(Icons.list_alt_outlined),
-            title: const Text('Shopping list'),
-            onTap: () =>
-                _open(context, ShoppingListPage(repository: repository)),
+            onTap: () => _open(
+                context,
+                ProductItemsPage(
+                  productItemRepository: repository.priceRecordRepository,
+                  productFamilyRepository: repository.productFamilyRepository,
+                  supermarketRepository: repository.supermarketRepository,
+                  priceRecordRepository: repository.priceRecordRepository,
+                )),
           ),
           ListTile(
             leading: const Icon(Icons.backup_outlined),
@@ -90,7 +109,7 @@ class _HomePageState extends State<HomePage> {
             onTap: () => _open(
               context,
               DataBackupPage(
-                repository: repository,
+                repository: repository.backupRepository,
                 onSharePressed: shareService == null
                     ? null
                     : (json) => shareService.shareBackupJson(json),

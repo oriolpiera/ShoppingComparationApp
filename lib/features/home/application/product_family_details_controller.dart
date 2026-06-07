@@ -2,17 +2,21 @@ import '../../../core/normalization/unit_normalization.dart';
 import '../../../core/validation/family_semantics.dart';
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
-import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../../persistence/domain/repositories/product_item_repository.dart';
+import '../../persistence/domain/repositories/supermarket_repository.dart';
 import 'product_family_details_data.dart';
 
 class ProductFamilyDetailsController {
   ProductFamilyDetailsController({
-    required PersistenceRepository repository,
+    required ProductItemRepository productItemRepository,
+    required SupermarketRepository supermarketRepository,
     required ProductFamily family,
-  })  : _repository = repository,
+  })  : _productItemRepository = productItemRepository,
+        _supermarketRepository = supermarketRepository,
         _family = family;
 
-  final PersistenceRepository _repository;
+  final ProductItemRepository _productItemRepository;
+  final SupermarketRepository _supermarketRepository;
   final ProductFamily _family;
 
   Future<ProductFamilyDetailsData> loadData() async {
@@ -21,11 +25,11 @@ class ProductFamilyDetailsController {
       return const ProductFamilyDetailsData([], {}, 0);
     }
 
-    final items = await _repository.getProductItems(
+    final items = await _productItemRepository.getProductItems(
       productFamilyId: familyId,
       onlyCurrentPrice: false,
     );
-    final supermarkets = await _repository.getSupermarkets(
+    final supermarkets = await _supermarketRepository.getSupermarkets(
       onlyActive: false,
     );
     final supermarketById = {
@@ -57,7 +61,7 @@ class ProductFamilyDetailsController {
     if (familyError != null) return familyError;
 
     final storedUnitType = normalizeUnitTypeForStorage(unitType);
-    await _repository.saveProductItem(
+    await _productItemRepository.saveProductItem(
       ProductItem(
         id: original.id,
         name: name,
@@ -81,7 +85,7 @@ class ProductFamilyDetailsController {
   }
 
   Future<void> inactivateItem(ProductItem item) async {
-    await _repository.saveProductItem(
+    await _productItemRepository.saveProductItem(
       ProductItem(
         id: item.id,
         name: item.name,

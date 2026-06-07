@@ -1,16 +1,27 @@
 import '../../persistence/domain/entities/product_family.dart';
 import '../../persistence/domain/entities/product_item.dart';
 import '../../persistence/domain/entities/shopping_list_entry.dart';
-import '../../persistence/domain/repositories/persistence_repository.dart';
+import '../../persistence/domain/repositories/product_family_repository.dart';
+import '../../persistence/domain/repositories/product_item_repository.dart';
+import '../../persistence/domain/repositories/shopping_list_repository.dart';
+import '../../persistence/domain/repositories/supermarket_repository.dart';
 import '../../persistence/domain/entities/supermarket.dart';
 
 class DemoSeedService {
-  final PersistenceRepository repository;
+  final SupermarketRepository supermarketRepository;
+  final ProductFamilyRepository productFamilyRepository;
+  final ProductItemRepository productItemRepository;
+  final ShoppingListRepository shoppingListRepository;
 
-  const DemoSeedService(this.repository);
+  const DemoSeedService({
+    required this.supermarketRepository,
+    required this.productFamilyRepository,
+    required this.productItemRepository,
+    required this.shoppingListRepository,
+  });
 
   Future<void> seed() async {
-    final existingSupermarkets = await repository.getSupermarkets(
+    final existingSupermarkets = await supermarketRepository.getSupermarkets(
       onlyActive: false,
     );
 
@@ -18,36 +29,36 @@ class DemoSeedService {
       return;
     }
 
-    final supermarketEsclat = await repository.saveSupermarket(
+    final supermarketEsclat = await supermarketRepository.saveSupermarket(
       Supermarket(name: 'Esclat', address: 'Olot'),
     );
-    final supermarketLidl = await repository.saveSupermarket(
+    final supermarketLidl = await supermarketRepository.saveSupermarket(
       Supermarket(name: 'Lidl', address: 'Olot'),
     );
-    await repository.saveSupermarket(
+    await supermarketRepository.saveSupermarket(
       Supermarket(name: 'Aldi', address: 'Olot'),
     );
-    await repository.saveSupermarket(
+    await supermarketRepository.saveSupermarket(
       Supermarket(name: 'Consum', address: 'Olot'),
     );
-    await repository.saveSupermarket(
+    await supermarketRepository.saveSupermarket(
       Supermarket(name: 'Caprabo', address: 'Les Preses'),
     );
 
-    await repository.saveProductFamily(
+    await productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Xocolata 80%'),
     );
-    final familyXoco50 = await repository.saveProductFamily(
+    final familyXoco50 = await productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Xocolata 50%'),
     );
-    await repository.saveProductFamily(
+    await productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Plàtan canàries'),
     );
-    final familiCivada = await repository.saveProductFamily(
+    final familiCivada = await productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Civada'),
     );
 
-    await repository.saveProductItem(
+    await productItemRepository.saveProductItem(
       ProductItem(
         name: 'Xocolata 50% 100g',
         productFamilyId: familyXoco50,
@@ -62,7 +73,7 @@ class DemoSeedService {
       ),
     );
 
-    await repository.saveProductItem(
+    await productItemRepository.saveProductItem(
       ProductItem(
         name: 'Xocolata 50% 200g',
         productFamilyId: familyXoco50,
@@ -77,7 +88,7 @@ class DemoSeedService {
       ),
     );
 
-    await repository.saveProductItem(
+    await productItemRepository.saveProductItem(
       ProductItem(
         name: 'Civada 1kg',
         productFamilyId: familiCivada,
@@ -92,7 +103,7 @@ class DemoSeedService {
       ),
     );
 
-    await repository.saveProductItem(
+    await productItemRepository.saveProductItem(
       ProductItem(
         name: 'Civada 500g',
         productFamilyId: familiCivada,
@@ -107,13 +118,13 @@ class DemoSeedService {
       ),
     );
 
-    await repository.saveShoppingListEntry(
+    await shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(
         productFamilyId: familyXoco50,
         quantity: 2,
       ),
     );
-    await repository.saveShoppingListEntry(
+    await shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(
         productFamilyId: familiCivada,
         quantity: 1,

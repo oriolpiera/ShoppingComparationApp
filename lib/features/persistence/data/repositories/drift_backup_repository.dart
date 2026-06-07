@@ -3,17 +3,20 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
 import '../backup/app_data_backup.dart';
+import '../../domain/repositories/backup_repository.dart';
 
-class DriftBackupRepository {
+class DriftBackupRepository implements BackupRepository {
   final PersistenceDao dao;
 
   DriftBackupRepository(this.dao);
 
+  @override
   Future<String> exportBackupJson() async {
     final payload = await _buildBackupPayload();
     return payload.toJsonString();
   }
 
+  @override
   Future<void> importBackupJson(String jsonPayload) async {
     final payload = AppDataBackup.fromJsonString(jsonPayload);
 

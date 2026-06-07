@@ -5,12 +5,14 @@ import '../../../../core/database/drift_database.dart';
 import '../../../../core/normalization/family_normalization.dart';
 import '../../../../core/normalization/unit_normalization.dart';
 import '../../domain/entities/product_family.dart';
+import '../../domain/repositories/product_family_repository.dart';
 
-class DriftProductFamilyRepository {
+class DriftProductFamilyRepository implements ProductFamilyRepository {
   final PersistenceDao dao;
 
   DriftProductFamilyRepository(this.dao);
 
+  @override
   Future<List<ProductFamily>> getProductFamilies({
     bool onlyActive = true,
   }) async {
@@ -28,6 +30,7 @@ class DriftProductFamilyRepository {
         .toList();
   }
 
+  @override
   Future<int> saveProductFamily(ProductFamily family) {
     return dao.saveProductFamily(
       ProductFamilyTableCompanion(
@@ -48,8 +51,22 @@ class DriftProductFamilyRepository {
     );
   }
 
+  @override
   Future<int> resolveProductFamilyIdByName(String familyName) {
     return resolveOrCreateProductFamily(familyName);
+  }
+
+  @override
+  Future<int?> findProductFamilyIdByName(String familyName) async {
+    final normalizedTarget = normalizeFamilyKey(familyName);
+    final families = await getProductFamilies(onlyActive: true);
+    for (final family in families) {
+      if (family.id != null &&
+          normalizeFamilyKey(family.name) == normalizedTarget) {
+        return family.id;
+      }
+    }
+    return null;
   }
 
   Future<int> resolveOrCreateProductFamily(
@@ -100,7 +117,8 @@ class DriftProductFamilyRepository {
     );
   }
 
+  @override
   Future<List<ProductFamily>> getActiveShoppingFamilies() {
-    return getProductFamilies();
+    return getProductFamilies(onlyActive: true);
   }
 }

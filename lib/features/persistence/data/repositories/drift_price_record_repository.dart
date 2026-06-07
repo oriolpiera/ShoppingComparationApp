@@ -9,12 +9,17 @@ import '../../domain/entities/price_record.dart';
 import '../../domain/entities/product_item.dart';
 import '../../domain/entities/scanned_price_registration_result.dart';
 
-class DriftPriceRecordRepository {
+import '../../domain/repositories/price_record_repository.dart';
+import '../../domain/repositories/product_item_repository.dart';
+
+class DriftPriceRecordRepository
+    implements ProductItemRepository, PriceRecordRepository {
   final PersistenceDao dao;
   static const double _priceEpsilon = 1e-9;
 
   DriftPriceRecordRepository(this.dao);
 
+  @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
@@ -27,10 +32,11 @@ class DriftPriceRecordRepository {
     );
   }
 
+  @override
   Future<int> saveProductItem(ProductItem item) async {
-    final normalizedUnitType = normalizeUnitTypeForStorage(item.unitType);
+    final storedUnitType = normalizeUnitTypeForStorage(item.unitType);
     final normalizedMeasurementUnit = item.normalizedMeasurementUnit ??
-        normalizeUnitTypeForComparison(normalizedUnitType);
+        normalizeUnitTypeForComparison(storedUnitType);
     final quantity = item.packageQuantityAmount ?? item.quantity;
     final barcode = item.barcode?.trim();
 
@@ -45,7 +51,7 @@ class DriftPriceRecordRepository {
         productFamilyId: item.productFamilyId,
         barcode: barcode,
         packageQuantityAmount: quantity,
-        packageQuantityUnit: normalizedUnitType,
+        packageQuantityUnit: storedUnitType,
         normalizedMeasurementUnit: normalizedMeasurementUnit,
         isActive: existing.catalogIsActive,
         overwriteExisting: true,
@@ -77,7 +83,7 @@ class DriftPriceRecordRepository {
       productFamilyId: item.productFamilyId,
       barcode: barcode,
       packageQuantityAmount: quantity,
-      packageQuantityUnit: normalizedUnitType,
+      packageQuantityUnit: storedUnitType,
       normalizedMeasurementUnit: normalizedMeasurementUnit,
       isActive: item.isActive,
       overwriteExisting: item.isCurrentPrice,
@@ -106,16 +112,7 @@ class DriftPriceRecordRepository {
     );
   }
 
-  Future<int?> getLastUsedSupermarketId() async {
-    final row = await dao.db
-        .customSelect(
-          'SELECT supermarket_id FROM price_record ORDER BY observed_at DESC, id DESC LIMIT 1;',
-        )
-        .getSingleOrNull();
-    if (row == null) return null;
-    return row.read<int>('supermarket_id');
-  }
-
+  @override
   Future<int> saveQuickProductItem({
     required String productName,
     required int familyId,
@@ -123,6 +120,7 @@ class DriftPriceRecordRepository {
     required double price,
     required double quantity,
     required String unitType,
+    String? purchaseMode,
     String? barcode,
   }) async {
     final trimmedName = productName.trim();
@@ -138,6 +136,25 @@ class DriftPriceRecordRepository {
       isActive: true,
       overwriteExisting: true,
     );
+
+    // Infer family semantics if not yet set
+    final familyRow = await dao.db.customSelect(
+      'SELECT id, shopping_unit, purchase_mode FROM product_family WHERE id = ?;',
+      variables: [Variable.withInt(familyId)],
+    ).getSingleOrNull();
+    if (familyRow != null) {
+      final currentShoppingUnit = familyRow.read<String?>('shopping_unit');
+      final currentPurchaseMode = familyRow.read<String?>('purchase_mode');
+      final inferredShoppingUnit = inferShoppingUnitFromUnitType(unitType);
+      final inferredPurchaseMode =
+          purchaseMode ?? inferPurchaseModeFromUnitType(unitType);
+      if (currentShoppingUnit == null || currentPurchaseMode == null) {
+        await dao.db.customStatement(
+          'UPDATE product_family SET shopping_unit = COALESCE(?, shopping_unit), purchase_mode = COALESCE(?, purchase_mode) WHERE id = ?;',
+          [inferredShoppingUnit, inferredPurchaseMode, familyId],
+        );
+      }
+    }
 
     final latest = await _getLatestPriceRecord(
       catalogProductId: catalogProductId,
@@ -164,6 +181,7 @@ class DriftPriceRecordRepository {
     );
   }
 
+  @override
   Future<List<BarcodeMatchResult>> findCurrentActiveByBarcode(
     String barcode,
   ) async {
@@ -253,6 +271,7 @@ class DriftPriceRecordRepository {
     return matches;
   }
 
+  @override
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
     required String barcode,
     required String productName,
