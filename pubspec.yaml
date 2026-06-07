@@ -1,7 +1,7 @@
 name: shopping_comparation_app
 description: Local supermarket price comparator.
 publish_to: "none"
-version: 0.0.16+82
+version: 0.0.17+92
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
