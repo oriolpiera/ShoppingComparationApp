@@ -11,7 +11,7 @@ abstract class ProductItemRepository {
 
   Future<int> saveQuickProductItem({
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,

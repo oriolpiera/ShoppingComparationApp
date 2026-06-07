@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import '../../../persistence/domain/entities/product_family.dart';
 import '../../../persistence/domain/entities/product_item.dart';
 import '../../../persistence/domain/entities/shopping_list_entry.dart';
+import '../../../persistence/domain/repositories/product_family_repository.dart';
 import '../../../persistence/domain/repositories/shopping_list_repository.dart';
 
 class ShoppingListPage extends StatefulWidget {
-  const ShoppingListPage({super.key, required this.repository});
+  const ShoppingListPage({
+    super.key,
+    required this.shoppingListRepository,
+    required this.productFamilyRepository,
+  });
 
-  final ShoppingListRepository repository;
+  final ShoppingListRepository shoppingListRepository;
+  final ProductFamilyRepository productFamilyRepository;
 
   @override
   State<ShoppingListPage> createState() => _ShoppingListPageState();
@@ -29,8 +35,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   Future<_ShoppingListViewData> _load() async {
     final optimization =
-        await widget.repository.getOptimizedShoppingNeedEntries();
-    final activeFamilies = await widget.repository.getActiveShoppingFamilies();
+        await widget.shoppingListRepository.getOptimizedShoppingNeedEntries();
+    final activeFamilies =
+        await widget.productFamilyRepository.getActiveShoppingFamilies();
 
     final sortedGroups = optimization.groups
         .map(
@@ -84,7 +91,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   Future<void> _updateQuantity(_ShoppingRow row, int delta) async {
     final nextUnits = (row.quantity + delta).clamp(0, 9999);
-    await widget.repository.saveShoppingNeedEntry(
+    await widget.shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(
         id: row.entryId < 0 ? null : row.entryId,
         productFamilyId: row.familyId,
@@ -145,7 +152,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
     final quantity = int.tryParse(quantityController.text.trim());
     if (save == true && quantity != null && quantity > 0) {
-      await widget.repository.addOrIncrementShoppingNeedEntry(
+      await widget.shoppingListRepository.addOrIncrementShoppingNeedEntry(
         productFamilyId: selectedFamilyId,
         quantity: quantity,
       );
@@ -176,7 +183,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     );
 
     if (confirmed == true) {
-      await widget.repository.deleteShoppingNeedEntries(
+      await widget.shoppingListRepository.deleteShoppingNeedEntries(
         _selectedEntryIds.toList(),
       );
       setState(() {

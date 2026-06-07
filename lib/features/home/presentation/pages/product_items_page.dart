@@ -552,9 +552,12 @@ class _ProductItemsPageState extends State<ProductItemsPage> {
                 ? 'piece'
                 : 'weighted')
             : null;
+        final familyId = existingFamily?.id ??
+            await widget.productFamilyRepository
+                .resolveProductFamilyIdByName(familyName);
         await widget.productItemRepository.saveQuickProductItem(
           productName: name,
-          familyName: familyName,
+          familyId: familyId,
           supermarketId: supermarketId,
           price: price,
           quantity: quantity,

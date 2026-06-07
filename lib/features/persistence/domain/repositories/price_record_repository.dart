@@ -7,7 +7,7 @@ abstract class PriceRecordRepository {
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
     required String barcode,
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,

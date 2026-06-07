@@ -363,10 +363,12 @@ class _RegisterScannedPriceSheetState
 
     final storedUnitType = normalizeUnitTypeForStorage(_unitType);
 
+    final familyId = await widget.productFamilyRepository
+        .resolveProductFamilyIdByName(family);
     final result = await widget.priceRecordRepository.registerScannedPrice(
       barcode: widget.barcode,
       productName: name,
-      familyName: family,
+      familyId: familyId,
       supermarketId: _supermarketId,
       price: price,
       quantity: quantity,

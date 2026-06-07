@@ -47,14 +47,14 @@ void main() {
 
   test('findCurrentActiveByBarcode returns only current and active matches',
       () async {
-    final marketId = await repository.saveSupermarket(
+    final marketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Milk', isActive: true),
     );
 
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         name: 'Milk 1',
         productFamilyId: familyId,
@@ -69,7 +69,7 @@ void main() {
         barcode: 'X1',
       ),
     );
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         name: 'Milk old',
         productFamilyId: familyId,
@@ -85,7 +85,7 @@ void main() {
       ),
     );
 
-    final matches = await repository.findCurrentActiveByBarcode('X1');
+    final matches = await repository.priceRecordRepository.findCurrentActiveByBarcode('X1');
 
     expect(matches.length, 1);
     expect(matches.first.catalogProduct.name, 'Milk 1');
@@ -94,13 +94,17 @@ void main() {
   });
 
   test('registerScannedPrice no-ops when tuple already current', () async {
-    final marketId = await repository.saveSupermarket(
+    final marketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
+    final familyId =
+        await repository.productFamilyRepository.saveProductFamily(
+      const ProductFamily(name: 'Test Family'),
+    );
 
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Yogurt',
-      familyName: 'Yogurt',
+      familyId: familyId,
       supermarketId: marketId,
       price: 2,
       quantity: 1,
@@ -108,17 +112,17 @@ void main() {
       barcode: 'ABC',
     );
 
-    final result = await repository.registerScannedPrice(
+    final result = await repository.priceRecordRepository.registerScannedPrice(
       barcode: 'ABC',
       productName: 'Yogurt',
-      familyName: 'Yogurt',
+      familyId: familyId,
       supermarketId: marketId,
       price: 2,
       quantity: 1,
       unitType: 'kg',
     );
 
-    final matches = await repository.findCurrentActiveByBarcode('ABC');
+    final matches = await repository.priceRecordRepository.findCurrentActiveByBarcode('ABC');
     expect(result.created, false);
     expect(result.catalogProduct?.barcode, 'ABC');
     expect(result.priceRecord?.price, 2);
@@ -141,10 +145,10 @@ void main() {
 
   test('registerScannedPrice with empty barcode returns no domain objects',
       () async {
-    final result = await repository.registerScannedPrice(
+    final result = await repository.priceRecordRepository.registerScannedPrice(
       barcode: '   ',
       productName: 'Yogurt',
-      familyName: 'Yogurt',
+      familyId: 1,
       supermarketId: 1,
       price: 2,
       quantity: 1,
@@ -159,13 +163,17 @@ void main() {
 
   test('registerScannedPrice rolls over previous current item on change',
       () async {
-    final marketId = await repository.saveSupermarket(
+    final marketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
+    final familyId =
+        await repository.productFamilyRepository.saveProductFamily(
+      const ProductFamily(name: 'Test Family'),
+    );
 
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Olive Oil',
-      familyName: 'Olive Oil',
+      familyId: familyId,
       supermarketId: marketId,
       price: 5.0,
       quantity: 1,
@@ -173,10 +181,10 @@ void main() {
       barcode: 'ROLLOVER-1',
     );
 
-    final result = await repository.registerScannedPrice(
+    final result = await repository.priceRecordRepository.registerScannedPrice(
       barcode: 'ROLLOVER-1',
       productName: 'Olive Oil',
-      familyName: 'Olive Oil',
+      familyId: familyId,
       supermarketId: marketId,
       price: 6.0,
       quantity: 1,
@@ -184,8 +192,8 @@ void main() {
     );
 
     final currentMatches =
-        await repository.findCurrentActiveByBarcode('ROLLOVER-1');
-    final allRows = await repository.getProductItems(
+        await repository.priceRecordRepository.findCurrentActiveByBarcode('ROLLOVER-1');
+    final allRows = await repository.priceRecordRepository.getProductItems(
       supermarketId: marketId,
       onlyCurrentPrice: false,
     );
@@ -221,25 +229,29 @@ void main() {
   test(
       'deactivating one supermarket price does not hide shared catalog product in others',
       () async {
-    final marketAId = await repository.saveSupermarket(
+    final marketAId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
-    final marketBId = await repository.saveSupermarket(
+    final marketBId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'B', isActive: true),
     );
+    final familyId =
+        await repository.productFamilyRepository.saveProductFamily(
+      const ProductFamily(name: 'Test Family'),
+    );
 
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Peanuts',
-      familyName: 'Peanuts',
+      familyId: familyId,
       supermarketId: marketAId,
       price: 1.5,
       quantity: 1,
       unitType: 'kg',
       barcode: 'SHARED-1',
     );
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Peanuts',
-      familyName: 'Peanuts',
+      familyId: familyId,
       supermarketId: marketBId,
       price: 1.6,
       quantity: 1,
@@ -247,11 +259,11 @@ void main() {
       barcode: 'SHARED-1',
     );
 
-    final before = await repository.getProductItems(onlyCurrentPrice: true);
+    final before = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
     final marketAItem =
         before.singleWhere((item) => item.supermarketId == marketAId);
 
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         id: marketAItem.id,
         name: marketAItem.name,
@@ -271,7 +283,7 @@ void main() {
       ),
     );
 
-    final after = await repository.getProductItems(onlyCurrentPrice: true);
+    final after = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
     expect(
         after.where((item) => item.supermarketId == marketAId && item.isActive),
         isEmpty);
@@ -282,13 +294,13 @@ void main() {
       1,
     );
     expect(
-      (await repository.findCurrentActiveByBarcode('SHARED-1'))
+      (await repository.priceRecordRepository.findCurrentActiveByBarcode('SHARED-1'))
           .where((match) => match.productItem.supermarketId == marketBId)
           .length,
       1,
     );
     expect(
-      (await repository.findCurrentActiveByBarcode('SHARED-1'))
+      (await repository.priceRecordRepository.findCurrentActiveByBarcode('SHARED-1'))
           .where((match) => match.productItem.supermarketId == marketAId),
       isEmpty,
     );
@@ -296,22 +308,22 @@ void main() {
 
   test('editing a product into an existing identity throws a conflict error',
       () async {
-    final marketId = await repository.saveSupermarket(
+    final marketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
 
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Milk Whole',
-      familyName: 'Milk',
+      familyId: 1,
       supermarketId: marketId,
       price: 1.5,
       quantity: 1,
       unitType: 'L',
       barcode: 'BAR-1',
     );
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Milk Skim',
-      familyName: 'Milk',
+      familyId: 1,
       supermarketId: marketId,
       price: 1.6,
       quantity: 1,
@@ -319,11 +331,11 @@ void main() {
       barcode: 'BAR-2',
     );
 
-    final items = await repository.getProductItems(onlyCurrentPrice: true);
+    final items = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
     final second = items.singleWhere((item) => item.barcode == 'BAR-2');
 
     expect(
-      () => repository.saveProductItem(
+      () => repository.priceRecordRepository.saveProductItem(
         ProductItem(
           id: second.id,
           name: second.name,
@@ -349,19 +361,19 @@ void main() {
   test(
       'saving a new inactive current price does not deactivate the shared catalog product',
       () async {
-    final marketAId = await repository.saveSupermarket(
+    final marketAId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
-    final marketBId = await repository.saveSupermarket(
+    final marketBId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'B', isActive: true),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Milk', isActive: true),
     );
 
-    await repository.saveQuickProductItem(
+    await repository.priceRecordRepository.saveQuickProductItem(
       productName: 'Milk',
-      familyName: 'Milk',
+      familyId: 1,
       supermarketId: marketAId,
       price: 1.5,
       quantity: 1,
@@ -369,7 +381,7 @@ void main() {
       barcode: 'CAT-SHARED-1',
     );
 
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         name: 'Milk',
         isActive: false,
@@ -389,7 +401,7 @@ void main() {
     );
 
     final currentItems =
-        await repository.getProductItems(onlyCurrentPrice: true);
+        await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
     expect(
       currentItems
           .where((item) => item.supermarketId == marketAId && item.isActive)
@@ -402,7 +414,7 @@ void main() {
       isEmpty,
     );
     expect(
-      (await repository.findCurrentActiveByBarcode('CAT-SHARED-1'))
+      (await repository.priceRecordRepository.findCurrentActiveByBarcode('CAT-SHARED-1'))
           .where((match) => match.productItem.supermarketId == marketAId)
           .length,
       1,

@@ -6,4 +6,6 @@ abstract class ProductFamilyRepository {
   Future<int> saveProductFamily(ProductFamily family);
 
   Future<int> resolveProductFamilyIdByName(String familyName);
+
+  Future<List<ProductFamily>> getActiveShoppingFamilies();
 }

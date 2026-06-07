@@ -376,7 +376,7 @@ class _FakeRepo
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
     required String barcode,
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,
@@ -398,7 +398,7 @@ class _FakeRepo
   @override
   Future<int> saveQuickProductItem({
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,
@@ -407,6 +407,9 @@ class _FakeRepo
     String? barcode,
   }) async =>
       1;
+
+  @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() async => families;
 
   @override
   Future<int> saveProductFamily(ProductFamily family) async => 1;

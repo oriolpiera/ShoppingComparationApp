@@ -27,10 +27,10 @@ void main() {
 
   test('exports and reimports backup scope with price history intact',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Market', address: 'Street 1', isActive: true),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(
         name: 'Rice',
         shoppingUnit: 'kilogram',
@@ -38,7 +38,7 @@ void main() {
       ),
     );
 
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         name: 'Rice bag',
         productFamilyId: familyId,
@@ -53,7 +53,7 @@ void main() {
         dateAdded: DateTime(2026, 1, 1),
       ),
     );
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         name: 'Rice bag',
         productFamilyId: familyId,
@@ -68,11 +68,11 @@ void main() {
         dateAdded: DateTime(2026, 2, 1),
       ),
     );
-    await repository.saveShoppingNeedEntry(
+    await repository.shoppingListRepository.saveShoppingNeedEntry(
       ShoppingListEntry(productFamilyId: familyId, quantity: 3),
     );
 
-    final backupJson = await repository.exportBackupJson();
+    final backupJson = await repository.backupRepository.exportBackupJson();
     final backupMap = jsonDecode(backupJson) as Map<String, dynamic>;
 
     expect(backupMap['schemaVersion'], 1);
@@ -82,12 +82,12 @@ void main() {
     expect((backupMap['priceRecords'] as List).length, 2);
     expect((backupMap['shoppingListEntries'] as List).length, 1);
 
-    await repository.importBackupJson(backupJson);
+    await repository.backupRepository.importBackupJson(backupJson);
 
-    final supermarkets = await repository.getSupermarkets(onlyActive: false);
-    final families = await repository.getProductFamilies(onlyActive: false);
-    final items = await repository.getProductItems(onlyCurrentPrice: false);
-    final shoppingList = await repository.getShoppingNeedEntries();
+    final supermarkets = await repository.supermarketRepository.getSupermarkets(onlyActive: false);
+    final families = await repository.productFamilyRepository.getProductFamilies(onlyActive: false);
+    final items = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: false);
+    final shoppingList = await repository.shoppingListRepository.getShoppingNeedEntries();
 
     expect(supermarkets.single.name, 'Market');
     expect(families.single.name, 'Rice');
@@ -113,28 +113,28 @@ void main() {
 ''';
 
     expect(
-      () => repository.importBackupJson(invalidJson),
+      () => repository.backupRepository.importBackupJson(invalidJson),
       throwsA(isA<FormatException>()),
     );
   });
 
   test('keeps external mappings and observations not included in backup',
       () async {
-    final supermarketId = await repository.saveSupermarket(
+    final supermarketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Market', isActive: true),
     );
-    final familyId = await repository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Rice'),
     );
 
-    await repository.saveExternalStoreMapping(
+    await repository.externalObservationRepository.saveExternalStoreMapping(
       ExternalStoreMapping(
         externalStoreId: 'store-1',
         externalStoreName: 'OpenPrices Market',
         supermarketId: supermarketId,
       ),
     );
-    await repository.saveExternalPriceObservation(
+    await repository.externalObservationRepository.saveExternalPriceObservation(
       ExternalPriceObservation(
         openPricesId: 'obs-1',
         productName: 'Rice bag',
@@ -149,7 +149,7 @@ void main() {
       ),
     );
 
-    await repository.saveProductItem(
+    await repository.priceRecordRepository.saveProductItem(
       ProductItem(
         name: 'Rice bag',
         productFamilyId: familyId,
@@ -165,12 +165,12 @@ void main() {
       ),
     );
 
-    final backupJson = await repository.exportBackupJson();
+    final backupJson = await repository.backupRepository.exportBackupJson();
 
-    await repository.importBackupJson(backupJson);
+    await repository.backupRepository.importBackupJson(backupJson);
 
-    final mappings = await repository.getExternalStoreMappings();
-    final observations = await repository.getExternalPriceObservations();
+    final mappings = await repository.externalObservationRepository.getExternalStoreMappings();
+    final observations = await repository.externalObservationRepository.getExternalPriceObservations();
 
     expect(mappings, hasLength(1));
     expect(mappings.single.externalStoreId, 'store-1');

@@ -58,7 +58,7 @@ void main() {
 class _QuickCaptureCall {
   const _QuickCaptureCall({
     required this.productName,
-    required this.familyName,
+    required this.familyId,
     required this.supermarketId,
     required this.price,
     required this.quantity,
@@ -68,7 +68,7 @@ class _QuickCaptureCall {
   });
 
   final String productName;
-  final String familyName;
+  final int familyId;
   final int supermarketId;
   final double price;
   final double quantity;
@@ -101,6 +101,9 @@ class _CapturingRepo
       const [];
 
   @override
+  Future<List<ProductFamily>> getActiveShoppingFamilies() async => const [];
+
+  @override
   Future<List<ProductItem>> getProductItems({
     int? productFamilyId,
     int? supermarketId,
@@ -117,7 +120,7 @@ class _CapturingRepo
   Future<ScannedPriceRegistrationResult> registerScannedPrice({
     required String barcode,
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,
@@ -134,7 +137,7 @@ class _CapturingRepo
   @override
   Future<int> saveQuickProductItem({
     required String productName,
-    required String familyName,
+    required int familyId,
     required int supermarketId,
     required double price,
     required double quantity,
@@ -144,7 +147,7 @@ class _CapturingRepo
   }) async {
     lastQuickCapture = _QuickCaptureCall(
       productName: productName,
-      familyName: familyName,
+      familyId: familyId,
       supermarketId: supermarketId,
       price: price,
       quantity: quantity,
