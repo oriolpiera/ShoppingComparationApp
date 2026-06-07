@@ -54,7 +54,7 @@ class DriftPersistenceRepository {
       externalObservationRepository: externalObservationRepository,
       backupRepository: DriftBackupRepository(dao),
     );
-}
+  }
 
   factory DriftPersistenceRepository.fromDatabase(AppDriftDatabase db) {
     return DriftPersistenceRepository(PersistenceDao(db));

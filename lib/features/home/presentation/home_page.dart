@@ -65,8 +65,8 @@ class _HomePageState extends State<HomePage> {
           ListTile(
             leading: const Icon(Icons.store_outlined),
             title: const Text('Supermarkets'),
-            onTap: () =>
-                _open(context, SupermarketsPage(repository: repository.supermarketRepository)),
+            onTap: () => _open(context,
+                SupermarketsPage(repository: repository.supermarketRepository)),
           ),
           ListTile(
             leading: const Icon(Icons.category_outlined),

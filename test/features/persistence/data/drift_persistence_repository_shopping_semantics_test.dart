@@ -21,7 +21,8 @@ void main() {
   });
 
   test('round-trips family and item shopping semantics fields', () async {
-    final supermarketId = await repository.supermarketRepository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Market', isActive: true),
     );
 
@@ -49,7 +50,8 @@ void main() {
       ),
     );
 
-    final families = await repository.productFamilyRepository.getProductFamilies(onlyActive: false);
+    final families = await repository.productFamilyRepository
+        .getProductFamilies(onlyActive: false);
     final items = await repository.priceRecordRepository.getProductItems(
       productFamilyId: familyId,
       supermarketId: supermarketId,
@@ -66,15 +68,18 @@ void main() {
   test(
     'quick capture infers piece semantics for unit-based families',
     () async {
-      final supermarketId = await repository.supermarketRepository.saveSupermarket(
+      final supermarketId =
+          await repository.supermarketRepository.saveSupermarket(
         Supermarket(name: 'Market', isActive: true),
       );
 
-      final familyId = await repository.productFamilyRepository.saveProductFamily(
+      final familyId =
+          await repository.productFamilyRepository.saveProductFamily(
         const ProductFamily(name: 'Eggs'),
       );
 
-      final itemId = await repository.priceRecordRepository.saveQuickProductItem(
+      final itemId =
+          await repository.priceRecordRepository.saveQuickProductItem(
         productName: 'Eggs 6-pack',
         familyId: familyId,
         supermarketId: supermarketId,
@@ -88,7 +93,8 @@ void main() {
         onlyCurrentPrice: false,
       );
       final item = items.singleWhere((candidate) => candidate.id == itemId);
-      final families = await repository.productFamilyRepository.getProductFamilies(onlyActive: false);
+      final families = await repository.productFamilyRepository
+          .getProductFamilies(onlyActive: false);
 
       expect(item.unitType, 'unit');
       expect(item.packageQuantityAmount, 6);
@@ -102,15 +108,18 @@ void main() {
   test(
     'fresh quick capture creates weighted semantics without barcode',
     () async {
-      final supermarketId = await repository.supermarketRepository.saveSupermarket(
+      final supermarketId =
+          await repository.supermarketRepository.saveSupermarket(
         Supermarket(name: 'Market', isActive: true),
       );
 
-      final familyId = await repository.productFamilyRepository.saveProductFamily(
+      final familyId =
+          await repository.productFamilyRepository.saveProductFamily(
         const ProductFamily(name: 'Tomatoes'),
       );
 
-      final itemId = await repository.priceRecordRepository.saveQuickProductItem(
+      final itemId =
+          await repository.priceRecordRepository.saveQuickProductItem(
         productName: 'Tomatoes on vine',
         familyId: familyId,
         supermarketId: supermarketId,
@@ -125,7 +134,8 @@ void main() {
         onlyCurrentPrice: false,
       );
       final item = items.singleWhere((candidate) => candidate.id == itemId);
-      final families = await repository.productFamilyRepository.getProductFamilies(onlyActive: false);
+      final families = await repository.productFamilyRepository
+          .getProductFamilies(onlyActive: false);
 
       expect(item.barcode, isNull);
       expect(item.packageQuantityAmount, 1.1);
@@ -137,7 +147,8 @@ void main() {
 
   test('fills missing purchase mode without overwriting shopping unit',
       () async {
-    final supermarketId = await repository.supermarketRepository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Market', isActive: true),
     );
 
@@ -157,7 +168,8 @@ void main() {
       unitType: 'L',
     );
 
-    final families = await repository.productFamilyRepository.getProductFamilies(onlyActive: false);
+    final families = await repository.productFamilyRepository
+        .getProductFamilies(onlyActive: false);
     expect(families.single.shoppingUnit, 'liter');
     expect(families.single.purchaseMode, 'packaged');
   });

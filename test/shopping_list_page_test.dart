@@ -261,7 +261,8 @@ class _FakeProductFamilyRepository implements ProductFamilyRepository {
   final List<ProductFamily> activeFamilies;
 
   @override
-  Future<List<ProductFamily>> getProductFamilies({bool onlyActive = true}) async =>
+  Future<List<ProductFamily>> getProductFamilies(
+          {bool onlyActive = true}) async =>
       activeFamilies;
 
   @override

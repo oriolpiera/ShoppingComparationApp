@@ -27,7 +27,8 @@ void main() {
 
   test('exports and reimports backup scope with price history intact',
       () async {
-    final supermarketId = await repository.supermarketRepository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Market', address: 'Street 1', isActive: true),
     );
     final familyId = await repository.productFamilyRepository.saveProductFamily(
@@ -84,10 +85,14 @@ void main() {
 
     await repository.backupRepository.importBackupJson(backupJson);
 
-    final supermarkets = await repository.supermarketRepository.getSupermarkets(onlyActive: false);
-    final families = await repository.productFamilyRepository.getProductFamilies(onlyActive: false);
-    final items = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: false);
-    final shoppingList = await repository.shoppingListRepository.getShoppingNeedEntries();
+    final supermarkets = await repository.supermarketRepository
+        .getSupermarkets(onlyActive: false);
+    final families = await repository.productFamilyRepository
+        .getProductFamilies(onlyActive: false);
+    final items = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: false);
+    final shoppingList =
+        await repository.shoppingListRepository.getShoppingNeedEntries();
 
     expect(supermarkets.single.name, 'Market');
     expect(families.single.name, 'Rice');
@@ -120,7 +125,8 @@ void main() {
 
   test('keeps external mappings and observations not included in backup',
       () async {
-    final supermarketId = await repository.supermarketRepository.saveSupermarket(
+    final supermarketId =
+        await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'Market', isActive: true),
     );
     final familyId = await repository.productFamilyRepository.saveProductFamily(
@@ -169,8 +175,10 @@ void main() {
 
     await repository.backupRepository.importBackupJson(backupJson);
 
-    final mappings = await repository.externalObservationRepository.getExternalStoreMappings();
-    final observations = await repository.externalObservationRepository.getExternalPriceObservations();
+    final mappings = await repository.externalObservationRepository
+        .getExternalStoreMappings();
+    final observations = await repository.externalObservationRepository
+        .getExternalPriceObservations();
 
     expect(mappings, hasLength(1));
     expect(mappings.single.externalStoreId, 'store-1');

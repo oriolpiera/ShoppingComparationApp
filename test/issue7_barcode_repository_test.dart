@@ -85,7 +85,8 @@ void main() {
       ),
     );
 
-    final matches = await repository.priceRecordRepository.findCurrentActiveByBarcode('X1');
+    final matches =
+        await repository.priceRecordRepository.findCurrentActiveByBarcode('X1');
 
     expect(matches.length, 1);
     expect(matches.first.catalogProduct.name, 'Milk 1');
@@ -97,8 +98,7 @@ void main() {
     final marketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
-    final familyId =
-        await repository.productFamilyRepository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Test Family'),
     );
 
@@ -122,7 +122,8 @@ void main() {
       unitType: 'kg',
     );
 
-    final matches = await repository.priceRecordRepository.findCurrentActiveByBarcode('ABC');
+    final matches = await repository.priceRecordRepository
+        .findCurrentActiveByBarcode('ABC');
     expect(result.created, false);
     expect(result.catalogProduct?.barcode, 'ABC');
     expect(result.priceRecord?.price, 2);
@@ -166,8 +167,7 @@ void main() {
     final marketId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'A', isActive: true),
     );
-    final familyId =
-        await repository.productFamilyRepository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Test Family'),
     );
 
@@ -191,8 +191,8 @@ void main() {
       unitType: 'L',
     );
 
-    final currentMatches =
-        await repository.priceRecordRepository.findCurrentActiveByBarcode('ROLLOVER-1');
+    final currentMatches = await repository.priceRecordRepository
+        .findCurrentActiveByBarcode('ROLLOVER-1');
     final allRows = await repository.priceRecordRepository.getProductItems(
       supermarketId: marketId,
       onlyCurrentPrice: false,
@@ -235,8 +235,7 @@ void main() {
     final marketBId = await repository.supermarketRepository.saveSupermarket(
       Supermarket(name: 'B', isActive: true),
     );
-    final familyId =
-        await repository.productFamilyRepository.saveProductFamily(
+    final familyId = await repository.productFamilyRepository.saveProductFamily(
       const ProductFamily(name: 'Test Family'),
     );
 
@@ -259,7 +258,8 @@ void main() {
       barcode: 'SHARED-1',
     );
 
-    final before = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
+    final before = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     final marketAItem =
         before.singleWhere((item) => item.supermarketId == marketAId);
 
@@ -283,7 +283,8 @@ void main() {
       ),
     );
 
-    final after = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
+    final after = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(
         after.where((item) => item.supermarketId == marketAId && item.isActive),
         isEmpty);
@@ -294,13 +295,15 @@ void main() {
       1,
     );
     expect(
-      (await repository.priceRecordRepository.findCurrentActiveByBarcode('SHARED-1'))
+      (await repository.priceRecordRepository
+              .findCurrentActiveByBarcode('SHARED-1'))
           .where((match) => match.productItem.supermarketId == marketBId)
           .length,
       1,
     );
     expect(
-      (await repository.priceRecordRepository.findCurrentActiveByBarcode('SHARED-1'))
+      (await repository.priceRecordRepository
+              .findCurrentActiveByBarcode('SHARED-1'))
           .where((match) => match.productItem.supermarketId == marketAId),
       isEmpty,
     );
@@ -331,7 +334,8 @@ void main() {
       barcode: 'BAR-2',
     );
 
-    final items = await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
+    final items = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     final second = items.singleWhere((item) => item.barcode == 'BAR-2');
 
     expect(
@@ -400,8 +404,8 @@ void main() {
       ),
     );
 
-    final currentItems =
-        await repository.priceRecordRepository.getProductItems(onlyCurrentPrice: true);
+    final currentItems = await repository.priceRecordRepository
+        .getProductItems(onlyCurrentPrice: true);
     expect(
       currentItems
           .where((item) => item.supermarketId == marketAId && item.isActive)
@@ -414,7 +418,8 @@ void main() {
       isEmpty,
     );
     expect(
-      (await repository.priceRecordRepository.findCurrentActiveByBarcode('CAT-SHARED-1'))
+      (await repository.priceRecordRepository
+              .findCurrentActiveByBarcode('CAT-SHARED-1'))
           .where((match) => match.productItem.supermarketId == marketAId)
           .length,
       1,

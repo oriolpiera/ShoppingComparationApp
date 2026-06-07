@@ -134,10 +134,10 @@ class DriftShoppingListRepository implements ShoppingListRepository {
           obs.localPriceRecordId != null) {
         continue;
       }
-      final supermarketId =
-          supermarketIdByExternalStore[obs.externalStoreId];
+      final supermarketId = supermarketIdByExternalStore[obs.externalStoreId];
       if (supermarketId == null) continue;
-      final familyId = await productFamilyRepository.resolveProductFamilyIdByName(
+      final familyId =
+          await productFamilyRepository.resolveProductFamilyIdByName(
         obs.familyName,
       );
       externalItems.add(
@@ -174,5 +174,4 @@ class DriftShoppingListRepository implements ShoppingListRepository {
       items: [...items, ...externalItems],
     );
   }
-
 }

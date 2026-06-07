@@ -9,7 +9,8 @@ import '../../domain/repositories/product_family_repository.dart';
 import '../../../../core/database/dao/persistence_dao.dart';
 import '../../../../core/database/drift_database.dart';
 
-class DriftExternalObservationRepository implements ExternalObservationRepository {
+class DriftExternalObservationRepository
+    implements ExternalObservationRepository {
   final PersistenceDao dao;
   final ProductFamilyRepository productFamilyRepository;
   final ProductItemRepository productItemRepository;
@@ -165,7 +166,8 @@ class DriftExternalObservationRepository implements ExternalObservationRepositor
         throw StateError('External observation not found: $observationId');
       }
 
-      final mapping = await getExternalStoreMappingByExternalId(observation.externalStoreId);
+      final mapping = await getExternalStoreMappingByExternalId(
+          observation.externalStoreId);
 
       final familyId =
           await productFamilyRepository.resolveProductFamilyIdByName(
