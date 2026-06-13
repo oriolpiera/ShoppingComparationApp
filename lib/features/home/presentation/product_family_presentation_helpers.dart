@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 class DetailRow extends StatelessWidget {
-  const DetailRow({super.key, required this.label, required this.value});
+  const DetailRow({
+    super.key,
+    required this.label,
+    required this.value,
+    this.widgetValue,
+  });
 
   final String label;
   final String value;
+  final Widget? widgetValue;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +28,7 @@ class DetailRow extends StatelessWidget {
                   ),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(child: widgetValue ?? Text(value)),
         ],
       ),
     );

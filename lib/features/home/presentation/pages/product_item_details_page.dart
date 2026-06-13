@@ -1,8 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../persistence/domain/entities/product_item.dart';
 import '../product_family_details_action.dart';
 import '../product_family_presentation_helpers.dart';
+
+/// Maps the device locale to the appropriate Open Food Facts subdomain.
+///
+/// Falls back to [world] for locales without a dedicated subdomain.
+String _offSubdomain(Locale locale) {
+  switch (locale.languageCode) {
+    case 'ca':
+      return 'es-ca';
+    case 'es':
+      return 'es';
+    case 'eu':
+      return 'es-eu';
+    case 'gl':
+      return 'es-gl';
+    case 'fr':
+      return 'fr';
+    case 'de':
+      return 'de';
+    case 'it':
+      return 'it';
+    case 'nl':
+      return 'nl';
+    case 'pt':
+      return 'pt';
+    case 'pl':
+      return 'pl';
+    default:
+      return 'world';
+  }
+}
 
 class ProductItemDetailsPage extends StatelessWidget {
   const ProductItemDetailsPage({
@@ -55,12 +86,7 @@ class ProductItemDetailsPage extends StatelessWidget {
             label: 'Current price',
             value: _yesNo(item.isCurrentPrice),
           ),
-          DetailRow(
-            label: 'Barcode',
-            value: (item.barcode == null || item.barcode!.trim().isEmpty)
-                ? '—'
-                : item.barcode!,
-          ),
+          _barcodeRow(context),
           const SizedBox(height: 24),
           FilledButton.tonalIcon(
             onPressed: () async {
@@ -92,6 +118,43 @@ class ProductItemDetailsPage extends StatelessWidget {
             label: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _barcodeRow(BuildContext context) {
+    final barcode = item.barcode;
+
+    if (barcode == null || barcode.trim().isEmpty) {
+      return const DetailRow(label: 'Barcode', value: '—');
+    }
+
+    final locale = Localizations.localeOf(context);
+    final uri = Uri.parse(
+      'https://${_offSubdomain(locale)}.openfoodfacts.org/product/$barcode',
+    );
+    final theme = Theme.of(context);
+
+    return DetailRow(
+      label: 'Barcode',
+      value: barcode,
+      widgetValue: GestureDetector(
+        onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.public, size: 16, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              barcode,
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                decoration: TextDecoration.underline,
+                decorationColor: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
