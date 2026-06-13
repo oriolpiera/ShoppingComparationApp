@@ -13,12 +13,7 @@ class OpenPricesPricePrefill {
   });
 
   final double price;
-
-  /// Store/supermarket name from the location (osm_name), e.g. "Mercadona".
   final String? storeName;
-
-  /// ISO 3166-1 alpha-2 country code from the location
-  /// (osm_address_country_code), e.g. "ES", "PL".
   final String? countryCode;
 }
 
@@ -93,13 +88,18 @@ class OpenPricesPricePrefillService {
       if (price == null) return null;
 
       final location = bestItem['location'];
-      final storeName = location is Map<String, dynamic>
-          ? _normalizeString(location['osm_name'])
-          : null;
-      final countryCode = location is Map<String, dynamic>
-          ? _normalizeString(location['osm_address_country_code'])
-              ?.toUpperCase()
-          : null;
+      String? storeName;
+      String? countryCode;
+      if (location is Map<String, dynamic>) {
+        final rawName = location['osm_name'];
+        if (rawName is String && rawName.trim().isNotEmpty) {
+          storeName = rawName.trim();
+        }
+        final rawCountry = location['osm_address_country_code'];
+        if (rawCountry is String && rawCountry.trim().isNotEmpty) {
+          countryCode = rawCountry.trim().toUpperCase();
+        }
+      }
 
       return OpenPricesPricePrefill(
         price: price,
@@ -125,12 +125,6 @@ class OpenPricesPricePrefillService {
   String? _parseCurrency(Object? value) {
     if (value is! String) return null;
     final normalized = value.trim().toUpperCase();
-    return normalized.isEmpty ? null : normalized;
-  }
-
-  String? _normalizeString(Object? value) {
-    if (value is! String) return null;
-    final normalized = value.trim();
     return normalized.isEmpty ? null : normalized;
   }
 
