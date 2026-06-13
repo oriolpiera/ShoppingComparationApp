@@ -6,9 +6,20 @@ import 'remote_get_request_native.dart'
 typedef OpenPricesGetRequest = Future<String?> Function(Uri uri);
 
 class OpenPricesPricePrefill {
-  const OpenPricesPricePrefill({required this.price});
+  const OpenPricesPricePrefill({
+    required this.price,
+    this.storeName,
+    this.countryCode,
+  });
 
   final double price;
+
+  /// Store/supermarket name from the location (osm_name), e.g. "Mercadona".
+  final String? storeName;
+
+  /// ISO 3166-1 alpha-2 country code from the location
+  /// (osm_address_country_code), e.g. "ES", "PL".
+  final String? countryCode;
 }
 
 class OpenPricesPricePrefillService {
@@ -80,7 +91,21 @@ class OpenPricesPricePrefillService {
 
       final price = _parsePrice(bestItem['price']);
       if (price == null) return null;
-      return OpenPricesPricePrefill(price: price);
+
+      final location = bestItem['location'];
+      final storeName = location is Map<String, dynamic>
+          ? _normalizeString(location['osm_name'])
+          : null;
+      final countryCode = location is Map<String, dynamic>
+          ? _normalizeString(location['osm_address_country_code'])
+              ?.toUpperCase()
+          : null;
+
+      return OpenPricesPricePrefill(
+        price: price,
+        storeName: storeName,
+        countryCode: countryCode,
+      );
     } on FormatException {
       return null;
     }
@@ -100,6 +125,12 @@ class OpenPricesPricePrefillService {
   String? _parseCurrency(Object? value) {
     if (value is! String) return null;
     final normalized = value.trim().toUpperCase();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  String? _normalizeString(Object? value) {
+    if (value is! String) return null;
+    final normalized = value.trim();
     return normalized.isEmpty ? null : normalized;
   }
 
