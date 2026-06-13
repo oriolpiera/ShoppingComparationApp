@@ -72,8 +72,8 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
       prefilledQuantity: prefill?.packageQuantityHint,
       prefilledUnitType: prefill?.packageUnitHint,
       prefilledPrice: pricePrefill?.price,
-      priceStoreName: pricePrefill?.storeName,
-      priceCountryCode: pricePrefill?.countryCode,
+      prefilledPriceStoreName: pricePrefill?.storeName,
+      prefilledPriceCountryCode: pricePrefill?.countryCode,
     );
   }
 
@@ -85,6 +85,57 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
   Future<void> _refresh() async {
     setState(() {
       _future = _load();
+    });
+  }
+
+  /// Validates whether the OpenPrices price is suitable for the user.
+  ///
+  /// Returns a warning [String] if the price should NOT be pre-filled,
+  /// or `null` if the price is valid.
+  ///
+  /// Checks two things in order:
+  /// 1. Country match — the price's country must match the device locale country
+  /// 2. Store match — the store name must match at least one local supermarket
+  String? _validatePrice({
+    required String? priceStoreName,
+    required String? priceCountryCode,
+    required List<Supermarket> supermarkets,
+  }) {
+    if (priceCountryCode == null && priceStoreName == null) return null;
+
+    final locale = WidgetsBinding.instance.platformDispatcher.locale;
+    final userCountry = locale.countryCode;
+
+    // Country check: only when both price and user locale have country data
+    if (priceCountryCode != null && userCountry != null) {
+      if (priceCountryCode.toUpperCase() != userCountry.toUpperCase()) {
+        return 'Price is from a different country ($priceCountryCode). '
+            'Not pre-filling.';
+      }
+    }
+
+    // Store check: the OpenPrices store name must exist in local DB
+    if (priceStoreName != null &&
+        !_matchesAnySupermarket(priceStoreName, supermarkets)) {
+      return 'Price is from an unknown supermarket ($priceStoreName). '
+          'Not pre-filling.';
+    }
+
+    return null;
+  }
+
+  /// Whether [storeName] matches any known [supermarkets] using bidirectional
+  /// partial case-insensitive contains (e.g. "Mercadona" matches
+  /// "Mercadona Olot" and vice versa).
+  bool _matchesAnySupermarket(
+    String storeName,
+    List<Supermarket> supermarkets,
+  ) {
+    final lowerStore = storeName.toLowerCase();
+    return supermarkets.any((s) {
+      final lowerSuper = s.name.toLowerCase();
+      return lowerStore.contains(lowerSuper) ||
+          lowerSuper.contains(lowerStore);
     });
   }
 
@@ -100,6 +151,20 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
         ),
       );
       return;
+    }
+
+    // Validate price against user country and known supermarkets
+    String? priceWarning;
+    double? effectivePrice = lookupData.prefilledPrice;
+    if (effectivePrice != null) {
+      priceWarning = _validatePrice(
+        priceStoreName: lookupData.prefilledPriceStoreName,
+        priceCountryCode: lookupData.prefilledPriceCountryCode,
+        supermarkets: data.supermarkets,
+      );
+      if (priceWarning != null) {
+        effectivePrice = null;
+      }
     }
 
     final result = await showModalBottomSheet<ScannedPriceRegistrationResult>(
@@ -118,15 +183,10 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
             latest?.familyName ?? lookupData.prefilledFamilySuggestion,
         isPrefilledFamilyFromOff:
             latest == null && lookupData.prefilledFamilySuggestion != null,
-        prefilledPrice: lookupData.prefilledPrice,
+        prefilledPrice: effectivePrice,
         prefilledQuantity: lookupData.prefilledQuantity,
         prefilledUnitType: lookupData.prefilledUnitType,
-        priceWarningMessage: _validatePrice(
-          lookupData.prefilledPrice,
-          lookupData.priceStoreName,
-          lookupData.priceCountryCode,
-          data.supermarkets,
-        ),
+        priceWarningMessage: priceWarning,
       ),
     );
 
@@ -139,42 +199,6 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
     } else {
       await _refresh();
     }
-  }
-
-  /// Validates whether the OpenPrices price should be pre-filled.
-  /// Returns null when the price is valid (same country + known supermarket).
-  /// Returns a warning message when the price cannot be pre-filled.
-  String? _validatePrice(
-    double? price,
-    String? storeName,
-    String? countryCode,
-    List<Supermarket> localSupermarkets,
-  ) {
-    if (price == null) return null;
-
-    final locale = WidgetsBinding.instance.platformDispatcher.locale;
-    final userCountry = locale.countryCode?.toUpperCase();
-
-    if (countryCode != null && userCountry != null && countryCode != userCountry) {
-      return 'Price from $countryCode (different country) \u2014 not pre-filled. Enter manually if needed.';
-    }
-
-    if (storeName != null && !_matchesAnySupermarket(storeName, localSupermarkets)) {
-      return 'Price from "$storeName" (unknown supermarket) \u2014 not pre-filled. Enter manually if needed.';
-    }
-
-    return null;
-  }
-
-  /// Partial case-insensitive match: true if storeName is contained in any
-  /// local supermarket name or vice versa.
-  bool _matchesAnySupermarket(String storeName, List<Supermarket> supermarkets) {
-    final normalized = storeName.toLowerCase().trim();
-    if (normalized.isEmpty) return false;
-    return supermarkets.any((s) {
-      final name = s.name.toLowerCase().trim();
-      return name.contains(normalized) || normalized.contains(name);
-    });
   }
 
   Future<_BarcodeCreateData> _loadCreateData() async {
@@ -447,21 +471,16 @@ class _RegisterScannedPriceSheetState
         ? widget.lastUsedSupermarketId!
         : fallbackId;
 
-    _maybeShowPriceWarning();
-  }
-
-  void _maybeShowPriceWarning() {
-    if (widget.priceWarningMessage == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.priceWarningMessage!),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    });
+    // Show price validation warning after the sheet has been built
+    if (widget.priceWarningMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(widget.priceWarningMessage!)),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -628,10 +647,10 @@ class _BarcodeLookupData {
     this.prefilledBrand,
     this.prefilledFamilySuggestion,
     this.prefilledPrice,
+    this.prefilledPriceStoreName,
+    this.prefilledPriceCountryCode,
     this.prefilledQuantity,
     this.prefilledUnitType,
-    this.priceStoreName,
-    this.priceCountryCode,
   });
 
   final List<BarcodeMatchResult> matches;
@@ -639,16 +658,10 @@ class _BarcodeLookupData {
   final String? prefilledBrand;
   final String? prefilledFamilySuggestion;
   final double? prefilledPrice;
+  final String? prefilledPriceStoreName;
+  final String? prefilledPriceCountryCode;
   final double? prefilledQuantity;
   final String? prefilledUnitType;
-
-  /// Store/supermarket name from OpenPrices (location.osm_name).
-  /// Used for price validation against local supermarkets.
-  final String? priceStoreName;
-
-  /// ISO country code from OpenPrices (location.osm_address_country_code).
-  /// Used for cross-country price validation.
-  final String? priceCountryCode;
 
   /// Whether Open Food Facts returned actual product data for this barcode.
   /// Only OFF fields are checked — OpenPrices price alone does not trigger
