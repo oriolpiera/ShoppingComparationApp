@@ -93,13 +93,66 @@ void main() {
       expect(find.text('Acme'), findsOneWidget);
       expect(find.text('0.5 kg'), findsOneWidget);
       expect(find.text('Greek Yogurt'), findsOneWidget);
-      expect(find.textContaining('€0.99'), findsOneWidget);
+      expect(find.textContaining('\u20AC0.99'), findsOneWidget);
 
       // No generic message when OFF data exists
       expect(
         find.text('No current active Product Items for this barcode.'),
         findsNothing,
       );
+    },
+  );
+
+  testWidgets(
+    'scan flow generic message when OFF not found even with OpenPrices price',
+    (tester) async {
+      final repository = _FakeRepo();
+      // OFF returns status:0 — product not found, all OFF fields null
+      final prefillService = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async => '{"status":0}',
+      );
+      // OpenPrices still has a price
+      final pricePrefillService = OpenPricesPricePrefillService(
+        getRequest: (_) async =>
+            '{"items":[{"price":2.49,"currency":"EUR","date":"2026-05-01","location":{"osm_display_name":"Barcelona"}}]}',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ProductItemsPage(
+            productItemRepository: repository,
+            productFamilyRepository: repository,
+            supermarketRepository: repository,
+            priceRecordRepository: repository,
+            namePrefillService: prefillService,
+            pricePrefillService: pricePrefillService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tag));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Barcode'),
+        'X-UNKNOWN',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+      await tester.pumpAndSettle();
+
+      // Generic message — no card
+      expect(
+        find.text('No current active Product Items for this barcode.'),
+        findsOneWidget,
+      );
+      expect(find.text('Open Food Facts found:'), findsNothing);
+
+      // Form still pre-fills the price from OpenPrices
+      await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2.49'), findsOneWidget);
     },
   );
 
