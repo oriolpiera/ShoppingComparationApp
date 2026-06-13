@@ -67,10 +67,13 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
     return _BarcodeLookupData(
       matches: matches,
       prefilledName: prefill?.productName,
+      prefilledBrand: prefill?.brand,
       prefilledFamilySuggestion: prefill?.familySuggestion,
       prefilledQuantity: prefill?.packageQuantityHint,
       prefilledUnitType: prefill?.packageUnitHint,
       prefilledPrice: pricePrefill?.price,
+      prefilledPriceStoreName: pricePrefill?.storeName,
+      prefilledPriceCountryCode: pricePrefill?.countryCode,
     );
   }
 
@@ -82,6 +85,57 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
   Future<void> _refresh() async {
     setState(() {
       _future = _load();
+    });
+  }
+
+  /// Validates whether the OpenPrices price is suitable for the user.
+  ///
+  /// Returns a warning [String] if the price should NOT be pre-filled,
+  /// or `null` if the price is valid.
+  ///
+  /// Checks two things in order:
+  /// 1. Country match — the price's country must match the device locale country
+  /// 2. Store match — the store name must match at least one local supermarket
+  String? _validatePrice({
+    required String? priceStoreName,
+    required String? priceCountryCode,
+    required List<Supermarket> supermarkets,
+  }) {
+    if (priceCountryCode == null && priceStoreName == null) return null;
+
+    final locale = WidgetsBinding.instance.platformDispatcher.locale;
+    final userCountry = locale.countryCode;
+
+    // Country check: only when both price and user locale have country data
+    if (priceCountryCode != null && userCountry != null) {
+      if (priceCountryCode.toUpperCase() != userCountry.toUpperCase()) {
+        return 'Price is from a different country ($priceCountryCode). '
+            'Not pre-filling.';
+      }
+    }
+
+    // Store check: the OpenPrices store name must exist in local DB
+    if (priceStoreName != null &&
+        !_matchesAnySupermarket(priceStoreName, supermarkets)) {
+      return 'Price is from an unknown supermarket ($priceStoreName). '
+          'Not pre-filling.';
+    }
+
+    return null;
+  }
+
+  /// Whether [storeName] matches any known [supermarkets] using bidirectional
+  /// partial case-insensitive contains (e.g. "Mercadona" matches
+  /// "Mercadona Olot" and vice versa).
+  bool _matchesAnySupermarket(
+    String storeName,
+    List<Supermarket> supermarkets,
+  ) {
+    final lowerStore = storeName.toLowerCase();
+    return supermarkets.any((s) {
+      final lowerSuper = s.name.toLowerCase();
+      return lowerStore.contains(lowerSuper) ||
+          lowerSuper.contains(lowerStore);
     });
   }
 
@@ -97,6 +151,20 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
         ),
       );
       return;
+    }
+
+    // Validate price against user country and known supermarkets
+    String? priceWarning;
+    double? effectivePrice = lookupData.prefilledPrice;
+    if (effectivePrice != null) {
+      priceWarning = _validatePrice(
+        priceStoreName: lookupData.prefilledPriceStoreName,
+        priceCountryCode: lookupData.prefilledPriceCountryCode,
+        supermarkets: data.supermarkets,
+      );
+      if (priceWarning != null) {
+        effectivePrice = null;
+      }
     }
 
     final result = await showModalBottomSheet<ScannedPriceRegistrationResult>(
@@ -115,9 +183,10 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
             latest?.familyName ?? lookupData.prefilledFamilySuggestion,
         isPrefilledFamilyFromOff:
             latest == null && lookupData.prefilledFamilySuggestion != null,
-        prefilledPrice: lookupData.prefilledPrice,
+        prefilledPrice: effectivePrice,
         prefilledQuantity: lookupData.prefilledQuantity,
         prefilledUnitType: lookupData.prefilledUnitType,
+        priceWarningMessage: priceWarning,
       ),
     );
 
@@ -148,6 +217,68 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
     );
   }
 
+  Widget _buildOffCard(_BarcodeLookupData data) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Open Food Facts found:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            if (data.prefilledName != null)
+              _infoTile('Product', data.prefilledName!),
+            if (data.prefilledBrand != null)
+              _infoTile('Brand', data.prefilledBrand!),
+            if (data.prefilledQuantity != null)
+              _infoTile(
+                'Quantity',
+                '${data.prefilledQuantity!.toString()} ${data.prefilledUnitType ?? ''}',
+              ),
+            if (data.prefilledFamilySuggestion != null)
+              _infoTile(
+                'Suggested family',
+                data.prefilledFamilySuggestion!,
+              ),
+            if (data.prefilledPrice != null) ...[const Divider()],
+            if (data.prefilledPrice != null)
+              _infoTile(
+                'Price (OpenPrices)',
+                '\u20AC${data.prefilledPrice!.toStringAsFixed(2)}',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoTile(String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: theme.textTheme.bodyMedium),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,6 +298,27 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
               snapshot.data ?? const _BarcodeLookupData(matches: []);
           final matches = lookupData.matches;
           if (matches.isEmpty) {
+            if (lookupData.hasExternalData) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildOffCard(lookupData),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () => _createProductItem(lookupData),
+                      child: const Text('Create Product Item'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Re-scan'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -205,7 +357,7 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
                         '${match.supermarketName} · ${match.catalogProduct.name}',
                       ),
                       subtitle: Text(
-                        '€${match.priceRecord.price.toStringAsFixed(2)} · ${match.quantity} ${match.unitType} · ${match.pricePerQuantity.toStringAsFixed(2)} €/${match.unitType}',
+                        '\u20AC${match.priceRecord.price.toStringAsFixed(2)} · ${match.quantity} ${match.unitType} · ${match.pricePerQuantity.toStringAsFixed(2)} \u20AC/${match.unitType}',
                       ),
                     );
                   },
@@ -257,6 +409,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
     this.prefilledPrice,
     this.prefilledQuantity,
     this.prefilledUnitType,
+    this.priceWarningMessage,
   });
 
   final PriceRecordRepository priceRecordRepository;
@@ -272,6 +425,7 @@ class _RegisterScannedPriceSheet extends StatefulWidget {
   final double? prefilledPrice;
   final double? prefilledQuantity;
   final String? prefilledUnitType;
+  final String? priceWarningMessage;
 
   @override
   State<_RegisterScannedPriceSheet> createState() =>
@@ -316,6 +470,17 @@ class _RegisterScannedPriceSheetState
             allowedIds.contains(widget.lastUsedSupermarketId))
         ? widget.lastUsedSupermarketId!
         : fallbackId;
+
+    // Show price validation warning after the sheet has been built
+    if (widget.priceWarningMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(widget.priceWarningMessage!)),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -479,18 +644,34 @@ class _BarcodeLookupData {
   const _BarcodeLookupData({
     required this.matches,
     this.prefilledName,
+    this.prefilledBrand,
     this.prefilledFamilySuggestion,
     this.prefilledPrice,
+    this.prefilledPriceStoreName,
+    this.prefilledPriceCountryCode,
     this.prefilledQuantity,
     this.prefilledUnitType,
   });
 
   final List<BarcodeMatchResult> matches;
   final String? prefilledName;
+  final String? prefilledBrand;
   final String? prefilledFamilySuggestion;
   final double? prefilledPrice;
+  final String? prefilledPriceStoreName;
+  final String? prefilledPriceCountryCode;
   final double? prefilledQuantity;
   final String? prefilledUnitType;
+
+  /// Whether Open Food Facts returned actual product data for this barcode.
+  /// Only OFF fields are checked — OpenPrices price alone does not trigger
+  /// the card, avoiding a misleading "Open Food Facts found:" header when
+  /// OFF found nothing but a price is available.
+  bool get hasExternalData =>
+      prefilledName != null ||
+      prefilledBrand != null ||
+      prefilledFamilySuggestion != null ||
+      (prefilledQuantity != null && prefilledUnitType != null);
 }
 
 class _BarcodeCreateData {

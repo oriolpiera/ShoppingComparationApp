@@ -6,9 +6,15 @@ import 'remote_get_request_native.dart'
 typedef OpenPricesGetRequest = Future<String?> Function(Uri uri);
 
 class OpenPricesPricePrefill {
-  const OpenPricesPricePrefill({required this.price});
+  const OpenPricesPricePrefill({
+    required this.price,
+    this.storeName,
+    this.countryCode,
+  });
 
   final double price;
+  final String? storeName;
+  final String? countryCode;
 }
 
 class OpenPricesPricePrefillService {
@@ -80,7 +86,26 @@ class OpenPricesPricePrefillService {
 
       final price = _parsePrice(bestItem['price']);
       if (price == null) return null;
-      return OpenPricesPricePrefill(price: price);
+
+      final location = bestItem['location'];
+      String? storeName;
+      String? countryCode;
+      if (location is Map<String, dynamic>) {
+        final rawName = location['osm_name'];
+        if (rawName is String && rawName.trim().isNotEmpty) {
+          storeName = rawName.trim();
+        }
+        final rawCountry = location['osm_address_country_code'];
+        if (rawCountry is String && rawCountry.trim().isNotEmpty) {
+          countryCode = rawCountry.trim().toUpperCase();
+        }
+      }
+
+      return OpenPricesPricePrefill(
+        price: price,
+        storeName: storeName,
+        countryCode: countryCode,
+      );
     } on FormatException {
       return null;
     }
