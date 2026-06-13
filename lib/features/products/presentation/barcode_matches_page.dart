@@ -67,6 +67,7 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
     return _BarcodeLookupData(
       matches: matches,
       prefilledName: prefill?.productName,
+      prefilledBrand: prefill?.brand,
       prefilledFamilySuggestion: prefill?.familySuggestion,
       prefilledQuantity: prefill?.packageQuantityHint,
       prefilledUnitType: prefill?.packageUnitHint,
@@ -148,6 +149,68 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
     );
   }
 
+  Widget _buildOffCard(_BarcodeLookupData data) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Open Food Facts found:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            if (data.prefilledName != null)
+              _infoTile('Product', data.prefilledName!),
+            if (data.prefilledBrand != null)
+              _infoTile('Brand', data.prefilledBrand!),
+            if (data.prefilledQuantity != null)
+              _infoTile(
+                'Quantity',
+                '${data.prefilledQuantity!.toString()} ${data.prefilledUnitType ?? ''}',
+              ),
+            if (data.prefilledFamilySuggestion != null)
+              _infoTile(
+                'Suggested family',
+                data.prefilledFamilySuggestion!,
+              ),
+            if (data.prefilledPrice != null) ...[const Divider()],
+            if (data.prefilledPrice != null)
+              _infoTile(
+                'Price (OpenPrices)',
+                '\u20AC${data.prefilledPrice!.toStringAsFixed(2)}',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoTile(String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: theme.textTheme.bodyMedium),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,6 +230,27 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
               snapshot.data ?? const _BarcodeLookupData(matches: []);
           final matches = lookupData.matches;
           if (matches.isEmpty) {
+            if (lookupData.hasExternalData) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildOffCard(lookupData),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () => _createProductItem(lookupData),
+                      child: const Text('Create Product Item'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Re-scan'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -205,7 +289,7 @@ class _BarcodeMatchesPageState extends State<BarcodeMatchesPage> {
                         '${match.supermarketName} · ${match.catalogProduct.name}',
                       ),
                       subtitle: Text(
-                        '€${match.priceRecord.price.toStringAsFixed(2)} · ${match.quantity} ${match.unitType} · ${match.pricePerQuantity.toStringAsFixed(2)} €/${match.unitType}',
+                        '\u20AC${match.priceRecord.price.toStringAsFixed(2)} · ${match.quantity} ${match.unitType} · ${match.pricePerQuantity.toStringAsFixed(2)} \u20AC/${match.unitType}',
                       ),
                     );
                   },
@@ -479,6 +563,7 @@ class _BarcodeLookupData {
   const _BarcodeLookupData({
     required this.matches,
     this.prefilledName,
+    this.prefilledBrand,
     this.prefilledFamilySuggestion,
     this.prefilledPrice,
     this.prefilledQuantity,
@@ -487,10 +572,18 @@ class _BarcodeLookupData {
 
   final List<BarcodeMatchResult> matches;
   final String? prefilledName;
+  final String? prefilledBrand;
   final String? prefilledFamilySuggestion;
   final double? prefilledPrice;
   final double? prefilledQuantity;
   final String? prefilledUnitType;
+
+  bool get hasExternalData =>
+      prefilledName != null ||
+      prefilledBrand != null ||
+      prefilledFamilySuggestion != null ||
+      prefilledPrice != null ||
+      (prefilledQuantity != null && prefilledUnitType != null);
 }
 
 class _BarcodeCreateData {
