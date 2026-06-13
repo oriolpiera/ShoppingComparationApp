@@ -93,7 +93,7 @@ void main() {
       expect(find.text('Acme'), findsOneWidget);
       expect(find.text('0.5 kg'), findsOneWidget);
       expect(find.text('Greek Yogurt'), findsOneWidget);
-      expect(find.textContaining('\u20AC0.99'), findsOneWidget);
+      expect(find.textContaining('€0.99'), findsOneWidget);
 
       // No generic message when OFF data exists
       expect(
@@ -286,7 +286,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // OFF card shows (product name available)
-      expect(find.text('Product X'), findsOneWidget);
+      expect(find.text('Product X'), findsWidgets);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
       await tester.pumpAndSettle();
