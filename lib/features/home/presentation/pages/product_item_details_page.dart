@@ -139,7 +139,29 @@ class ProductItemDetailsPage extends StatelessWidget {
       label: 'Barcode',
       value: barcode,
       widgetValue: GestureDetector(
-        onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
+        onTap: () async {
+          try {
+            final launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+            if (!launched && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Could not open Open Food Facts page'),
+                ),
+              );
+            }
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Could not open Open Food Facts page'),
+                ),
+              );
+            }
+          }
+        },
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
