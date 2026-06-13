@@ -60,7 +60,7 @@ void main() {
       );
       final pricePrefillService = OpenPricesPricePrefillService(
         getRequest: (_) async =>
-            '{"items":[{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
+            '{"items":[{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot","osm_name":"A","osm_address_country_code":"ES"}}]}',
       );
 
       await tester.pumpWidget(
@@ -114,7 +114,7 @@ void main() {
       // OpenPrices still has a price
       final pricePrefillService = OpenPricesPricePrefillService(
         getRequest: (_) async =>
-            '{"items":[{"price":2.49,"currency":"EUR","date":"2026-05-01","location":{"osm_display_name":"Barcelona"}}]}',
+            '{"items":[{"price":2.49,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Barcelona"}}]}',
       );
 
       await tester.pumpWidget(
@@ -245,6 +245,164 @@ void main() {
 
     expect(find.text('0.99'), findsOneWidget);
   });
+
+  testWidgets(
+    'scan flow does not pre-fill price from different country',
+    (tester) async {
+      tester.binding.platformDispatcher.localeTestValue =
+          const Locale('ca', 'ES');
+
+      final repository = _FakeRepo();
+      final prefillService = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async =>
+            '{"status":1,"product":{"product_name":"Product X","brands":"Brand"}}',
+      );
+      // Price from Poland (country PL vs user ES)
+      final pricePrefillService = OpenPricesPricePrefillService(
+        getRequest: (_) async =>
+            '{"items":[{"price":4.99,"currency":"EUR","date":"2026-05-01","location":{"osm_name":"Biedronka","osm_address_country_code":"PL"}}]}',
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: ProductItemsPage(
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
+          namePrefillService: prefillService,
+          pricePrefillService: pricePrefillService,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tag));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Barcode'),
+        'X-NEW',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+      await tester.pumpAndSettle();
+
+      // OFF card shows (product name available)
+      expect(find.text('Product X'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+      await tester.pumpAndSettle();
+
+      // SnackBar warns about different country
+      expect(
+        find.textContaining('different country'),
+        findsOneWidget,
+      );
+      // Price field is not pre-filled (starts empty)
+      expect(
+        find.widgetWithText(TextField, 'Price'),
+        findsOneWidget,
+      );
+      // No "4.99" appears anywhere
+      expect(find.text('4.99'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'scan flow does not pre-fill price from unknown supermarket',
+    (tester) async {
+      tester.binding.platformDispatcher.localeTestValue =
+          const Locale('ca', 'ES');
+
+      final repository = _FakeRepo();
+      // Mock OpenPrices with same country (ES) but unknown store name
+      final pricePrefillService = OpenPricesPricePrefillService(
+        getRequest: (_) async =>
+            '{"items":[{"price":3.49,"currency":"EUR","date":"2026-05-01","location":{"osm_name":"Biedronka","osm_address_country_code":"ES"}}]}',
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: ProductItemsPage(
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
+          pricePrefillService: pricePrefillService,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tag));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Barcode'),
+        'X-NEW',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+      await tester.pumpAndSettle();
+
+      // SnackBar warns about unknown supermarket
+      expect(
+        find.textContaining('unknown supermarket'),
+        findsOneWidget,
+      );
+      // Price field is not pre-filled
+      expect(find.text('3.49'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'scan flow pre-fills price when country and store match',
+    (tester) async {
+      tester.binding.platformDispatcher.localeTestValue =
+          const Locale('ca', 'ES');
+
+      final repository = _FakeRepo();
+      // Mock OpenPrices with same country (ES) and store name matching
+      // the local supermarket "A"
+      final pricePrefillService = OpenPricesPricePrefillService(
+        getRequest: (_) async =>
+            '{"items":[{"price":1.99,"currency":"EUR","date":"2026-05-01","location":{"osm_name":"A","osm_address_country_code":"ES"}}]}',
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: ProductItemsPage(
+          productItemRepository: repository,
+          productFamilyRepository: repository,
+          supermarketRepository: repository,
+          priceRecordRepository: repository,
+          pricePrefillService: pricePrefillService,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tag));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Barcode'),
+        'X-NEW',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
+      await tester.pumpAndSettle();
+
+      // Price IS pre-filled (no warning, price found)
+      expect(find.text('1.99'), findsOneWidget);
+      expect(
+        find.textContaining('unknown supermarket'),
+        findsNothing,
+      );
+      expect(
+        find.textContaining('different country'),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('scan flow prefers system locale for Open Food Facts name', (
     tester,
