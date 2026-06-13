@@ -7,7 +7,7 @@ import '../product_family_presentation_helpers.dart';
 
 /// Maps the device locale to the appropriate Open Food Facts subdomain.
 ///
-/// Falls back to [world] for locales without a dedicated subdomain.
+/// Falls back to `world` for locales without a dedicated subdomain.
 String _offSubdomain(Locale locale) {
   switch (locale.languageCode) {
     case 'ca':
