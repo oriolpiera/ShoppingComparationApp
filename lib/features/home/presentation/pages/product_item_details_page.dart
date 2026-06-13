@@ -130,8 +130,9 @@ class ProductItemDetailsPage extends StatelessWidget {
     }
 
     final locale = Localizations.localeOf(context);
-    final uri = Uri.parse(
-      'https://${_offSubdomain(locale)}.openfoodfacts.org/product/$barcode',
+    final uri = Uri.https(
+      '${_offSubdomain(locale)}.openfoodfacts.org',
+      '/product/$barcode',
     );
     final theme = Theme.of(context);
 
