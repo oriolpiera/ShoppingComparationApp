@@ -578,11 +578,14 @@ class _BarcodeLookupData {
   final double? prefilledQuantity;
   final String? prefilledUnitType;
 
+  /// Whether Open Food Facts returned actual product data for this barcode.
+  /// Only OFF fields are checked — OpenPrices price alone does not trigger
+  /// the card, avoiding a misleading "Open Food Facts found:" header when
+  /// OFF found nothing but a price is available.
   bool get hasExternalData =>
       prefilledName != null ||
       prefilledBrand != null ||
       prefilledFamilySuggestion != null ||
-      prefilledPrice != null ||
       (prefilledQuantity != null && prefilledUnitType != null);
 }
 
