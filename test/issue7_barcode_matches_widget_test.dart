@@ -50,6 +50,59 @@ void main() {
     expect(find.text('Re-scan'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets(
+    'scan flow no-match shows OFF card with product info from Open Food Facts',
+    (tester) async {
+      final repository = _FakeRepo();
+      final prefillService = OpenFoodFactsNamePrefillService(
+        getRequest: (_) async =>
+            '{"status":1,"product":{"product_name":"Greek Yogurt 500 g","brands":"Acme","quantity":"500 g"}}',
+      );
+      final pricePrefillService = OpenPricesPricePrefillService(
+        getRequest: (_) async =>
+            '{"items":[{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot"}}]}',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ProductItemsPage(
+            productItemRepository: repository,
+            productFamilyRepository: repository,
+            supermarketRepository: repository,
+            priceRecordRepository: repository,
+            namePrefillService: prefillService,
+            pricePrefillService: pricePrefillService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.tag));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Barcode'),
+        'X-NEW',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Search'));
+      await tester.pumpAndSettle();
+
+      // OFF card shows all product info
+      expect(find.text('Open Food Facts found:'), findsOneWidget);
+      expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
+      expect(find.text('Acme'), findsOneWidget);
+      expect(find.text('0.5 kg'), findsOneWidget);
+      expect(find.text('Greek Yogurt'), findsOneWidget);
+      expect(find.textContaining('€0.99'), findsOneWidget);
+
+      // No generic message when OFF data exists
+      expect(
+        find.text('No current active Product Items for this barcode.'),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('scan flow no-match pre-fills name from Open Food Facts', (
     tester,
   ) async {
@@ -79,12 +132,16 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Search'));
     await tester.pumpAndSettle();
 
+    // Card shows OFF data before Create
+    expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
+
     await tester.tap(find.widgetWithText(FilledButton, 'Create Product Item'));
     await tester.pumpAndSettle();
 
+    // Form pre-fills: text now appears in both card and form EditableText
     expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
-    expect(find.text('Greek Yogurt 500 g'), findsOneWidget);
-    expect(find.text('Greek Yogurt'), findsOneWidget);
+    expect(find.text('Greek Yogurt 500 g'), findsWidgets);
+    expect(find.text('Greek Yogurt'), findsWidgets);
     expect(
       find.textContaining(
         'Suggested from Open Food Facts. Please confirm or edit.',
@@ -92,6 +149,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Suggestions from 3 chars'), findsOneWidget);
+    // Quantity shows as "0.5" only in form EditableText (card shows "0.5 kg")
     expect(find.text('0.5'), findsOneWidget);
   });
 
