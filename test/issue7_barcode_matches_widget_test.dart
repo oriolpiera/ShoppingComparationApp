@@ -60,7 +60,7 @@ void main() {
       );
       final pricePrefillService = OpenPricesPricePrefillService(
         getRequest: (_) async =>
-            '{"items":[{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot","osm_name":"A","osm_address_country_code":"ES"}}]}',
+            '{"items":[{"price":0.99,"currency":"EUR","date":"2026-04-07","location":{"osm_display_name":"Olot","osm_name":"Mercadona","osm_address_country_code":"ES"}}]}',
       );
 
       await tester.pumpWidget(
@@ -361,10 +361,10 @@ void main() {
 
       final repository = _FakeRepo();
       // Mock OpenPrices with same country (ES) and store name matching
-      // the local supermarket "A"
+      // the local supermarket "Mercadona"
       final pricePrefillService = OpenPricesPricePrefillService(
         getRequest: (_) async =>
-            '{"items":[{"price":1.99,"currency":"EUR","date":"2026-05-01","location":{"osm_name":"A","osm_address_country_code":"ES"}}]}',
+            '{"items":[{"price":1.99,"currency":"EUR","date":"2026-05-01","location":{"osm_name":"Mercadona","osm_address_country_code":"ES"}}]}',
       );
 
       await tester.pumpWidget(MaterialApp(
@@ -475,7 +475,7 @@ void main() {
               isActive: true,
             ),
             familyName: 'Confirmed Family',
-            supermarketName: 'A',
+            supermarketName: 'Mercadona',
           ),
         ],
       },
@@ -638,7 +638,7 @@ class _FakeRepo
 
   @override
   Future<List<Supermarket>> getSupermarkets({bool onlyActive = true}) async => [
-        Supermarket(id: 1, name: 'A'),
+        Supermarket(id: 1, name: 'Mercadona'),
       ];
 
   @override
